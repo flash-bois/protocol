@@ -167,7 +167,7 @@ impl Strategy {
         sub: ServiceType,
         // services: &mut Services,
     ) {
-        *self.locked_in(sub).unwrap() += quantity;
+        *self.locked_in_quote(sub).unwrap() += quantity;
 
         // if self.can_swap() {
         //     services.swap_service().unwrap().remove_available(quantity);
