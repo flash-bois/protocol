@@ -1,13 +1,5 @@
 use crate::decimal::{Fraction, Quantity, Shares};
-
-enum ServiceType {
-    /// Lending
-    Lend,
-    /// Swapping
-    Swap,
-    /// Trading
-    Trade,
-}
+use crate::services::ServiceType;
 
 /// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default)]

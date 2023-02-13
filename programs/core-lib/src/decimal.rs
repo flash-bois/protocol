@@ -34,6 +34,31 @@ pub const RATE_INTERVAL: Time = 21600000u32;
 #[decimal(6)]
 pub struct Fraction(u64);
 
+impl Fraction {
+    pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
+        if used == Quantity::from_integer(0) {
+            return Self::from_integer(0);
+        }
+
+        Self::from_decimal(used).div_up(total)
+    }
+}
+
+/// Keeps fractions that need less precision
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[decimal(6)]
+pub struct Utilization(u128);
+
+impl Utilization {
+    pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
+        if used == Quantity::from_integer(0) {
+            return Self::from_integer(0);
+        }
+
+        Self::from_decimal(used).div_up(total)
+    }
+}
+
 /// Keeps fractions that need greater precision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
 #[decimal(12)]
@@ -55,11 +80,6 @@ pub struct Price(u64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
 #[decimal(9)]
 pub struct Value(u128);
-
-/// Keeps the utilization of a pool
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd)]
-#[decimal(6)]
-pub struct Utilization(u128);
 
 /// Used to keep cumulative funding rate (can be positive or negative)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
