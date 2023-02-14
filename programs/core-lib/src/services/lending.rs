@@ -283,3 +283,90 @@ impl Borrowable for Lend {
         Ok(additional_shares)
     }
 }
+
+#[cfg(test)]
+mod shares_tests {
+    use super::*;
+    use checked_decimal_macro::Decimal;
+
+    #[test]
+    fn borrows_max_repay_max() {
+        let current_time = 100000;
+        let max_utilization = Utilization::from_scale(80, 2);
+        let mut fee = FeeCurve::default();
+        fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
+        let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
+
+        lending.add_available(Quantity(2_000_000));
+        lending.accrue_interest_rate(current_time);
+
+        assert_eq!(
+            lending,
+            Lend {
+                available: Quantity(2_000_000),
+                max_utilization,
+                fee,
+                borrow_limit: Quantity(u64::MAX),
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        assert!(
+            lending.borrow(Quantity(1_600_001)).is_err(),
+            "can't borrow due to too high utilization"
+        );
+
+        assert!(lending.borrow(Quantity(1_600_000)).is_ok(), "can borrow");
+        lending.remove_available(Quantity(1_600_000));
+
+        assert_eq!(
+            lending,
+            Lend {
+                available: Quantity(400_000),
+                max_utilization,
+                fee,
+                borrow_limit: Quantity(u64::MAX),
+                utilization: max_utilization,
+                borrow_shares: Shares::from_integer(1_600_000),
+                borrowed: Quantity(1_600_000),
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        assert!(lending.borrow(Quantity(1)).is_err(), "can't borrow");
+
+        let (partially_repaid, shares_partially_repaid) = lending
+            .repay(
+                Quantity(1_530_264),
+                Quantity(1_600_000),
+                Shares::from_integer(1_600_000),
+            )
+            .unwrap();
+
+        lending.add_available(partially_repaid);
+
+        let (full_repaid, _shares_fully_repaid) = lending
+            .repay(
+                Quantity(1_600_000) - partially_repaid,
+                Quantity(1_600_000) - partially_repaid,
+                Shares::from_integer(1_600_000) - shares_partially_repaid,
+            )
+            .unwrap();
+
+        lending.add_available(full_repaid);
+
+        assert_eq!(
+            lending,
+            Lend {
+                available: Quantity(2_000_000),
+                max_utilization,
+                borrow_limit: Quantity(u64::MAX),
+                fee,
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+    }
+}
