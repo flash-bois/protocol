@@ -13,7 +13,7 @@ pub mod protocol {
     pub fn create_vault(ctx: Context<CreateVault>, bump: u8) -> Result<()> {
         let mut vault = ctx.accounts.vault.load_init()?;
 
-        *vault = Vault{
+        *vault = Vault {
             bump,
             ..Default::default()
         };
@@ -74,7 +74,7 @@ pub struct CloseVault<'info> {
 pub struct Vault {
     pub id: u8,
     pub oracle: Option<Oracle>,
-    pub bump: u8
+    pub bump: u8,
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -106,6 +106,16 @@ pub type Time = u32;
 #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
 #[decimal(9)]
 #[zero_copy]
-pub struct Price{
+pub struct Price {
     pub v: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use core_lib::{add_points, Point};
+
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
 }
