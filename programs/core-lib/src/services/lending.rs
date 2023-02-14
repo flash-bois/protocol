@@ -369,4 +369,190 @@ mod shares_tests {
             }
         );
     }
+
+    #[test]
+    fn fee_accruing() {
+        let mut current_time = 0;
+
+        let max_utilization = Utilization::from_scale(80, 2); // 0,8 === 80 %
+
+        let mut fee = FeeCurve::default();
+        fee.add_constant_fee(Fraction::new(100), Fraction::from_scale(40, 2)); // 0.01% 1 basis point
+        fee.add_constant_fee(Fraction::new(1000), Fraction::from_scale(60, 2)); // 0.1% 10 basis point
+        fee.add_constant_fee(Fraction::new(10000), Fraction::from_scale(80, 2)); // 1% 100 basis point
+        fee.add_constant_fee(Fraction::new(20000), Fraction::from_scale(100, 2)); // 2% 200 basis point
+
+        let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
+
+        lending.add_available(Quantity(736796576003955192));
+
+        current_time += 100;
+        lending.accrue_interest_rate(current_time);
+        lending.accrue_fee(None);
+
+        lending.add_available(Quantity(536908355173637734));
+
+        // available, shares = 736796576003955192 + 536908355173637734 = 1273704931177592926
+        assert_eq!(
+            lending,
+            Lend {
+                available: Quantity(1273704931177592926),
+                borrow_limit: Quantity(u64::MAX),
+                max_utilization,
+                fee,
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        current_time += 100;
+        lending.accrue_interest_rate(current_time);
+        lending.accrue_fee(None);
+
+        lending.borrow(Quantity(184186871548154787)).unwrap();
+        lending.remove_available(Quantity(184186871548154787));
+
+        assert_eq!(
+            lending,
+            Lend {
+                // available = 1273704931177592926 - 184186871548154787 = 1089518059629438139
+                available: Quantity(1089518059629438139),
+                borrowed: Quantity(184186871548154787),
+                borrow_shares: Shares::new(184186871548154787),
+                borrow_limit: Quantity(u64::MAX),
+                max_utilization,
+                fee,
+                // utilization = Divide[184186871548154787,184186871548154787 + 1089518059629438139] = 0.14460717473
+                utilization: Utilization::from_scale(144608, 6),
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        current_time += 50;
+        lending.accrue_interest_rate(current_time);
+        let fee_q = lending.accrue_fee(None);
+        assert_eq!(fee_q, Quantity(923194261225651));
+        lending.add_available(Quantity(71548154787));
+
+        // fee after 50 cycles 923194261225650.2331872421761314 (EXACT)
+        // fee = 184186871548154787 * (Pow[1.0001,50] - 1) = 923194261225650.2331872421761314 (ROUNDED UP)
+
+        assert_eq!(
+            lending,
+            Lend {
+                // available = 1089518059629438139 + 71548154787 = 1089518131177592926
+                available: Quantity(1089518131177592926),
+                // borrowed = 184186871548154787 + 923194261225651 (ROUNDED UP) = 185110065809380438
+                borrowed: Quantity(185110065809380438),
+                borrow_shares: Shares::new(184186871548154787),
+                unclaimed_fee: Quantity(0),
+                borrow_limit: Quantity(u64::MAX),
+                total_fee: Quantity(923194261225651),
+                // utilization = Divide[185110065809380438,185110065809380438 + 1089518131177592926] = 0.1452267149 (ROUND UP)
+                utilization: Utilization::from_scale(145227, 6),
+                max_utilization,
+                fee,
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        current_time += 50;
+        lending.accrue_interest_rate(current_time);
+        let fee_q = lending.accrue_fee(None);
+
+        lending.borrow(Quantity(11051825915530)).unwrap();
+        lending.remove_available(Quantity(11051825915530));
+
+        // fee after 100 cycles : 923194261225651 + 927821559777366.7562086 = 1851015821003017.756 (ROUND UP)
+
+        let fee_q = lending.accrue_fee(None);
+
+        assert_eq!(
+            lending,
+            Lend {
+                // available = 1089518131177592926 - 11051825915530 = 1089507079351677396
+                available: Quantity(1089507079351677396),
+                // borrowed = 185110065809380438 + 927821559777367 (ROUNDED UP) + 11051825915530
+                borrowed: Quantity(186048939195073335),
+                // borrow_shares = 184186871548154787 * Divide[11051825915530, 186037887369157804.761220936]  + 184186871548154787
+                // borrow_shares = 184197813412035648.0949073166577736701
+                borrow_shares: Shares::new(184197813412035649),
+                max_utilization,
+                borrow_limit: Quantity(u64::MAX),
+                fee,
+                utilization: Utilization::from_scale(145858, 6), // 0.145857129
+                unclaimed_fee: Quantity(0),                      // ROUNDED UP
+                total_fee: Quantity(1851015821003018),           // ROUNDED UP
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        let (repaid, first_repaid_shares) = lending
+            .repay(
+                Quantity(35495932680513284),
+                Quantity(184197923374070317),
+                Shares::new(184197813412035649),
+            )
+            .unwrap();
+
+        // owed 186048939195073335
+
+        // 35495932680513284 - 1851015821003018 = 33644916859510266
+        lending.add_available(repaid);
+
+        assert_eq!(
+            lending,
+            Lend {
+                // available =  1089507079351677396 + 35495932680513284 = 1125003012032190680
+                available: Quantity(1125003012032190680),
+                // borrowed = 186048939195073335 - 35495932680513284 = 150553006514560049
+                borrowed: Quantity(150553006514560051),
+                // borrow_shares = 184197813412035649 - (184197813412035649 * Divide[35495932680513284, 186048939195073335]
+                // borrow_shares = 184197813412035649 - 35142759819318017.87950604465 (ROUND DOWN) = 149055053592717632
+                borrow_shares: Shares::new(149055053592717632),
+                max_utilization,
+                borrow_limit: Quantity(u64::MAX),
+                fee,
+                // Divide[150553006514560051, 150553006514560051 + 1123151996211187662]
+                utilization: Utilization::from_scale(118030, 6),
+                unclaimed_fee: Quantity(0),
+                total_fee: Quantity(1851015821003018),
+                last_fee_paid: current_time,
+                ..Default::default()
+            }
+        );
+
+        let (repaid, second_repaid_shares) = lending
+            .repay(
+                Quantity(150553006514560051),
+                Quantity(150553006514560051),
+                Shares::new(149055053592717632),
+            )
+            .unwrap();
+
+        lending.add_available(repaid);
+
+        assert_eq!(
+            lending,
+            Lend {
+                // available = 150553006514560051 + 1125003012032190680 = 1275556018546750731
+                available: Quantity(1275556018546750731),
+                max_utilization,
+                fee,
+                borrow_limit: Quantity(u64::MAX),
+                last_fee_paid: current_time,
+                unclaimed_fee: Quantity(0),
+                total_fee: Quantity(1851015821003018),
+                ..Default::default()
+            }
+        );
+
+        assert_eq!(
+            first_repaid_shares + second_repaid_shares,
+            Shares::new(184197813412035649)
+        );
+    }
 }
