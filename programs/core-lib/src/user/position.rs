@@ -1,12 +1,13 @@
 use super::*;
 
+#[derive(Debug)]
 #[repr(u8)]
 pub enum Side {
     Long,
     Short,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum Position {
     #[default]
     Empty,
@@ -108,5 +109,108 @@ impl Position {
             Position::Trading { quantity, .. } => quantity,
             Position::Empty => unreachable!(),
         }
+    }
+
+    pub fn increase_amount(&mut self, amount: Quantity) {
+        *self.amount() += amount
+    }
+
+    pub fn increase_shares(&mut self, shares: Shares) {
+        *self.shares() += shares
+    }
+
+    pub fn decrease_amount(&mut self, amount: Quantity) {
+        *self.amount() -= amount
+    }
+
+    pub fn decrease_shares(&mut self, shares: Shares) {
+        *self.shares() -= shares
+    }
+}
+
+#[cfg(test)]
+mod position_equality {
+    use super::*;
+    use checked_decimal_macro::Decimal;
+
+    #[test]
+    fn empties() {
+        let first_empty = Position::Empty;
+        let second_empty = Position::Empty;
+        let borrow = Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+        let provide = Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        assert_eq!(first_empty, second_empty);
+        assert_ne!(first_empty, borrow);
+        assert_ne!(first_empty, provide);
+        assert_ne!(borrow, provide);
+    }
+
+    #[test]
+    fn specific_borrow() {
+        let borrow = Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        let non_matching_borrow = Position::Borrow {
+            vault_index: 1,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        let matching_borrow = Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(1),
+            amount: Quantity(1),
+        };
+
+        assert_ne!(borrow, non_matching_borrow);
+        assert_eq!(borrow, matching_borrow);
+    }
+
+    #[test]
+    fn specific_provide() {
+        let provide = Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 1,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        let non_matching_provide = Position::LiquidityProvide {
+            vault_index: 1,
+            strategy_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        let matching_provide = Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 1,
+            shares: Shares::new(1),
+            amount: Quantity(1),
+        };
+
+        let reverse_non_matching_provide = Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        assert_ne!(provide, non_matching_provide);
+        assert_ne!(provide, reverse_non_matching_provide);
+        assert_eq!(provide, matching_provide);
     }
 }
