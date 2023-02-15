@@ -1,3 +1,4 @@
+pub mod deposit;
 pub mod lend;
 
 use crate::{

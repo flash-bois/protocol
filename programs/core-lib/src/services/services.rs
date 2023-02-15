@@ -36,7 +36,7 @@ pub enum ServiceType {
 }
 
 impl Services {
-    pub fn lend_service(&mut self) -> Result<&mut Lend, ()> {
+    pub fn lend_mut(&mut self) -> Result<&mut Lend, ()> {
         self.lend.as_mut().ok_or(())
     }
 }

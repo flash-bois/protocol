@@ -1,5 +1,6 @@
-use crate::decimal::{Fraction, Quantity, Shares};
-use crate::services::{ServiceType, Services};
+use crate::decimal::{Fraction, Price, Quantity, Shares, Value};
+use crate::services::{ServiceType, ServiceUpdate, Services};
+use crate::structs::Oracle;
 
 /// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default)]
@@ -155,6 +156,33 @@ impl Strategy {
             ServiceType::Swap => &mut self.sold_checked_mut()?.quote,
             ServiceType::Trade => &mut self.traded_checked_mut()?.quote,
         })
+    }
+
+    pub fn deposit(
+        &mut self,
+        input_value: Value,
+        balance_value: Value,
+        quantity: Quantity,
+        quote_quantity: Quantity,
+        services: &mut Services,
+    ) -> Result<Shares, ()> {
+        if self.lent.is_some() {
+            services.lend_mut()?.add_available(quantity);
+        }
+
+        // if self.can_swap() {
+        // do smth
+        // }
+
+        let shares = self
+            .total_shares
+            .get_change_down_by_value(input_value, balance_value);
+
+        self.available.base += quantity;
+        self.available.quote += quote_quantity;
+        self.total_shares += shares;
+
+        Ok(shares)
     }
 
     /// Add locked tokens to a specific substrategy
