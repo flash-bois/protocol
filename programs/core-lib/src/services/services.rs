@@ -25,6 +25,7 @@ pub struct Services {
     pub lend: Option<Lend>,
 }
 
+#[derive(Clone, Copy)]
 pub enum ServiceType {
     /// Lending allows borrowing of tokens
     Lend,

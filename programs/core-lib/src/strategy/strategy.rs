@@ -85,7 +85,36 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    #[cfg(test)]
+    fn lent_checked(&self) -> Result<Quantity, ()> {
+        self.lent.as_ref().ok_or(()).copied()
+    }
+
+    fn sold_checked(&self) -> Result<&Balances, ()> {
+        self.sold.as_ref().ok_or(())
+    }
+
+    fn traded_checked(&self) -> Result<&Balances, ()> {
+        self.traded.as_ref().ok_or(())
+    }
+
+    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, ()> {
+        let quantity_locked = match service {
+            ServiceType::Lend => self.lent_checked()?,
+            ServiceType::Swap => self.sold_checked()?.base,
+            ServiceType::Trade => self.traded_checked()?.base,
+        };
+
+        Ok(quantity_locked)
+    }
+
+    pub fn uses(&self, service: ServiceType) -> bool {
+        match service {
+            ServiceType::Lend => self.lent.is_some(),
+            ServiceType::Swap => self.sold.is_some(),
+            ServiceType::Trade => self.traded.is_some(),
+        }
+    }
+
     pub fn new(lend: bool, swap: bool, trade: bool) -> Self {
         let mut strategy = Self::default();
 
