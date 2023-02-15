@@ -14,15 +14,15 @@ struct CollateralValues {
 }
 
 impl Add for CollateralValues {
-  type Output = Self;
+    type Output = Self;
 
-  fn add(self, other: Self) -> Self::Output {
-      Self {
-          exact: self.exact + other.exact,
-          with_collateral_ratio: self.with_collateral_ratio + other.with_collateral_ratio,
-          unhealthy: self.unhealthy + other.unhealthy,
-      }
-  }
+    fn add(self, other: Self) -> Self::Output {
+        Self {
+            exact: self.exact + other.exact,
+            with_collateral_ratio: self.with_collateral_ratio + other.with_collateral_ratio,
+            unhealthy: self.unhealthy + other.unhealthy,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -66,4 +66,40 @@ struct UserTemporaryValues {
 pub struct UserStatement {
     positions: FixedSizeVector<Position, 64>,
     values: UserTemporaryValues,
+}
+
+impl UserStatement {
+    pub fn add_position(&mut self, position: Position) -> Result<(), ()> {
+        self.positions.add(position)
+    }
+
+    pub fn get_position_mut(&mut self, position_search: &Position) -> Option<&mut Position> {
+        if let Some(mut iter) = self.positions.iter_mut() {
+            return iter.find(|pos| *position_search == **pos);
+        }
+
+        None
+    }
+    pub fn get_position_with_id_mut(
+        &mut self,
+        position_search: &Position,
+    ) -> Option<(usize, &mut Position)> {
+        if let Some(iter) = self.positions.iter_mut() {
+            return iter.enumerate().find(|(_, pos)| *position_search == **pos);
+        }
+
+        None
+    }
+
+    pub fn delete_position(&mut self, id: usize) {
+        if let Some(iter) = self.positions.iter_mut() {
+            iter.into_slice().get_mut(id..).unwrap().rotate_left(1);
+            self.positions.remove();
+        }
+    }
+
+    /// calculate value that user can borrow
+    pub fn permitted_debt(&self) -> Value {
+        self.values.collateral.with_collateral_ratio - self.values.liabilities
+    }
 }

@@ -1,5 +1,8 @@
 use super::*;
-use crate::structs::OraclePriceType;
+use crate::{
+    structs::OraclePriceType,
+    user::{Position, UserStatement},
+};
 
 #[derive(Clone, Copy)]
 pub enum Token {
@@ -33,7 +36,7 @@ impl Vault {
 
     pub fn deposit(
         &mut self,
-        //user_statement: &mut UserStatement,
+        user_statement: &mut UserStatement,
         deposit_token: Token,
         amount: Quantity,
         strategy_index: u8,
@@ -77,6 +80,23 @@ impl Vault {
             quote_quantity,
             &mut self.services,
         )?;
+
+        let temp_position = Position::LiquidityProvide {
+            vault_index: self.id,
+            strategy_index,
+            shares,
+            amount,
+        };
+
+        match user_statement.get_position_mut(&temp_position) {
+            Some(position) => {
+                position.increase_amount(amount);
+                position.increase_shares(shares);
+            }
+            None => {
+                user_statement.add_position(temp_position)?;
+            }
+        }
 
         // TODO add it to user struct
 

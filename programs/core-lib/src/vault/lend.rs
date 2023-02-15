@@ -1,11 +1,14 @@
 use super::*;
-use crate::services::lending::Borrowable;
+use crate::{
+    services::lending::Borrowable,
+    user::{Position, UserStatement},
+};
 use checked_decimal_macro::Decimal;
 
 impl Vault {
     pub fn borrow(
         &mut self,
-        //user_statement: &mut UserStatement,
+        user_statement: &mut UserStatement,
         amount: Quantity,
         current_time: Time,
     ) -> Result<(), ()> {
@@ -15,24 +18,36 @@ impl Vault {
         let lend = self.services.lend.as_mut().ok_or(()).unwrap();
         let total_available = lend.available();
 
-        //let user_allowed_borrow = user_statement.allowed_borrow();
+        let user_allowed_borrow = user_statement.permitted_debt();
 
-        let user_allowed_borrow = Value::new(u128::MAX);
-
-        let borrow_quantity_with_fee =
+        let borrow_quantity =
             lend.calculate_borrow_quantity(oracle, amount, user_allowed_borrow)?;
 
-        let _shares = lend.borrow(borrow_quantity_with_fee)?;
-        self.lock(borrow_quantity_with_fee, total_available, ServiceType::Lend)?;
+        let shares = lend.borrow(borrow_quantity)?;
+        self.lock(borrow_quantity, total_available, ServiceType::Lend)?;
 
-        //todo add to UserStatement
+        let position_temp = Position::Borrow {
+            vault_index: self.id,
+            shares,
+            amount: borrow_quantity,
+        };
+
+        match user_statement.get_position_mut(&position_temp) {
+            Some(position) => {
+                position.increase_amount(borrow_quantity);
+                position.increase_shares(shares);
+            }
+            None => {
+                user_statement.add_position(position_temp)?;
+            }
+        }
 
         Ok(())
     }
 
     pub fn repay(
         &mut self,
-        // user_statement: &mut UserStatement,
+        user_statement: &mut UserStatement,
         repay_quantity: Quantity,
         borrowed_quantity: Quantity,
         borrowed_shares: Shares,
@@ -46,9 +61,25 @@ impl Vault {
         let (unlock_quantity, burned_shares) =
             lend.repay(repay_quantity, borrowed_quantity, borrowed_shares)?;
 
-        //add update position
-
         self.unlock(unlock_quantity, total_locked, ServiceType::Lend)?;
+
+        let position_temp = Position::Borrow {
+            vault_index: self.id,
+            shares: Shares::new(0),
+            amount: Quantity(0),
+        };
+
+        match user_statement.get_position_with_id_mut(&position_temp) {
+            Some((id, position)) => {
+                if burned_shares.ge(position.shares()) {
+                    user_statement.delete_position(id);
+                } else {
+                    position.decrease_shares(burned_shares);
+                    position.decrease_amount(unlock_quantity);
+                }
+            }
+            None => panic!("fatal"),
+        };
 
         Ok(burned_shares)
     }
