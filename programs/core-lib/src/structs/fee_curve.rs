@@ -9,6 +9,10 @@ pub enum CurveSegment {
     Constant {
         c: Fraction,
     },
+    Linear {
+        a: Fraction,
+        b: Fraction,
+    },
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,6 +51,9 @@ impl FeeCurve {
         match function {
             CurveSegment::None => Fraction::from_integer(0),
             CurveSegment::Constant { c } => c.mul_up(upper - lower),
+            CurveSegment::Linear { a, b } => {
+                (lower + upper).div_up(Fraction::from_integer(2)).mul_up(a) + b
+            }
         }
     }
 
@@ -94,8 +101,9 @@ impl FeeCurve {
         self.values[index]
     }
 
-    pub fn add_constant_fee(&mut self, fee: Fraction, bound: Fraction) {
-        self.add_segment(CurveSegment::Constant { c: fee }, bound)
+    pub fn add_constant_fee(&mut self, fee: Fraction, bound: Fraction) -> &mut Self {
+        self.add_segment(CurveSegment::Constant { c: fee }, bound);
+        self
     }
 
     fn add_segment(&mut self, curve: CurveSegment, bound: Fraction) {
