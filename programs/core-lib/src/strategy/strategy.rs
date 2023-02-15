@@ -1,14 +1,5 @@
-use crate::decimal::{Fraction, Quantity, Shares};
+use crate::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::services::ServiceType;
-
-/// Balances of both base and quote tokens
-#[derive(Debug, Clone, Default)]
-pub struct Balances {
-    /// Token characteristic for vault
-    base: Quantity,
-    /// Stable token
-    quote: Quantity,
-}
 
 /// Strategy is where liquidity providers can deposit their tokens
 #[derive(Debug, Clone, Default)]
