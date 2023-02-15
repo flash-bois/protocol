@@ -54,12 +54,14 @@ impl Vault {
             Token::Base => (
                 amount,
                 opposite_quantity,
-                base_oracle.calculate_value(amount),
+                base_oracle.calculate_value(amount)
+                    + quote_oracle.calculate_value(opposite_quantity),
             ),
             Token::Quote => (
                 opposite_quantity,
                 amount,
-                quote_oracle.calculate_value(amount),
+                quote_oracle.calculate_value(amount)
+                    + quote_oracle.calculate_value(opposite_quantity),
             ),
         };
 
