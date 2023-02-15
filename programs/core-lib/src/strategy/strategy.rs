@@ -1,5 +1,5 @@
 use crate::decimal::{Fraction, Quantity, Shares};
-use crate::services::ServiceType;
+use crate::services::{ServiceType, Services};
 
 /// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default)]
@@ -97,6 +97,14 @@ impl Strategy {
         self.traded.as_ref().ok_or(())
     }
 
+    fn sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+        self.sold.as_mut().ok_or(())
+    }
+
+    fn traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+        self.traded.as_mut().ok_or(())
+    }
+
     pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, ()> {
         let quantity_locked = match service {
             ServiceType::Lend => self.lent_checked()?,
@@ -144,8 +152,8 @@ impl Strategy {
             ServiceType::Lend => {
                 unreachable!("Lending of quote tokens is separate")
             }
-            ServiceType::Swap => &mut self.sold.as_mut().ok_or(())?.quote,
-            ServiceType::Trade => &mut self.traded.as_mut().ok_or(())?.quote,
+            ServiceType::Swap => &mut self.sold_checked_mut()?.quote,
+            ServiceType::Trade => &mut self.traded_checked_mut()?.quote,
         })
     }
 
@@ -159,12 +167,7 @@ impl Strategy {
     }
 
     /// Lock tokens in a specific substrategy
-    pub fn lock(
-        &mut self,
-        quantity: Quantity,
-        sub: ServiceType,
-        // services: &mut Services,
-    ) {
+    pub fn lock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
         *self.locked_in(sub).unwrap() += quantity;
 
         // if self.can_lend() {
@@ -199,5 +202,39 @@ impl Strategy {
 
         self.locked.quote += quantity;
         self.available.quote -= quantity;
+    }
+
+    pub fn unlock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+        *self.locked_in(sub).unwrap() -= quantity;
+
+        // if self.can_lend() {
+        //     services.lend_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_swap() {
+        //     services.swap_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_trade() {
+        //     services.trade_service().unwrap().remove_available(quantity);
+        // }
+
+        self.locked.base -= quantity;
+        self.available.base += quantity;
+    }
+
+    pub fn unlock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+        *self.locked_in_quote(sub).unwrap() += quantity;
+
+        // if self.can_lend() {
+        //     services.lend_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_swap() {
+        //     services.swap_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_trade() {
+        //     services.trade_service().unwrap().remove_available(quantity);
+        // }
+
+        self.locked.quote -= quantity;
+        self.available.quote += quantity;
     }
 }
