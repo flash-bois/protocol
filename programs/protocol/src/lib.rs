@@ -109,13 +109,3 @@ pub type Time = u32;
 pub struct Price {
     pub v: u64,
 }
-
-#[cfg(test)]
-mod tests {
-    use core_lib::{add_points, Point};
-
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
