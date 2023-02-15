@@ -3,7 +3,7 @@ use crate::services::{ServiceType, ServiceUpdate, Services};
 use crate::structs::Oracle;
 
 /// Balances of both base and quote tokens
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Balances {
     /// Token characteristic for vault
     base: Quantity,
@@ -12,7 +12,7 @@ pub struct Balances {
 }
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Strategy {
     /// Quantity of tokens used in lending (borrowed)
     lent: Option<Quantity>,

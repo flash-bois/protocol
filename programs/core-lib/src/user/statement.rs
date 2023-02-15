@@ -73,29 +73,16 @@ impl UserStatement {
         self.positions.add(position)
     }
 
-    pub fn get_position_mut(&mut self, position_search: &Position) -> Option<&mut Position> {
-        if let Some(mut iter) = self.positions.iter_mut() {
-            return iter.find(|pos| *position_search == **pos);
-        }
-
-        None
+    pub fn search_mut(&mut self, position_search: &Position) -> Option<&mut Position> {
+        self.positions.find_mut(position_search)
     }
-    pub fn get_position_with_id_mut(
-        &mut self,
-        position_search: &Position,
-    ) -> Option<(usize, &mut Position)> {
-        if let Some(iter) = self.positions.iter_mut() {
-            return iter.enumerate().find(|(_, pos)| *position_search == **pos);
-        }
 
-        None
+    pub fn search_mut_id(&mut self, position_search: &Position) -> Option<(usize, &mut Position)> {
+        self.positions.enumerate_find_mut(position_search)
     }
 
     pub fn delete_position(&mut self, id: usize) {
-        if let Some(iter) = self.positions.iter_mut() {
-            iter.into_slice().get_mut(id..).unwrap().rotate_left(1);
-            self.positions.remove();
-        }
+        self.positions.delete(id)
     }
 
     /// calculate value that user can borrow

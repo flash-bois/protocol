@@ -32,7 +32,7 @@ impl Vault {
             amount: borrow_quantity,
         };
 
-        match user_statement.get_position_mut(&position_temp) {
+        match user_statement.search_mut(&position_temp) {
             Some(position) => {
                 position.increase_amount(borrow_quantity);
                 position.increase_shares(shares);
@@ -69,7 +69,7 @@ impl Vault {
             amount: Quantity(0),
         };
 
-        match user_statement.get_position_with_id_mut(&position_temp) {
+        match user_statement.search_mut_id(&position_temp) {
             Some((id, position)) => {
                 if burned_shares.ge(position.shares()) {
                     user_statement.delete_position(id);

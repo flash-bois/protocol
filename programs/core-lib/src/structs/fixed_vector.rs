@@ -8,7 +8,7 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct FixedSizeVector<T, const N: usize>
 where
-    T: Default + Sized,
+    T: Default + Sized + PartialEq,
 {
     head: u8,
     elements: [T; N],
@@ -16,7 +16,7 @@ where
 
 impl<T, const N: usize> Default for FixedSizeVector<T, N>
 where
-    T: Default,
+    T: Default + PartialEq,
 {
     fn default() -> Self {
         Self::new()
@@ -25,7 +25,7 @@ where
 
 impl<T, const N: usize> FixedSizeVector<T, N>
 where
-    T: Default + Sized,
+    T: Default + Sized + PartialEq,
 {
     pub fn new() -> Self {
         assert!(N.to_u8().is_some(), "size expands u8 range");
@@ -54,6 +54,36 @@ where
         let range = ..self.head_usize();
 
         Some(self.elements.get_mut(range)?.iter_mut())
+    }
+
+    pub fn find_mut(&mut self, search: &T) -> Option<&mut T> {
+        if let Some(mut iter) = self.iter_mut() {
+            return iter.find(|el| *search == **el);
+        }
+
+        None
+    }
+
+    pub fn enumerate_find_mut(&mut self, search: &T) -> Option<(usize, &mut T)> {
+        if let Some(iter) = self.iter_mut() {
+            return iter.enumerate().find(|(_, pos)| *search == **pos);
+        }
+
+        None
+    }
+
+    pub fn delete(&mut self, id: usize) {
+        // checks if id is before vector head
+        if !self.index_before_head(id) {
+            panic!("bad index");
+        }
+
+        // move element that has to be delete to last position, shifting rest by -1
+        // then it removes last position
+        if let Some(iter) = self.iter_mut() {
+            iter.into_slice().get_mut(id..).unwrap().rotate_left(1);
+            self.remove();
+        }
     }
 
     pub fn indexes(&self) -> Range<usize> {

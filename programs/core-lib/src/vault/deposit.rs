@@ -88,7 +88,7 @@ impl Vault {
             amount,
         };
 
-        match user_statement.get_position_mut(&temp_position) {
+        match user_statement.search_mut(&temp_position) {
             Some(position) => {
                 position.increase_amount(amount);
                 position.increase_shares(shares);
