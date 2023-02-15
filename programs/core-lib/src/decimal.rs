@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 pub use checked_decimal_macro::*;
 
@@ -47,6 +47,13 @@ impl AddAssign for Balances {
     fn add_assign(&mut self, other: Self) {
         self.base += other.base;
         self.quote += other.quote;
+    }
+}
+
+impl SubAssign for Balances {
+    fn sub_assign(&mut self, other: Self) {
+        self.base -= other.base;
+        self.quote -= other.quote;
     }
 }
 

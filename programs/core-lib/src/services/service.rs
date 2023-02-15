@@ -2,7 +2,10 @@ use crate::decimal::*;
 
 pub trait ServiceUpdate {
     /// Increases both balance and available liquidity.
-    fn add_liquidity(&mut self, balances: Balances);
+    fn add_liquidity_base(&mut self, quantity: Quantity);
+    fn add_liquidity_quote(&mut self, quantity: Quantity);
+    fn remove_liquidity_base(&mut self, quantity: Quantity);
+    fn remove_liquidity_quote(&mut self, quantity: Quantity);
 
     /// Increases available liquidity due to deposits, unlocks or profit
     fn add_available_base(&mut self, quantity: Quantity);
