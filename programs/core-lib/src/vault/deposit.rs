@@ -1,8 +1,6 @@
 use super::*;
-use crate::{
-    structs::OraclePriceType,
-    user::{Position, UserStatement},
-};
+use crate::user::{Position, UserStatement};
+use checked_decimal_macro::Factories;
 
 #[derive(Clone, Copy)]
 pub enum Token {
@@ -20,18 +18,51 @@ impl Vault {
         let base_balance = strategy.balance();
         let quote_balance = strategy.balance_quote();
 
+        if base_balance == Quantity(0) || quote_balance == Quantity(0) {
+            return Quantity(0);
+        }
+
         match input_token {
             Token::Quote => input_quantity.big_mul_div(base_balance, quote_balance),
             Token::Base => input_quantity.big_mul_div(quote_balance, base_balance),
         }
     }
 
-    fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, ()> {
+    pub fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, ()> {
         self.strategies.get_mut_checked(index as usize).ok_or(())
     }
 
-    fn strategy(&self, index: u8) -> Result<&Strategy, ()> {
+    pub fn strategy(&self, index: u8) -> Result<&Strategy, ()> {
         self.strategies.get_checked(index as usize).ok_or(())
+    }
+
+    fn get_opposite_quantity_with_pos_value(
+        &self,
+        opposite_oracle: &Oracle,
+        opposite_quantity: Quantity,
+        known_oracle: &Oracle,
+        known_amount: Quantity,
+        reverse: bool,
+    ) -> (Quantity, Quantity, Value) {
+        let known_value = known_oracle.calculate_value(known_amount);
+
+        let (opposite_quantity, position_value) = if opposite_quantity == Quantity(0) {
+            (
+                opposite_oracle.calculate_needed_quantity(known_value),
+                known_value * Value::from_integer(2),
+            )
+        } else {
+            (
+                opposite_quantity,
+                opposite_oracle.calculate_value(opposite_quantity) + known_value,
+            )
+        };
+
+        if !reverse {
+            (known_amount, opposite_quantity, position_value)
+        } else {
+            (opposite_quantity, known_amount, position_value)
+        }
     }
 
     pub fn deposit(
@@ -53,18 +84,21 @@ impl Vault {
 
         let opposite_quantity = self.opposite_quantity(amount, deposit_token, strategy);
 
-        let (base_quantity, quote_quantity, input_value) = match deposit_token {
-            Token::Base => (
-                amount,
+        let (base_quantity, quote_quantity, position_value) = match deposit_token {
+            Token::Base => self.get_opposite_quantity_with_pos_value(
+                quote_oracle,
                 opposite_quantity,
-                base_oracle.calculate_value(amount)
-                    + quote_oracle.calculate_value(opposite_quantity),
+                base_oracle,
+                amount,
+                false,
             ),
-            Token::Quote => (
+
+            Token::Quote => self.get_opposite_quantity_with_pos_value(
+                base_oracle,
                 opposite_quantity,
+                quote_oracle,
                 amount,
-                quote_oracle.calculate_value(amount)
-                    + quote_oracle.calculate_value(opposite_quantity),
+                true,
             ),
         };
 
@@ -74,7 +108,7 @@ impl Vault {
             .ok_or(())?;
 
         let shares = mut_strategy.deposit(
-            input_value,
+            position_value,
             strategy_value,
             base_quantity,
             quote_quantity,

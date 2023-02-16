@@ -1,6 +1,5 @@
-use crate::decimal::{Fraction, Price, Quantity, Shares, Value};
+use crate::decimal::{Fraction, Quantity, Shares, Value};
 use crate::services::{ServiceType, ServiceUpdate, Services};
-use crate::structs::Oracle;
 
 /// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -35,6 +34,13 @@ pub struct Strategy {
     collateral_ratio: Fraction,
     /// Ratio at which value of shares is calculated during liquidation
     liquidation_threshold: Fraction,
+}
+
+#[cfg(test)]
+impl Strategy {
+    pub fn set_collateral_ratio(&mut self, ratio: Fraction) {
+        self.collateral_ratio = ratio
+    }
 }
 
 impl Strategy {

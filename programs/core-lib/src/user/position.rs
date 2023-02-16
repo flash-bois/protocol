@@ -4,14 +4,14 @@ use super::{
 };
 use crate::services::ServiceUpdate;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum Side {
     Long,
     Short,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum Position {
     #[default]
     Empty,
