@@ -93,28 +93,31 @@ impl Swap {
         quote_oracle: &Oracle,
     ) -> Result<Quantity, ()> {
         let proportion_before = self.get_proportion(base_oracle, quote_oracle);
+        let swap_value = base_oracle.calculate_value(quantity);
+        let quote_quantity = quote_oracle.calculate_quantity(swap_value);
+        if quote_quantity > self.available.quote {
+            return Err(());
+        }
+
         self.balances.base += quantity;
-        self.balances.quote -= quantity;
+        self.balances.quote -= quote_quantity;
         let proportion_after = self.get_proportion(base_oracle, quote_oracle);
 
         let fee_fraction = self
             .selling_fee
             .get_mean(proportion_before, proportion_after)?;
 
-        let fee = quantity * fee_fraction;
-        let after_fee = quantity - fee;
+        let fee = quote_quantity * fee_fraction;
 
         let fee_to_keep = fee * self.kept_fee;
         self.total_kept_fee.base = fee_to_keep;
         self.total_earned_fee.base += fee - fee_to_keep;
 
-        let swap_value = base_oracle.calculate_value(after_fee);
-        let quote_quantity = quote_oracle.calculate_quantity(swap_value);
         if quantity > self.available.quote {
             return Err(());
         }
 
-        Ok(quote_quantity)
+        Ok(quote_quantity - fee)
     }
 
     pub fn fee_curve_sell(&mut self) -> &mut FeeCurve {
@@ -156,7 +159,7 @@ fn test_sell_with_fee() -> Result<(), ()> {
             .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
 
         let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(1_980000) - Quantity(2)));
+        assert_eq!(result, Ok(Quantity::from_integer(1_980000) - Quantity(8)));
     }
 
     // basic swap with constant fee from 0 to 0
@@ -169,7 +172,21 @@ fn test_sell_with_fee() -> Result<(), ()> {
             .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
 
         let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(1_980000) - Quantity(2)));
+        assert_eq!(result, Ok(Quantity::from_integer(1_980000)));
+    }
+
+    // basic swap with linear fee
+    {
+        let mut swap = Swap::default();
+        swap.add_liquidity_base(Quantity(5_000000));
+        swap.add_liquidity_quote(Quantity(10_000000));
+
+        swap.fee_curve_sell()
+            .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(55, 2)) // 0.3% fee
+            .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(6, 1)); // 1% fee
+
+        let result = swap.sell(input, &base_oracle, &quote_oracle);
+        assert_eq!(result, Ok(Quantity::from_integer(1_987000)));
     }
 
     Ok(())
