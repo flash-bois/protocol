@@ -106,27 +106,41 @@ where
     /// returns immutable element under the index, does not check if it is before head,
     /// only check if it in array allocated area
     pub fn get(&self, id: usize) -> Option<&T> {
-        self.index_in_capacity(id).then_some(self.elements.get(id)?)
+        if self.index_in_capacity(id) {
+            self.elements.get(id)
+        } else {
+            None
+        }
     }
 
     /// returns mutable element under the index, does not check if it is before head,
     /// only check if it in array allocated area
     pub fn get_mut(&mut self, id: usize) -> Option<&mut T> {
-        self.index_in_capacity(id)
-            .then_some(self.elements.get_mut(id)?)
+        if self.index_in_capacity(id) {
+            self.elements.get_mut(id)
+        } else {
+            None
+        }
     }
 
     /// returns mutable element under the index,
     /// check if it is in initialized range
     pub fn get_mut_checked(&mut self, id: usize) -> Option<&mut T> {
-        self.index_before_head(id)
-            .then_some(self.elements.get_mut(id)?)
+        if self.index_before_head(id) {
+            self.elements.get_mut(id)
+        } else {
+            None
+        }
     }
 
     /// returns immutable mutable element under the index,
     /// check if it is in initialized range
     pub fn get_checked(&self, id: usize) -> Option<&T> {
-        self.index_before_head(id).then_some(self.elements.get(id)?)
+        if self.index_before_head(id) {
+            self.elements.get(id)
+        } else {
+            None
+        }
     }
 
     pub fn add(&mut self, el: T) -> Result<(), ()> {
@@ -152,11 +166,19 @@ where
     }
 
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        (self.head > 0).then_some(self.get_mut(self.head_usize() - 1)?)
+        if self.head > 0 {
+            self.get_mut(self.head_usize() - 1)
+        } else {
+            None
+        }
     }
 
     pub fn last(&self) -> Option<&T> {
-        (self.head > 0).then_some(self.get(self.head_usize() - 1)?)
+        if self.head > 0 {
+            self.get(self.head_usize() - 1)
+        } else {
+            None
+        }
     }
 }
 

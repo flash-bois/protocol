@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    utils::{CollateralValues, TradeResult},
+    *,
+};
+use crate::services::ServiceUpdate;
 
 #[derive(Debug)]
 #[repr(u8)]
@@ -66,7 +70,7 @@ impl PartialEq for Position {
 }
 
 impl Position {
-    pub fn is_liability(self) -> bool {
+    pub fn is_liability(&self) -> bool {
         match self {
             Position::Borrow { .. } => true,
             Position::LiquidityProvide { .. } => false,
@@ -75,7 +79,7 @@ impl Position {
         }
     }
 
-    pub fn is_collateral(self) -> bool {
+    pub fn is_collateral(&self) -> bool {
         match self {
             Position::LiquidityProvide { .. } => true,
             Position::Borrow { .. } => false,
@@ -84,7 +88,7 @@ impl Position {
         }
     }
 
-    pub fn is_trade(self) -> bool {
+    pub fn is_trade(&self) -> bool {
         match self {
             Position::Trading { .. } => true,
             Position::Borrow { .. } => false,
@@ -125,6 +129,63 @@ impl Position {
 
     pub fn decrease_shares(&mut self, shares: Shares) {
         *self.shares() -= shares
+    }
+
+    pub fn liability_value(&self, vaults: &[Vault]) -> Value {
+        match *self {
+            Position::Borrow {
+                vault_index,
+                shares,
+                ..
+            } => {
+                let vault = &vaults[vault_index as usize];
+                let oracle = vault.oracle.as_ref().unwrap();
+                let service = vault.services.lend.as_ref().unwrap();
+
+                let amount = service
+                    .borrow_shares()
+                    .calculate_owed(shares, service.locked());
+                oracle.calculate_value(amount)
+            }
+            _ => unreachable!("should be called on liability, oopsie"),
+        }
+    }
+
+    pub fn collateral_values(&self, vaults: &[Vault]) -> CollateralValues {
+        match *self {
+            Position::LiquidityProvide {
+                vault_index,
+                strategy_index,
+                shares,
+                ..
+            } => {
+                let vault = &vaults[vault_index as usize];
+                let oracle = vault.oracle.as_ref().unwrap();
+                let strategy = vault
+                    .strategies
+                    .get_checked(strategy_index as usize)
+                    .unwrap();
+
+                let amount = strategy
+                    .total_shares()
+                    .calculate_earned(shares, strategy.balance());
+
+                let exact = oracle.calculate_value(amount);
+                let with_collateral_ratio = exact * strategy.collateral_ratio();
+                let unhealthy = exact * strategy.liquidation_threshold();
+
+                CollateralValues {
+                    exact,
+                    with_collateral_ratio,
+                    unhealthy,
+                }
+            }
+            _ => unreachable!("should be called on collateral, oopsie"),
+        }
+    }
+
+    pub fn position_profit(&self, vaults: &[Vault]) -> TradeResult {
+        TradeResult::None
     }
 }
 

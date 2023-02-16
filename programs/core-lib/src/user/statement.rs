@@ -1,59 +1,9 @@
-use super::*;
-
+use super::{
+    utils::{CollateralValues, TradeResult},
+    *,
+};
 use crate::structs::FixedSizeVector;
-use std::ops::Add;
-
-#[derive(Clone, Debug, Default)]
-struct CollateralValues {
-    /// value of collateral 1:1
-    pub exact: Value,
-    /// value of collateral with collateral ratio
-    pub with_collateral_ratio: Value,
-    /// value of collateral with liquidation threshold ratio
-    pub unhealthy: Value,
-}
-
-impl Add for CollateralValues {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self::Output {
-        Self {
-            exact: self.exact + other.exact,
-            with_collateral_ratio: self.with_collateral_ratio + other.with_collateral_ratio,
-            unhealthy: self.unhealthy + other.unhealthy,
-        }
-    }
-}
-
-#[derive(Default)]
-enum Trades {
-    #[default]
-    None,
-    Profitable(Value),
-    Loss(Value),
-}
-
-impl Add for Trades {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self::Output {
-        match self {
-            Self::None => other,
-            Self::Profitable(val) => match other {
-                Self::Profitable(val_add) => Self::Profitable(val + val_add),
-                Self::Loss(val_sub) if val_sub <= val => Self::Profitable(val - val_sub),
-                Self::Loss(val_sub) if val_sub > val => Self::Loss(val_sub - val),
-                _ => unreachable!(),
-            },
-            Self::Loss(val) => match other {
-                Self::Loss(val_add) => Self::Loss(val + val_add),
-                Self::Profitable(val_sub) if val_sub <= val => Self::Loss(val - val_sub),
-                Self::Profitable(val_sub) if val_sub > val => Self::Profitable(val_sub - val),
-                _ => unreachable!(),
-            },
-        }
-    }
-}
+use checked_decimal_macro::Decimal;
 
 #[derive(Default)]
 struct UserTemporaryValues {
@@ -88,5 +38,39 @@ impl UserStatement {
     /// calculate value that user can borrow
     pub fn permitted_debt(&self) -> Value {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
+    }
+
+    fn liabilities_value(&self, vaults: &[Vault]) -> Value {
+        if let Some(iter) = self.positions.iter() {
+            iter.filter(|&pos| pos.is_liability())
+                .fold(Value::new(0), |sum, curr| {
+                    sum + curr.liability_value(vaults)
+                })
+        } else {
+            Value::new(0)
+        }
+    }
+
+    /// Vault's oracles should be refreshed before using this function
+    fn collaterals_values(&self, vaults: &[Vault]) -> CollateralValues {
+        if let Some(iter) = self.positions.iter() {
+            iter.filter(|&pos| pos.is_collateral())
+                .fold(CollateralValues::default(), |sum, curr| {
+                    sum + curr.collateral_values(vaults)
+                })
+        } else {
+            CollateralValues::default()
+        }
+    }
+
+    fn trades_values(&self, vaults: &[Vault]) -> TradeResult {
+        if let Some(iter) = self.positions.iter() {
+            iter.filter(|&pos| pos.is_trade())
+                .fold(TradeResult::Profitable(Value::new(0)), |sum, curr| {
+                    sum + curr.position_profit(vaults)
+                })
+        } else {
+            TradeResult::None
+        }
     }
 }
