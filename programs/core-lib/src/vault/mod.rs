@@ -60,8 +60,8 @@ impl Vault {
             decimal_places,
             price,
             confidence,
-            time,
             spread_limit,
+            time,
         )?);
 
         Ok(())
@@ -83,8 +83,8 @@ impl Vault {
             decimal_places,
             price,
             confidence,
-            time,
             spread_limit,
+            time,
         )?);
 
         Ok(())
@@ -137,13 +137,13 @@ impl Vault {
             match service {
                 ServiceType::Lend => {
                     let service = self.lend_service()?;
-                    let fees = service.accrue_fee(None);
-                    (service, fees)
+                    let fees = service.accrue_fee();
+                    (service, fees.base)
                 }
                 _ => unimplemented!(),
             };
 
-        let locked = service_updatable.locked();
+        let locked = service_updatable.locked().base;
         let service_locked_global = locked - service_accrued_fees;
 
         if service_accrued_fees.is_zero() {

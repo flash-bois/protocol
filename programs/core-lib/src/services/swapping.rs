@@ -216,7 +216,7 @@ mod tests {
                 .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(40, 1)); // 1% fee
 
             let result = swap.buy(input, &base_oracle, &quote_oracle);
-            assert_eq!(result, Ok(Quantity::from_integer(993500)));
+            assert_eq!(result, Ok(Quantity::from_integer(990000)));
         }
 
         // swap with linear fee

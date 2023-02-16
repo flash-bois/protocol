@@ -23,7 +23,11 @@ impl Vault {
             lend.calculate_borrow_quantity(oracle, amount, user_allowed_borrow)?;
 
         let _shares = lend.borrow(borrow_quantity_with_fee)?;
-        self.lock(borrow_quantity_with_fee, total_available, ServiceType::Lend)?;
+        self.lock(
+            borrow_quantity_with_fee,
+            total_available.base,
+            ServiceType::Lend,
+        )?;
 
         //todo add to UserStatement
 
@@ -48,7 +52,7 @@ impl Vault {
 
         //add update position
 
-        self.unlock(unlock_quantity, total_locked, ServiceType::Lend)?;
+        self.unlock(unlock_quantity, total_locked.base, ServiceType::Lend)?;
 
         Ok(burned_shares)
     }
