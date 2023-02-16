@@ -1,5 +1,7 @@
 pub mod deposit;
+pub mod general;
 pub mod lend;
+pub mod swap;
 
 use crate::{
     decimal::{DecimalPlaces, Price, Quantity, Shares, Time, Utilization, Value},
@@ -7,6 +9,9 @@ use crate::{
     strategy::{Strategies, Strategy},
     structs::{FeeCurve, Oracle},
 };
+
+#[cfg(test)]
+use checked_decimal_macro::Factories;
 
 #[derive(Clone, Debug, Default)]
 pub struct Vault {
@@ -18,9 +23,6 @@ pub struct Vault {
     pub services: Services,
     pub strategies: Strategies,
 }
-
-#[cfg(test)]
-use checked_decimal_macro::Factories;
 
 impl Vault {
     pub fn add_strategy(
@@ -173,62 +175,6 @@ impl Vault {
             strategy.accrue_fee(service_accrued_fees - distributed_so_far, service)?;
         }
 
-        Ok(())
-    }
-
-    fn lock(
-        &mut self,
-        quantity: Quantity,
-        total_available: Quantity,
-        service: ServiceType,
-    ) -> Result<(), ()> {
-        let mut locked_so_far = Quantity(0);
-        let mut last_index = 0;
-
-        for i in self.strategies.indexes() {
-            let strategy = self.strategies.get_mut_checked(i).unwrap();
-            if strategy.uses(service) {
-                last_index = i;
-                let to_lock = quantity.big_mul_div(strategy.available(), total_available);
-                locked_so_far += to_lock;
-                strategy.lock(to_lock, service, &mut self.services);
-            }
-        }
-
-        if locked_so_far < quantity {
-            let strategy = self.strategies.get_mut_checked(last_index).unwrap();
-            strategy.lock(quantity - locked_so_far, service, &mut self.services);
-        }
-        Ok(())
-    }
-
-    fn unlock(
-        &mut self,
-        quantity: Quantity,
-        total_locked: Quantity,
-        service: ServiceType,
-    ) -> Result<(), ()> {
-        if quantity == Quantity(0) {
-            return Ok(());
-        }
-
-        let mut unlocked_so_far = Quantity(0);
-        let mut last_index = 0;
-
-        for i in self.strategies.indexes() {
-            let strategy = self.strategies.get_mut_checked(i).unwrap();
-            if strategy.uses(service) {
-                last_index = i;
-                let to_unlock = quantity.big_mul_div(strategy.locked(), total_locked);
-                unlocked_so_far += to_unlock;
-                strategy.unlock(to_unlock, service, &mut self.services);
-            }
-        }
-
-        if unlocked_so_far < quantity {
-            let strategy = self.strategies.get_mut_checked(last_index).unwrap();
-            strategy.unlock(quantity - unlocked_so_far, service, &mut self.services);
-        }
         Ok(())
     }
 

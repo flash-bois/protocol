@@ -185,7 +185,12 @@ impl Strategy {
     }
 
     /// Lock tokens in a specific substrategy
-    pub fn lock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+    pub fn lock(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
         *self.locked_in(sub).unwrap() += quantity;
 
         // if self.can_lend() {
@@ -200,6 +205,7 @@ impl Strategy {
 
         self.locked.base += quantity;
         self.available.base -= quantity;
+        Ok(())
     }
 
     /// Lock tokens in a specific substrategy
@@ -222,7 +228,12 @@ impl Strategy {
         self.available.quote -= quantity;
     }
 
-    pub fn unlock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+    pub fn unlock(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
         *self.locked_in(sub).unwrap() -= quantity;
 
         // if self.can_lend() {
@@ -237,6 +248,8 @@ impl Strategy {
 
         self.locked.base -= quantity;
         self.available.base += quantity;
+
+        Ok(())
     }
 
     pub fn unlock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {

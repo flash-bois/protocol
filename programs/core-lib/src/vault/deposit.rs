@@ -1,5 +1,4 @@
 use super::*;
-use crate::structs::OraclePriceType;
 
 #[derive(Clone, Copy)]
 pub enum Token {
