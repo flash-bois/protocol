@@ -88,18 +88,18 @@ impl Swap {
 
     pub fn sell(
         &mut self,
-        quantity: Quantity,
+        base_quantity: Quantity,
         base_oracle: &Oracle,
         quote_oracle: &Oracle,
     ) -> Result<Quantity, ()> {
         let proportion_before = self.get_proportion(base_oracle, quote_oracle);
-        let swap_value = base_oracle.calculate_value(quantity);
+        let swap_value = base_oracle.calculate_value(base_quantity);
         let quote_quantity = quote_oracle.calculate_quantity(swap_value);
         if quote_quantity > self.available.quote {
             return Err(());
         }
 
-        self.balances.base += quantity;
+        self.balances.base += base_quantity;
         self.balances.quote -= quote_quantity;
         let proportion_after = self.get_proportion(base_oracle, quote_oracle);
 
@@ -108,16 +108,40 @@ impl Swap {
             .get_mean(proportion_before, proportion_after)?;
 
         let fee = quote_quantity * fee_fraction;
-
         let fee_to_keep = fee * self.kept_fee;
         self.total_kept_fee.base = fee_to_keep;
         self.total_earned_fee.base += fee - fee_to_keep;
 
-        if quantity > self.available.quote {
+        Ok(quote_quantity - fee)
+    }
+
+    pub fn buy(
+        &mut self,
+        quote_quantity: Quantity,
+        base_oracle: &Oracle,
+        quote_oracle: &Oracle,
+    ) -> Result<Quantity, ()> {
+        let proportion_before = self.get_proportion(base_oracle, quote_oracle);
+        let swap_value = quote_oracle.calculate_value(quote_quantity);
+        let base_quantity = base_oracle.calculate_quantity(swap_value);
+        if base_quantity > self.available.base {
             return Err(());
         }
 
-        Ok(quote_quantity - fee)
+        self.balances.quote += quote_quantity;
+        self.balances.base -= base_quantity;
+        let proportion_after = self.get_proportion(base_oracle, quote_oracle);
+
+        let fee_fraction = self
+            .buying_fee
+            .get_mean(proportion_before, proportion_after)?;
+
+        let fee = base_quantity * fee_fraction;
+        let fee_to_keep = fee * self.kept_fee;
+        self.total_kept_fee.base = fee_to_keep;
+        self.total_earned_fee.base += fee - fee_to_keep;
+
+        Ok(base_quantity - fee)
     }
 
     pub fn fee_curve_sell(&mut self) -> &mut FeeCurve {
@@ -129,65 +153,131 @@ impl Swap {
     }
 }
 
-#[test]
-fn test_sell_with_fee() -> Result<(), ()> {
-    let base_oracle = Oracle::new_for_test();
-    let quote_oracle = Oracle::new_stable_for_test();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let input = Quantity::from_integer(1_000000);
+    #[test]
+    fn test_buy_with_fee() {
+        let base_oracle = Oracle::new_for_test();
+        let quote_oracle = Oracle::new_stable_for_test();
 
-    // basic free swap
-    {
-        let mut swap = Swap::default();
-        swap.fee_curve_sell()
-            .add_constant_fee(Fraction::from_integer(0), Fraction::from_integer(1)); // 0% fee
+        let input = Quantity::from_integer(2_000000);
 
-        swap.add_liquidity_base(Quantity(10_000000));
-        swap.add_liquidity_quote(Quantity(20_000000));
+        // basic free swap
+        {
+            let mut swap = Swap::default();
+            swap.fee_curve_buy()
+                .add_constant_fee(Fraction::from_integer(0), Fraction::from_integer(1)); // 0% fee
 
-        let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(2_000000)));
+            swap.add_liquidity_base(Quantity(10_000000));
+            swap.add_liquidity_quote(Quantity(20_000000));
+
+            let result = swap.buy(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(1_000000)));
+        }
+
+        // basic swap with constant fee
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(1_000000));
+            swap.add_liquidity_quote(Quantity(5_000000));
+
+            swap.fee_curve_buy()
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
+
+            let result = swap.buy(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(990000) - Quantity(4)));
+        }
+
+        // basic swap with constant fee from 0 to 0
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(1_000000));
+            swap.add_liquidity_quote(Quantity(0));
+
+            swap.fee_curve_buy()
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
+
+            let result = swap.buy(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(990000)));
+        }
+
+        // basic swap with changing fee
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(5_000000));
+            swap.add_liquidity_quote(Quantity(10_000000));
+
+            swap.fee_curve_buy()
+                .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(45, 2)) // 0.3% fee
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(40, 1)); // 1% fee
+
+            let result = swap.buy(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(993500)));
+        }
     }
 
-    // basic swap with constant fee
-    {
-        let mut swap = Swap::default();
-        swap.add_liquidity_base(Quantity(1_000000));
-        swap.add_liquidity_quote(Quantity(5_000000));
+    #[test]
+    fn test_sell_with_fee() -> Result<(), ()> {
+        let base_oracle = Oracle::new_for_test();
+        let quote_oracle = Oracle::new_stable_for_test();
 
-        swap.fee_curve_sell()
-            .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
+        let input = Quantity::from_integer(1_000000);
 
-        let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(1_980000) - Quantity(8)));
+        // basic free swap
+        {
+            let mut swap = Swap::default();
+            swap.fee_curve_sell()
+                .add_constant_fee(Fraction::from_integer(0), Fraction::from_integer(1)); // 0% fee
+
+            swap.add_liquidity_base(Quantity(10_000000));
+            swap.add_liquidity_quote(Quantity(20_000000));
+
+            let result = swap.sell(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(2_000000)));
+        }
+
+        // basic swap with constant fee
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(1_000000));
+            swap.add_liquidity_quote(Quantity(5_000000));
+
+            swap.fee_curve_sell()
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
+
+            let result = swap.sell(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(1_980000) - Quantity(8)));
+        }
+
+        // basic swap with constant fee from 0 to 0
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(0));
+            swap.add_liquidity_quote(Quantity(2_000000));
+
+            swap.fee_curve_sell()
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
+
+            let result = swap.sell(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(1_980000)));
+        }
+
+        // basic swap with changing fee
+        {
+            let mut swap = Swap::default();
+            swap.add_liquidity_base(Quantity(5_000000));
+            swap.add_liquidity_quote(Quantity(10_000000));
+
+            swap.fee_curve_sell()
+                .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(55, 2)) // 0.3% fee
+                .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(6, 1)); // 1% fee
+
+            let result = swap.sell(input, &base_oracle, &quote_oracle);
+            assert_eq!(result, Ok(Quantity::from_integer(1_987000)));
+        }
+
+        Ok(())
     }
-
-    // basic swap with constant fee from 0 to 0
-    {
-        let mut swap = Swap::default();
-        swap.add_liquidity_base(Quantity(0));
-        swap.add_liquidity_quote(Quantity(2_000000));
-
-        swap.fee_curve_sell()
-            .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
-
-        let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(1_980000)));
-    }
-
-    // basic swap with linear fee
-    {
-        let mut swap = Swap::default();
-        swap.add_liquidity_base(Quantity(5_000000));
-        swap.add_liquidity_quote(Quantity(10_000000));
-
-        swap.fee_curve_sell()
-            .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(55, 2)) // 0.3% fee
-            .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(6, 1)); // 1% fee
-
-        let result = swap.sell(input, &base_oracle, &quote_oracle);
-        assert_eq!(result, Ok(Quantity::from_integer(1_987000)));
-    }
-
-    Ok(())
 }
