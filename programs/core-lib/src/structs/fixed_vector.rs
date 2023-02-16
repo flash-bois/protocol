@@ -152,19 +152,11 @@ where
     }
 
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        if self.head > 0 {
-            self.get_mut(self.head_usize() - 1)
-        } else {
-            None
-        }
+        (self.head > 0).then_some(self.get_mut(self.head_usize() - 1)?)
     }
 
     pub fn last(&self) -> Option<&T> {
-        if self.head > 0 {
-            self.get(self.head_usize() - 1)
-        } else {
-            None
-        }
+        (self.head > 0).then_some(self.get(self.head_usize() - 1)?)
     }
 }
 
