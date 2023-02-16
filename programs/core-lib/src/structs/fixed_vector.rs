@@ -4,11 +4,10 @@ use std::{
     slice::{Iter, IterMut},
 };
 
-#[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct FixedSizeVector<T, const N: usize>
 where
-    T: Default + Sized + PartialEq,
+    T: Default + PartialEq,
 {
     head: u8,
     elements: [T; N],
@@ -25,7 +24,7 @@ where
 
 impl<T, const N: usize> FixedSizeVector<T, N>
 where
-    T: Default + Sized + PartialEq,
+    T: Default + PartialEq,
 {
     pub fn new() -> Self {
         assert!(N.to_u8().is_some(), "size expands u8 range");
@@ -66,7 +65,7 @@ where
 
     pub fn enumerate_find_mut(&mut self, search: &T) -> Option<(usize, &mut T)> {
         if let Some(iter) = self.iter_mut() {
-            return iter.enumerate().find(|(_, pos)| *search == **pos);
+            return iter.enumerate().find(|(_id, pos)| *search == **pos);
         }
 
         None
@@ -74,9 +73,7 @@ where
 
     pub fn delete(&mut self, id: usize) {
         // checks if id is before vector head
-        if !self.index_before_head(id) {
-            panic!("bad index");
-        }
+        assert!(self.index_before_head(id), "bad index");
 
         // move element that has to be delete to last position, shifting rest by -1
         // then it removes last position
@@ -90,21 +87,10 @@ where
         0..(self.head as usize)
     }
 
-    fn head(&self) -> u8 {
-        self.head
-    }
-
+    // parse head u8 to usize
     fn head_usize(&self) -> usize {
-        self.head().to_usize().unwrap()
-    }
-
-    /// checks if index is in allocated range
-    fn index_in_range(&self, id: usize) -> Option<()> {
-        if id < N {
-            Some(())
-        } else {
-            None
-        }
+        // unwrap because we assert if N can be fitted inside u8 on creation
+        self.head.to_usize().unwrap()
     }
 
     /// checks if index is in useful range
@@ -112,29 +98,57 @@ where
         self.head > 0 && id < self.head_usize()
     }
 
-    fn get_mut(&mut self, id: usize) -> Option<&mut T> {
-        self.index_in_range(id)?;
-        self.elements.get_mut(id)
+    /// checks if index is in allocated range
+    fn index_in_capacity(&self, id: usize) -> bool {
+        id < N
     }
 
-    /// get mut checks if index is in initialized range
-    pub fn get_mut_checked(&mut self, id: usize) -> Option<&mut T> {
-        let id = self.index_before_head(id).then_some(id)?;
-        self.elements.get_mut(id)
-    }
-
-    pub fn get_checked(&self, id: usize) -> Option<&T> {
-        let id = self.index_before_head(id).then_some(id)?;
-        self.elements.get(id)
-    }
-
+    /// returns immutable element under the index, does not check if it is before head,
+    /// only check if it in array allocated area
     pub fn get(&self, id: usize) -> Option<&T> {
-        self.index_in_range(id)?;
-        self.elements.get(id)
+        self.index_in_capacity(id).then_some(self.elements.get(id)?)
     }
 
-    fn current_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(self.head_usize())
+    /// returns mutable element under the index, does not check if it is before head,
+    /// only check if it in array allocated area
+    pub fn get_mut(&mut self, id: usize) -> Option<&mut T> {
+        self.index_in_capacity(id)
+            .then_some(self.elements.get_mut(id)?)
+    }
+
+    /// returns mutable element under the index,
+    /// check if it is in initialized range
+    pub fn get_mut_checked(&mut self, id: usize) -> Option<&mut T> {
+        self.index_before_head(id)
+            .then_some(self.elements.get_mut(id)?)
+    }
+
+    /// returns immutable mutable element under the index,
+    /// check if it is in initialized range
+    pub fn get_checked(&self, id: usize) -> Option<&T> {
+        self.index_before_head(id).then_some(self.elements.get(id)?)
+    }
+
+    pub fn add(&mut self, el: T) -> Result<(), ()> {
+        let head = self.head_usize();
+
+        if !self.index_in_capacity(head) {
+            return Err(());
+        }
+
+        *self.get_mut(head).ok_or(())? = el;
+        self.head += 1;
+
+        Ok(())
+    }
+
+    pub fn remove(&mut self) -> Option<&T> {
+        if self.head == 0 {
+            return None;
+        }
+
+        self.head -= 1;
+        self.get(self.head_usize())
     }
 
     pub fn last_mut(&mut self) -> Option<&mut T> {
@@ -152,26 +166,6 @@ where
             None
         }
     }
-
-    pub fn add(&mut self, el: T) -> Result<(), ()> {
-        if self.head_usize() == N {
-            return Err(());
-        }
-
-        *self.current_mut().ok_or(())? = el;
-        self.head += 1;
-
-        Ok(())
-    }
-
-    pub fn remove(&mut self) -> Option<&T> {
-        if self.head() == 0 {
-            return None;
-        }
-
-        self.head -= 1;
-        self.get(self.head_usize())
-    }
 }
 
 #[cfg(test)]
@@ -188,7 +182,7 @@ mod tests {
     fn test_new() {
         let new_vec = FixedSizeVector::<TestStruct, 3>::new();
 
-        assert_eq!(new_vec.head(), 0u8);
+        assert_eq!(new_vec.head, 0u8);
         assert_eq!(new_vec.last(), None);
     }
 
@@ -218,11 +212,14 @@ mod tests {
             "can add to vec"
         );
 
-        assert_eq!(new_vec.head(), 3);
+        assert_eq!(new_vec.head, 3);
         assert_eq!(new_vec.last(), Some(&t3));
         assert_eq!(new_vec.get(128), None);
         assert_eq!(new_vec.get(127), Some(&TestStruct::default()));
-        assert_eq!(new_vec.current_mut(), Some(&mut TestStruct::default()));
+        assert_eq!(
+            new_vec.get(new_vec.head_usize()),
+            Some(&TestStruct::default())
+        );
 
         let mut range = new_vec.indexes();
         assert_eq!(range.next(), Some(0));
