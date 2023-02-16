@@ -20,6 +20,7 @@ pub enum Position {
         strategy_index: u8,
         shares: Shares,
         amount: Quantity,
+        quote_amount: Quantity,
     },
     Borrow {
         vault_index: u8,
@@ -161,21 +162,24 @@ impl Position {
             } => {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle.as_ref().unwrap();
+                let quote_oracle = vault.quote_oracle.as_ref().unwrap();
                 let strategy = vault
                     .strategies
                     .get_checked(strategy_index as usize)
                     .unwrap();
 
-                let amount = strategy
-                    .total_shares()
-                    .calculate_earned(shares, strategy.balance());
+                let total_value = oracle.calculate_value(strategy.balance())
+                    + quote_oracle.calculate_value(strategy.balance_quote());
 
-                let exact = oracle.calculate_value(amount);
-                let with_collateral_ratio = exact * strategy.collateral_ratio();
-                let unhealthy = exact * strategy.liquidation_threshold();
+                let position_value = strategy
+                    .total_shares()
+                    .calculate_earned_by_value(shares, total_value);
+
+                let with_collateral_ratio = position_value * strategy.collateral_ratio();
+                let unhealthy = position_value * strategy.liquidation_threshold();
 
                 CollateralValues {
-                    exact,
+                    exact: position_value,
                     with_collateral_ratio,
                     unhealthy,
                 }
@@ -208,6 +212,7 @@ mod position_equality {
             strategy_index: 0,
             shares: Shares::new(0),
             amount: Quantity(0),
+            quote_amount: Quantity(0),
         };
 
         assert_eq!(first_empty, second_empty);
@@ -247,6 +252,7 @@ mod position_equality {
             strategy_index: 1,
             shares: Shares::new(0),
             amount: Quantity(0),
+            quote_amount: Quantity(0),
         };
 
         let non_matching_provide = Position::LiquidityProvide {
@@ -254,6 +260,7 @@ mod position_equality {
             strategy_index: 0,
             shares: Shares::new(0),
             amount: Quantity(0),
+            quote_amount: Quantity(0),
         };
 
         let matching_provide = Position::LiquidityProvide {
@@ -261,6 +268,7 @@ mod position_equality {
             strategy_index: 1,
             shares: Shares::new(1),
             amount: Quantity(1),
+            quote_amount: Quantity(0),
         };
 
         let reverse_non_matching_provide = Position::LiquidityProvide {
@@ -268,6 +276,7 @@ mod position_equality {
             strategy_index: 0,
             shares: Shares::new(0),
             amount: Quantity(0),
+            quote_amount: Quantity(0),
         };
 
         assert_ne!(provide, non_matching_provide);

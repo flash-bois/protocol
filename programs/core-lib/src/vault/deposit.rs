@@ -120,6 +120,7 @@ impl Vault {
             strategy_index,
             shares,
             amount,
+            quote_amount: quote_quantity,
         };
 
         match user_statement.search_mut(&temp_position) {
