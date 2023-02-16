@@ -1,5 +1,6 @@
+pub mod lending;
 mod service;
-mod services;
+pub mod services;
 pub mod swapping;
 
 pub use service::*;

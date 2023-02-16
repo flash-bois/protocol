@@ -1,5 +1,5 @@
-use crate::decimal::{Balances, Fraction, Quantity, Shares};
-use crate::services::ServiceType;
+use crate::decimal::{Balances, Fraction, Price, Quantity, Shares, Value};
+use crate::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
 #[derive(Debug, Clone, Default)]
@@ -76,7 +76,44 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    #[cfg(test)]
+    fn lent_checked(&self) -> Result<Quantity, ()> {
+        self.lent.as_ref().ok_or(()).copied()
+    }
+
+    fn sold_checked(&self) -> Result<&Balances, ()> {
+        self.sold.as_ref().ok_or(())
+    }
+
+    fn traded_checked(&self) -> Result<&Balances, ()> {
+        self.traded.as_ref().ok_or(())
+    }
+
+    fn sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+        self.sold.as_mut().ok_or(())
+    }
+
+    fn traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+        self.traded.as_mut().ok_or(())
+    }
+
+    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, ()> {
+        let quantity_locked = match service {
+            ServiceType::Lend => self.lent_checked()?,
+            ServiceType::Swap => self.sold_checked()?.base,
+            ServiceType::Trade => self.traded_checked()?.base,
+        };
+
+        Ok(quantity_locked)
+    }
+
+    pub fn uses(&self, service: ServiceType) -> bool {
+        match service {
+            ServiceType::Lend => self.lent.is_some(),
+            ServiceType::Swap => self.sold.is_some(),
+            ServiceType::Trade => self.traded.is_some(),
+        }
+    }
+
     pub fn new(lend: bool, swap: bool, trade: bool) -> Self {
         let mut strategy = Self::default();
 
@@ -106,9 +143,36 @@ impl Strategy {
             ServiceType::Lend => {
                 unreachable!("Lending of quote tokens is separate")
             }
-            ServiceType::Swap => &mut self.sold.as_mut().ok_or(())?.quote,
-            ServiceType::Trade => &mut self.traded.as_mut().ok_or(())?.quote,
+            ServiceType::Swap => &mut self.sold_checked_mut()?.quote,
+            ServiceType::Trade => &mut self.traded_checked_mut()?.quote,
         })
+    }
+
+    pub fn deposit(
+        &mut self,
+        input_value: Value,
+        balance_value: Value,
+        quantity: Quantity,
+        quote_quantity: Quantity,
+        services: &mut Services,
+    ) -> Result<Shares, ()> {
+        if self.lent.is_some() {
+            services.lend_mut()?.add_available_base(quantity);
+        }
+
+        // if self.can_swap() {
+        // do smth
+        // }
+
+        let shares = self
+            .total_shares
+            .get_change_down_by_value(input_value, balance_value);
+
+        self.available.base += quantity;
+        self.available.quote += quote_quantity;
+        self.total_shares += shares;
+
+        Ok(shares)
     }
 
     /// Add locked tokens to a specific substrategy
@@ -121,12 +185,7 @@ impl Strategy {
     }
 
     /// Lock tokens in a specific substrategy
-    pub fn lock(
-        &mut self,
-        quantity: Quantity,
-        sub: ServiceType,
-        // services: &mut Services,
-    ) {
+    pub fn lock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
         *self.locked_in(sub).unwrap() += quantity;
 
         // if self.can_lend() {
@@ -161,5 +220,39 @@ impl Strategy {
 
         self.locked.quote += quantity;
         self.available.quote -= quantity;
+    }
+
+    pub fn unlock(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+        *self.locked_in(sub).unwrap() -= quantity;
+
+        // if self.can_lend() {
+        //     services.lend_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_swap() {
+        //     services.swap_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_trade() {
+        //     services.trade_service().unwrap().remove_available(quantity);
+        // }
+
+        self.locked.base -= quantity;
+        self.available.base += quantity;
+    }
+
+    pub fn unlock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+        *self.locked_in_quote(sub).unwrap() += quantity;
+
+        // if self.can_lend() {
+        //     services.lend_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_swap() {
+        //     services.swap_service().unwrap().remove_available(quantity);
+        // }
+        // if self.can_trade() {
+        //     services.trade_service().unwrap().remove_available(quantity);
+        // }
+
+        self.locked.quote -= quantity;
+        self.available.quote += quantity;
     }
 }
