@@ -163,23 +163,29 @@ impl Position {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle.as_ref().unwrap();
                 let quote_oracle = vault.quote_oracle.as_ref().unwrap();
+
                 let strategy = vault
                     .strategies
                     .get_checked(strategy_index as usize)
                     .unwrap();
 
-                let total_value = oracle.calculate_value(strategy.balance())
-                    + quote_oracle.calculate_value(strategy.balance_quote());
-
-                let position_value = strategy
+                let base_quantity = strategy
                     .total_shares()
-                    .calculate_earned_by_value(shares, total_value);
+                    .calculate_earned(shares, strategy.balance());
 
-                let with_collateral_ratio = position_value * strategy.collateral_ratio();
-                let unhealthy = position_value * strategy.liquidation_threshold();
+                let quote_quantity = strategy
+                    .total_shares()
+                    .calculate_earned(shares, strategy.balance_quote());
+
+                let value = oracle.calculate_value(base_quantity)
+                    + quote_oracle.calculate_value(quote_quantity);
+
+                let with_collateral_ratio = value * strategy.collateral_ratio();
+
+                let unhealthy = value * strategy.liquidation_threshold();
 
                 CollateralValues {
-                    exact: position_value,
+                    exact: value,
                     with_collateral_ratio,
                     unhealthy,
                 }

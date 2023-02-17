@@ -166,10 +166,10 @@ impl Strategy {
 
     pub fn deposit(
         &mut self,
-        input_value: Value,
-        balance_value: Value,
         quantity: Quantity,
         quote_quantity: Quantity,
+        input_quantity: Quantity,
+        balance: Quantity,
         services: &mut Services,
     ) -> Result<Shares, ()> {
         if self.lent.is_some() {
@@ -180,9 +180,7 @@ impl Strategy {
         // do smth
         // }
 
-        let shares = self
-            .total_shares
-            .get_change_down_by_value(input_value, balance_value);
+        let shares = self.total_shares.get_change_down(input_quantity, balance);
 
         self.available.base += quantity;
         self.available.quote += quote_quantity;

@@ -197,8 +197,9 @@ mod position_management {
         let mut vaults = [first_vault, second_vault];
 
         vaults[0]
-            .deposit(&mut user_statement, Token::Base, Quantity(5000000), 0, 0)
+            .deposit(&mut user_statement, Token::Base, Quantity(10000000), 0, 0)
             .unwrap();
+
         vaults[1]
             .deposit(&mut user_statement, Token::Base, Quantity(5000000), 0, 0)
             .unwrap();
@@ -208,11 +209,16 @@ mod position_management {
             .unwrap()
             .set_collateral_ratio(Fraction::from_integer(1));
 
+        vaults[0]
+            .strategy_mut(0)
+            .unwrap()
+            .set_collateral_ratio(Fraction::from_integer(1));
+
         user_statement
             .add_position(Position::LiquidityProvide {
-                vault_index: 1,
+                vault_index: 0,
                 strategy_index: 0,
-                shares: Shares::new(10000000),
+                shares: Shares::new(5000000),
                 amount: Quantity(5000000),
                 quote_amount: Quantity(5000000),
             })
@@ -227,7 +233,7 @@ mod position_management {
         user_statement.refresh(&mut vaults);
 
         vaults[1]
-            .borrow(&mut user_statement, Quantity(5000000), 0)
+            .borrow(&mut user_statement, Quantity(4000000), 0)
             .unwrap();
 
         assert!(
@@ -242,7 +248,7 @@ mod position_management {
 
         assert_eq!(
             user_statement.liabilities_value(&vaults),
-            Value::new(15000000000)
+            Value::new(13000000000)
         )
     }
 
