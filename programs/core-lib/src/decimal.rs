@@ -164,24 +164,24 @@ impl Shares {
         self * amount / all_liquidity
     }
 
-    // /// Calculates change in shares by value
-    // /// Change is rounded down
-    // ///
-    // /// ## Arguments
-    // ///
-    // /// * `amount` - value of token to be shared
-    // /// * `all_liquidity` - value of token already shared
-    // /// * `self` - shares of already shared token (sum of all shares)
-    // ///
-    // /// ## Returns:
-    // /// * amount of shares to be changed
-    // pub fn get_change_down_by_value(self, value: Value, all_value: Value) -> Self {
-    //     if self == Self::from_integer(0) {
-    //         return value.into();
-    //     }
+    /// Calculates change in shares by value
+    /// Change is rounded down
+    ///
+    /// ## Arguments
+    ///
+    /// * `amount` - value of token to be shared
+    /// * `all_liquidity` - value of token already shared
+    /// * `self` - shares of already shared token (sum of all shares)
+    ///
+    /// ## Returns:
+    /// * amount of shares to be changed
+    pub fn get_change_down_by_value(self, value: Value, all_value: Value) -> Self {
+        if self == Self::from_integer(0) {
+            return value.into();
+        }
 
-    //     self * value / all_value
-    // }
+        self * value / all_value
+    }
 
     /// Calculates change in shares
     /// Change is rounded up
@@ -202,24 +202,24 @@ impl Shares {
         self.mul_up(amount).div_up(all_liquidity)
     }
 
-    // /// Calculates change in shares
-    // /// Change is rounded up
-    // ///
-    // /// ## Arguments
-    // ///
-    // /// * `amount` - Quantity of token to be shared
-    // /// * `all_liquidity` - Quantity of token already shared
-    // /// * `self` - shares of already shared token (sum of all shares)
-    // ///
-    // /// ## Returns:
-    // /// * amount of shares to be changed
-    // pub fn get_change_up_by_value(self, value: Value, all_value: Value) -> Self {
-    //     if self == Self::from_integer(0) {
-    //         return value.into();
-    //     }
+    /// Calculates change in shares
+    /// Change is rounded up
+    ///
+    /// ## Arguments
+    ///
+    /// * `amount` - Quantity of token to be shared
+    /// * `all_liquidity` - Quantity of token already shared
+    /// * `self` - shares of already shared token (sum of all shares)
+    ///
+    /// ## Returns:
+    /// * amount of shares to be changed
+    pub fn get_change_up_by_value(self, value: Value, all_value: Value) -> Self {
+        if self == Self::from_integer(0) {
+            return value.into();
+        }
 
-    //     self.mul_up(value).div_up(all_value)
-    // }
+        self.mul_up(value).div_up(all_value)
+    }
 
     /// Calculate owned amount from total shares and provided shares
     /// Owed amount is rounded up
@@ -251,20 +251,20 @@ impl Shares {
         (shares_to_burn * all_liquidity / self).into()
     }
 
-    // /// Calculate earned value from total shares and provided shares
-    // /// Owed amount is rounded down
-    // ///
-    // /// ## Arguments
-    // ///
-    // /// * `shares_to_burn` - shares representing debt that are to be burned
-    // /// * `all_value` - value of shared tokens
-    // /// * `self` - shares of already shared token (sum of all shares)
-    // ///
-    // /// ## Returns:
-    // /// * Value earned
-    // pub fn calculate_earned_by_value(self, shares_to_burn: Shares, all_value: Value) -> Value {
-    //     all_value * shares_to_burn / self
-    // }
+    /// Calculate earned value from total shares and provided shares
+    /// Owed amount is rounded down
+    ///
+    /// ## Arguments
+    ///
+    /// * `shares_to_burn` - shares representing debt that are to be burned
+    /// * `all_value` - value of shared tokens
+    /// * `self` - shares of already shared token (sum of all shares)
+    ///
+    /// ## Returns:
+    /// * Value earned
+    pub fn calculate_earned_by_value(self, shares_to_burn: Shares, all_value: Value) -> Value {
+        all_value * shares_to_burn / self
+    }
 }
 
 impl From<Quantity> for Shares {
@@ -276,23 +276,6 @@ impl From<Quantity> for Shares {
 impl From<Value> for Shares {
     fn from(q: Value) -> Self {
         Shares::from_decimal(q)
-    }
-}
-
-#[cfg(test)]
-mod tests_from_for_shares {
-    use super::{Quantity, Shares, Value};
-    use checked_decimal_macro::Decimal;
-
-    #[test]
-    fn value_into_shares() {
-        let value = Value::new(1900000000);
-
-        println!("{}", value);
-
-        let shares: Shares = value.into();
-
-        println!("{}", shares);
     }
 }
 
