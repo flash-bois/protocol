@@ -79,6 +79,21 @@ impl ServiceUpdate for Swap {
 }
 
 impl Swap {
+    pub fn new(selling_fee: FeeCurve, buying_fee: FeeCurve, kept_fee: Fraction) -> Swap {
+        let swap = Self {
+            available: Balances::default(),
+            balances: Balances::default(),
+            total_earned_fee: Balances::default(),
+            total_paid_fee: Balances::default(),
+            total_kept_fee: Balances::default(),
+            selling_fee,
+            buying_fee,
+            kept_fee,
+        };
+
+        swap
+    }
+
     fn get_proportion(&self, base_oracle: &Oracle, quote_oracle: &Oracle) -> Fraction {
         let base_value = base_oracle.calculate_value(self.balances.base);
         let quote_value = quote_oracle.calculate_value(self.balances.quote);

@@ -37,12 +37,24 @@ pub struct Lend {
 }
 
 impl ServiceUpdate for Lend {
-    fn add_liquidity_base(&mut self, quantity: Quantity) {}
-    fn add_liquidity_quote(&mut self, quantity: Quantity) {}
-    fn remove_liquidity_base(&mut self, quantity: Quantity) {}
-    fn remove_liquidity_quote(&mut self, quantity: Quantity) {}
-    fn add_available_quote(&mut self, quantity: Quantity) {}
-    fn remove_available_quote(&mut self, quantity: Quantity) {}
+    fn add_liquidity_base(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn add_liquidity_quote(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn remove_liquidity_base(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn remove_liquidity_quote(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn add_available_quote(&mut self, _: Quantity) {
+        unreachable!("Lending of quote tokens is separate")
+    }
+    fn remove_available_quote(&mut self, _: Quantity) {
+        unreachable!()
+    }
 
     fn add_available_base(&mut self, quantity: Quantity) {
         self.available += quantity;
