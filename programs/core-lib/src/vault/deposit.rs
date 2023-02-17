@@ -1,5 +1,6 @@
 use super::*;
-use crate::structs::OraclePriceType;
+use crate::user::{Position, UserStatement};
+use checked_decimal_macro::Factories;
 
 #[derive(Clone, Copy)]
 pub enum Token {
@@ -17,23 +18,45 @@ impl Vault {
         let base_balance = strategy.balance();
         let quote_balance = strategy.balance_quote();
 
+        if base_balance == Quantity(0) || quote_balance == Quantity(0) {
+            return Quantity(0);
+        }
+
         match input_token {
             Token::Quote => input_quantity.big_mul_div(base_balance, quote_balance),
             Token::Base => input_quantity.big_mul_div(quote_balance, base_balance),
         }
     }
 
-    fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, ()> {
+    pub fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, ()> {
         self.strategies.get_mut_checked(index as usize).ok_or(())
     }
 
-    fn strategy(&self, index: u8) -> Result<&Strategy, ()> {
+    pub fn strategy(&self, index: u8) -> Result<&Strategy, ()> {
         self.strategies.get_checked(index as usize).ok_or(())
+    }
+
+    fn get_opposite_quantity(
+        &self,
+        opposite_oracle: &Oracle,
+        opposite_quantity: Quantity,
+        known_oracle: &Oracle,
+        known_amount: Quantity,
+    ) -> (Quantity, Quantity) {
+        let known_value = known_oracle.calculate_value(known_amount);
+
+        let opposite_quantity = if opposite_quantity == Quantity(0) {
+            opposite_oracle.calculate_needed_quantity(known_value)
+        } else {
+            opposite_quantity
+        };
+
+        (known_amount, opposite_quantity)
     }
 
     pub fn deposit(
         &mut self,
-        //user_statement: &mut UserStatement,
+        user_statement: &mut UserStatement,
         deposit_token: Token,
         amount: Quantity,
         strategy_index: u8,
@@ -44,25 +67,29 @@ impl Vault {
         let quote_oracle = self.quote_oracle.as_ref().ok_or(())?;
 
         let strategy = self.strategy(strategy_index)?;
-
-        let strategy_value = base_oracle.calculate_needed_value(strategy.balance())
-            + quote_oracle.calculate_needed_value(strategy.balance_quote());
-
         let opposite_quantity = self.opposite_quantity(amount, deposit_token, strategy);
 
-        let (base_quantity, quote_quantity, input_value) = match deposit_token {
-            Token::Base => (
-                amount,
-                opposite_quantity,
-                base_oracle.calculate_value(amount)
-                    + quote_oracle.calculate_value(opposite_quantity),
-            ),
-            Token::Quote => (
-                opposite_quantity,
-                amount,
-                quote_oracle.calculate_value(amount)
-                    + quote_oracle.calculate_value(opposite_quantity),
-            ),
+        let (base_quantity, quote_quantity, input_balance) = match deposit_token {
+            Token::Base => {
+                let (base, quote) = self.get_opposite_quantity(
+                    quote_oracle,
+                    opposite_quantity,
+                    base_oracle,
+                    amount,
+                );
+
+                (base, quote, strategy.balance())
+            }
+            Token::Quote => {
+                let (quote, base) = self.get_opposite_quantity(
+                    base_oracle,
+                    opposite_quantity,
+                    quote_oracle,
+                    amount,
+                );
+
+                (base, quote, strategy.balance_quote())
+            }
         };
 
         let mut_strategy = self
@@ -71,12 +98,30 @@ impl Vault {
             .ok_or(())?;
 
         let shares = mut_strategy.deposit(
-            input_value,
-            strategy_value,
             base_quantity,
             quote_quantity,
+            amount,
+            input_balance,
             &mut self.services,
         )?;
+
+        let temp_position = Position::LiquidityProvide {
+            vault_index: self.id,
+            strategy_index,
+            shares,
+            amount,
+            quote_amount: quote_quantity,
+        };
+
+        match user_statement.search_mut(&temp_position) {
+            Some(position) => {
+                position.increase_amount(amount);
+                position.increase_shares(shares);
+            }
+            None => {
+                user_statement.add_position(temp_position)?;
+            }
+        }
 
         // TODO add it to user struct
 

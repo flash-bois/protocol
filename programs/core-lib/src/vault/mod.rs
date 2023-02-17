@@ -8,6 +8,7 @@ use crate::{
     structs::{FeeCurve, Oracle},
 };
 
+pub use deposit::Token;
 #[derive(Clone, Debug, Default)]
 pub struct Vault {
     pub id: u8,

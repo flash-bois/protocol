@@ -250,6 +250,21 @@ impl Shares {
     pub fn calculate_earned(self, shares_to_burn: Shares, all_liquidity: Quantity) -> Quantity {
         (shares_to_burn * all_liquidity / self).into()
     }
+
+    /// Calculate earned value from total shares and provided shares
+    /// Owed amount is rounded down
+    ///
+    /// ## Arguments
+    ///
+    /// * `shares_to_burn` - shares representing debt that are to be burned
+    /// * `all_value` - value of shared tokens
+    /// * `self` - shares of already shared token (sum of all shares)
+    ///
+    /// ## Returns:
+    /// * Value earned
+    pub fn calculate_earned_by_value(self, shares_to_burn: Shares, all_value: Value) -> Value {
+        all_value * shares_to_burn / self
+    }
 }
 
 impl From<Quantity> for Shares {

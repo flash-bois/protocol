@@ -1,9 +1,8 @@
-use crate::decimal::{Fraction, Price, Quantity, Shares, Value};
+use crate::decimal::{Fraction, Quantity, Shares, Value};
 use crate::services::{ServiceType, ServiceUpdate, Services};
-use crate::structs::Oracle;
 
 /// Balances of both base and quote tokens
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Balances {
     /// Token characteristic for vault
     base: Quantity,
@@ -12,7 +11,7 @@ pub struct Balances {
 }
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Strategy {
     /// Quantity of tokens used in lending (borrowed)
     lent: Option<Quantity>,
@@ -35,6 +34,13 @@ pub struct Strategy {
     collateral_ratio: Fraction,
     /// Ratio at which value of shares is calculated during liquidation
     liquidation_threshold: Fraction,
+}
+
+#[cfg(test)]
+impl Strategy {
+    pub fn set_collateral_ratio(&mut self, ratio: Fraction) {
+        self.collateral_ratio = ratio
+    }
 }
 
 impl Strategy {
@@ -160,10 +166,10 @@ impl Strategy {
 
     pub fn deposit(
         &mut self,
-        input_value: Value,
-        balance_value: Value,
         quantity: Quantity,
         quote_quantity: Quantity,
+        input_quantity: Quantity,
+        balance: Quantity,
         services: &mut Services,
     ) -> Result<Shares, ()> {
         if self.lent.is_some() {
@@ -174,9 +180,7 @@ impl Strategy {
         // do smth
         // }
 
-        let shares = self
-            .total_shares
-            .get_change_down_by_value(input_value, balance_value);
+        let shares = self.total_shares.get_change_down(input_quantity, balance);
 
         self.available.base += quantity;
         self.available.quote += quote_quantity;
