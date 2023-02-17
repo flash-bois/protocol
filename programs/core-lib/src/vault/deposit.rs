@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Token {
     Base,
     Quote,
@@ -39,8 +39,8 @@ impl Vault {
         current_time: Time,
     ) -> Result<(), ()> {
         self.refresh(current_time)?;
-        let base_oracle = self.oracle.as_ref().ok_or(())?;
-        let quote_oracle = self.quote_oracle.as_ref().ok_or(())?;
+        let base_oracle = self.oracle()?;
+        let quote_oracle = self.quote_oracle()?;
 
         let strategy = self.strategy(strategy_index)?;
 
@@ -69,7 +69,7 @@ impl Vault {
             .get_mut_checked(strategy_index as usize)
             .ok_or(())?;
 
-        let shares = mut_strategy.deposit(
+        let _shares = mut_strategy.deposit(
             input_value,
             strategy_value,
             base_quantity,

@@ -268,4 +268,45 @@ impl Strategy {
         self.locked.quote -= quantity;
         self.available.quote += quantity;
     }
+
+    pub fn decrease_available_base(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
+        self.available.base -= quantity;
+
+        Ok(())
+    }
+
+    pub fn decrease_available_quote(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
+        self.available.quote -= quantity;
+        Ok(())
+    }
+
+    pub fn increase_available_base(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
+        self.available.base += quantity;
+        Ok(())
+    }
+
+    pub fn increase_available_quote(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), ()> {
+        self.available.quote += quantity;
+        Ok(())
+    }
 }

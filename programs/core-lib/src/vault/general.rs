@@ -6,6 +6,13 @@ use crate::{
 
 use super::Vault;
 
+type ActionFn = fn(
+    &mut Strategy,
+    quantity: Quantity,
+    service: ServiceType,
+    services: &mut Services,
+) -> Result<(), ()>;
+
 impl Vault {
     fn split(
         &mut self,
@@ -13,12 +20,7 @@ impl Vault {
         total: Quantity,
         service: ServiceType,
         part: fn(&Strategy) -> Quantity,
-        action: fn(
-            &mut Strategy,
-            quantity: Quantity,
-            service: ServiceType,
-            services: &mut Services,
-        ) -> Result<(), ()>,
+        action: ActionFn,
     ) -> Result<(), ()> {
         let mut processed = Quantity(0);
         let mut last_index = 0;
@@ -43,6 +45,65 @@ impl Vault {
                 .get_mut_checked(last_index)
                 .ok_or_else(|| unreachable!())?;
             action(strategy, quantity - processed, service, &mut self.services)?;
+        }
+        Ok(())
+    }
+
+    fn double_split(
+        &mut self,
+        quantity_a: Quantity,
+        quantity_b: Quantity,
+        total: Quantity,
+        service: ServiceType,
+        part: fn(&Strategy) -> Quantity,
+        action_a: ActionFn,
+        action_b: ActionFn,
+    ) -> Result<(), ()> {
+        let mut processed_a = Quantity(0);
+        let mut processed_b = Quantity(0);
+        let mut last_index = 0;
+
+        for i in self.strategies.indexes() {
+            let strategy = self
+                .strategies
+                .get_mut_checked(i)
+                .ok_or_else(|| unreachable!())?;
+
+            if strategy.uses(service) {
+                last_index = i;
+                let to_lock_a = quantity_a.big_mul_div(part(&strategy), total);
+                let to_lock_b = quantity_b.big_mul_div(part(&strategy), total);
+                processed_a += to_lock_a;
+                processed_b += to_lock_b;
+                action_a(strategy, to_lock_a, service, &mut self.services)?;
+                action_b(strategy, to_lock_b, service, &mut self.services)?;
+            }
+        }
+
+        if processed_a < quantity_a {
+            let strategy = self
+                .strategies
+                .get_mut_checked(last_index)
+                .ok_or_else(|| unreachable!())?;
+            action_a(
+                strategy,
+                quantity_a - processed_a,
+                service,
+                &mut self.services,
+            )?;
+        }
+
+        if processed_b < quantity_b {
+            let strategy = self
+                .strategies
+                .get_mut_checked(last_index)
+                .ok_or_else(|| unreachable!())?;
+            action_b(
+                strategy,
+                quantity_b - processed_b,
+                service,
+                &mut self.services,
+            )?;
         }
         Ok(())
     }
@@ -74,6 +135,42 @@ impl Vault {
             service,
             Strategy::locked,
             Strategy::unlock,
+        )
+    }
+
+    pub fn exchange_to_quote(
+        &mut self,
+        sold: Quantity,
+        bought: Quantity,
+        total_available_base: Quantity,
+        service: ServiceType,
+    ) -> Result<(), ()> {
+        self.double_split(
+            sold,
+            bought,
+            total_available_base,
+            service,
+            Strategy::available,
+            Strategy::decrease_available_base,
+            Strategy::increase_available_quote,
+        )
+    }
+
+    pub fn exchange_to_base(
+        &mut self,
+        sold: Quantity,
+        bought: Quantity,
+        total_available_quote: Quantity,
+        service: ServiceType,
+    ) -> Result<(), ()> {
+        self.double_split(
+            sold,
+            bought,
+            total_available_quote,
+            service,
+            Strategy::available,
+            Strategy::decrease_available_quote,
+            Strategy::increase_available_base,
         )
     }
 }
