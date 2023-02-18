@@ -4,15 +4,11 @@ use std::{
     slice::{Iter, IterMut},
 };
 
-use crate::strategy::Strategy;
-use vec_macro::fixed_vector;
-
-pub trait Print {
-    fn print();
-}
-
 #[cfg(test)]
 mod test_vec {
+    use crate::strategy::Strategy;
+    use vec_macro::fixed_vector;
+
     use super::*;
 
     #[fixed_vector(Strategy, 10)]

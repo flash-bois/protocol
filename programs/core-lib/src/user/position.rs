@@ -194,7 +194,7 @@ impl Position {
         }
     }
 
-    pub fn position_profit(&self, vaults: &[Vault]) -> TradeResult {
+    pub fn position_profit(&self, _vaults: &[Vault]) -> TradeResult {
         TradeResult::None
     }
 }

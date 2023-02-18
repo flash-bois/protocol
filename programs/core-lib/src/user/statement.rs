@@ -2,10 +2,9 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::structs::FixedSizeVector;
-use checked_decimal_macro::Decimal;
 
 use checked_decimal_macro::num_traits::ToPrimitive;
+use checked_decimal_macro::Decimal;
 use std::{
     ops::Range,
     slice::{Iter, IterMut},
@@ -76,7 +75,7 @@ impl UserStatement {
         }
     }
 
-    fn trades_values(&self, vaults: &[Vault]) -> TradeResult {
+    fn _trades_values(&self, vaults: &[Vault]) -> TradeResult {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_trade())
                 .fold(TradeResult::Profitable(Value::new(0)), |sum, curr| {

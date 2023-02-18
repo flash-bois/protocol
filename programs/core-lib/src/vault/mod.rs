@@ -4,7 +4,7 @@ pub mod lend;
 pub mod swap;
 
 use crate::{
-    decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization, Value},
+    decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization},
     services::{lending::Lend, swapping::Swap, ServiceType, ServiceUpdate, Services},
     strategy::{Strategies, Strategy},
     structs::{FeeCurve, Oracle},

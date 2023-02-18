@@ -495,14 +495,14 @@ mod shares_tests {
 
         current_time += 50;
         lending.accrue_interest_rate(current_time);
-        let fee_q = lending.accrue_fee();
+        let _fee_q = lending.accrue_fee();
 
         lending.borrow(Quantity(11051825915530)).unwrap();
         lending.remove_available_base(Quantity(11051825915530));
 
         // fee after 100 cycles : 923194261225651 + 927821559777366.7562086 = 1851015821003017.756 (ROUND UP)
 
-        let fee_q = lending.accrue_fee();
+        let _fee_q = lending.accrue_fee();
 
         assert_eq!(
             lending,
