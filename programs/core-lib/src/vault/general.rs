@@ -151,8 +151,8 @@ impl Vault {
             total_available_base,
             service,
             Strategy::available,
-            Strategy::decrease_available_base,
-            Strategy::increase_available_quote,
+            Strategy::decrease_balance_base,
+            Strategy::increase_balance_quote,
         )
     }
 
@@ -169,8 +169,8 @@ impl Vault {
             total_available_quote,
             service,
             Strategy::available,
-            Strategy::decrease_available_quote,
-            Strategy::increase_available_base,
+            Strategy::decrease_balance_quote,
+            Strategy::increase_balance_base,
         )
     }
 }

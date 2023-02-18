@@ -17,7 +17,7 @@ pub enum ServiceType {
 }
 
 impl Services {
-    pub fn swap_service(&mut self) -> Result<&mut Swap, ()> {
+    pub fn swap_mut(&mut self) -> Result<&mut Swap, ()> {
         self.swap.as_mut().ok_or(())
     }
 

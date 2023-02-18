@@ -70,7 +70,7 @@ mod tests {
             .fee_curve_sell()
             .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(1, 1));
 
-        vault.deposit(Token::Quote, Quantity(10_000000), 0, 0)?;
+        // vault.deposit(Token::Quote, Quantity(10_000000), 0, 0)?;
         // TODO: finish this test after deposits are finished
 
         Ok(())

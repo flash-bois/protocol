@@ -130,22 +130,33 @@ impl Strategy {
         strategy
     }
 
-    fn locked_in(&mut self, sub: ServiceType) -> Result<&mut Quantity, ()> {
-        Ok(match sub {
-            ServiceType::Lend => self.lent.as_mut().ok_or(())?,
-            ServiceType::Swap => &mut self.sold.as_mut().ok_or(())?.base,
-            ServiceType::Trade => &mut self.traded.as_mut().ok_or(())?.base,
-        })
+    fn locked_in(&mut self, sub: ServiceType) -> &mut Quantity {
+        let service = match sub {
+            ServiceType::Lend => {
+                return self
+                    .lent
+                    .as_mut()
+                    .ok_or(())
+                    .expect("locked in requested for a service that is not enabled");
+            }
+            ServiceType::Swap => self.sold.as_mut().ok_or(()),
+            ServiceType::Trade => self.traded.as_mut().ok_or(()),
+        };
+
+        let service = service.expect("locked in requested for a service that is not enabled");
+        &mut service.base
     }
 
-    fn locked_in_quote(&mut self, sub: ServiceType) -> Result<&mut Quantity, ()> {
-        Ok(match sub {
+    fn locked_in_quote(&mut self, sub: ServiceType) -> &mut Quantity {
+        let service = match sub {
             ServiceType::Lend => {
                 unreachable!("Lending of quote tokens is separate")
             }
-            ServiceType::Swap => &mut self.sold_checked_mut()?.quote,
-            ServiceType::Trade => &mut self.traded_checked_mut()?.quote,
-        })
+            ServiceType::Swap => self.sold.as_mut().ok_or(()),
+            ServiceType::Trade => self.traded.as_mut().ok_or(()),
+        };
+        let service = service.expect("locked in requested for a service that is not enabled");
+        &mut service.quote
     }
 
     pub fn deposit(
@@ -156,13 +167,14 @@ impl Strategy {
         quote_quantity: Quantity,
         services: &mut Services,
     ) -> Result<Shares, ()> {
-        if self.lent.is_some() {
+        if self.is_lending_enabled() {
             services.lend_mut()?.add_available_base(quantity);
         }
 
-        // if self.can_swap() {
-        // do smth
-        // }
+        if self.is_swapping_enabled() {
+            services.swap_mut()?.add_liquidity_base(quantity);
+            services.swap_mut()?.add_liquidity_quote(quote_quantity);
+        }
 
         let shares = self
             .total_shares
@@ -177,7 +189,7 @@ impl Strategy {
 
     /// Add locked tokens to a specific substrategy
     pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), ()> {
-        *self.locked_in(sub)? += quantity;
+        *self.locked_in(sub) += quantity;
         self.accrued_fee += quantity;
         self.locked.base += quantity;
 
@@ -191,38 +203,29 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
-        *self.locked_in(sub).unwrap() += quantity;
-
-        // if self.can_lend() {
-        //     services.lend_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_swap() {
-        //     services.swap_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_trade() {
-        //     services.trade_service().unwrap().remove_available(quantity);
-        // }
-
+        *self.locked_in(sub) += quantity;
         self.locked.base += quantity;
         self.available.base -= quantity;
+
+        if let Ok(lend) = services.lend_mut() {
+            lend.remove_available_base(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.remove_available_base(quantity);
+        }
         Ok(())
     }
 
     /// Lock tokens in a specific substrategy
-    pub fn lock_quote(
-        &mut self,
-        quantity: Quantity,
-        sub: ServiceType,
-        // services: &mut Services,
-    ) {
-        *self.locked_in_quote(sub).unwrap() += quantity;
+    pub fn lock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
+        *self.locked_in_quote(sub) += quantity;
 
-        // if self.can_swap() {
-        //     services.swap_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_trade() {
-        //     services.trade_service().unwrap().remove_available(quantity);
-        // }
+        if let Ok(lend) = services.lend_mut() {
+            lend.remove_available_quote(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.remove_available_quote(quantity);
+        }
 
         self.locked.quote += quantity;
         self.available.quote -= quantity;
@@ -234,17 +237,14 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
-        *self.locked_in(sub).unwrap() -= quantity;
+        *self.locked_in(sub) -= quantity;
 
-        // if self.can_lend() {
-        //     services.lend_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_swap() {
-        //     services.swap_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_trade() {
-        //     services.trade_service().unwrap().remove_available(quantity);
-        // }
+        if let Ok(lend) = services.lend_mut() {
+            lend.add_available_base(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_available_base(quantity);
+        }
 
         self.locked.base -= quantity;
         self.available.base += quantity;
@@ -253,60 +253,88 @@ impl Strategy {
     }
 
     pub fn unlock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
-        *self.locked_in_quote(sub).unwrap() += quantity;
+        *self.locked_in_quote(sub) -= quantity;
 
-        // if self.can_lend() {
-        //     services.lend_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_swap() {
-        //     services.swap_service().unwrap().remove_available(quantity);
-        // }
-        // if self.can_trade() {
-        //     services.trade_service().unwrap().remove_available(quantity);
-        // }
+        if let Ok(lend) = services.lend_mut() {
+            lend.add_available_quote(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_available_quote(quantity);
+        }
 
         self.locked.quote -= quantity;
         self.available.quote += quantity;
     }
 
-    pub fn decrease_available_base(
+    pub fn decrease_balance_base(
         &mut self,
         quantity: Quantity,
-        sub: ServiceType,
+        _: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
         self.available.base -= quantity;
 
+        if let Ok(lend) = services.lend_mut() {
+            lend.remove_available_base(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.remove_liquidity_base(quantity);
+        }
+
         Ok(())
     }
 
-    pub fn decrease_available_quote(
+    pub fn decrease_balance_quote(
         &mut self,
         quantity: Quantity,
-        sub: ServiceType,
+        _: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
         self.available.quote -= quantity;
+
+        if let Ok(lend) = services.lend_mut() {
+            lend.remove_available_quote(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.remove_liquidity_quote(quantity);
+        }
+
         Ok(())
     }
 
-    pub fn increase_available_base(
+    pub fn increase_balance_base(
         &mut self,
         quantity: Quantity,
-        sub: ServiceType,
+        _: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
         self.available.base += quantity;
+
+        if let Ok(lend) = services.lend_mut() {
+            lend.add_available_base(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_liquidity_base(quantity);
+        }
+
         Ok(())
     }
 
-    pub fn increase_available_quote(
+    pub fn increase_balance_quote(
         &mut self,
         quantity: Quantity,
-        sub: ServiceType,
+        _: ServiceType,
         services: &mut Services,
     ) -> Result<(), ()> {
         self.available.quote += quantity;
+
+        if let Ok(lend) = services.lend_mut() {
+            lend.add_available_quote(quantity);
+        }
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_liquidity_quote(quantity);
+        }
+
         Ok(())
     }
 }
