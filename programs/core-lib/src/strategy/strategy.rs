@@ -2,7 +2,7 @@ use crate::decimal::{Balances, Fraction, Price, Quantity, Shares, Value};
 use crate::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Strategy {
     /// Quantity of tokens used in lending (borrowed)
     lent: Option<Quantity>,
@@ -25,6 +25,13 @@ pub struct Strategy {
     collateral_ratio: Fraction,
     /// Ratio at which value of shares is calculated during liquidation
     liquidation_threshold: Fraction,
+}
+
+#[cfg(test)]
+impl Strategy {
+    pub fn set_collateral_ratio(&mut self, ratio: Fraction) {
+        self.collateral_ratio = ratio
+    }
 }
 
 impl Strategy {
@@ -161,10 +168,10 @@ impl Strategy {
 
     pub fn deposit(
         &mut self,
-        input_value: Value,
-        balance_value: Value,
         quantity: Quantity,
         quote_quantity: Quantity,
+        input_quantity: Quantity,
+        balance: Quantity,
         services: &mut Services,
     ) -> Result<Shares, ()> {
         if self.is_lending_enabled() {
@@ -176,9 +183,7 @@ impl Strategy {
             services.swap_mut()?.add_liquidity_quote(quote_quantity);
         }
 
-        let shares = self
-            .total_shares
-            .get_change_down_by_value(input_value, balance_value);
+        let shares = self.total_shares.get_change_down(input_quantity, balance);
 
         self.available.base += quantity;
         self.available.quote += quote_quantity;
