@@ -133,7 +133,7 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_base,
             Strategy::unlock,
         )
     }
@@ -186,9 +186,9 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_base,
             Strategy::unlock,
-            Strategy::loss,
+            Strategy::increase_balance_base,
         )
     }
 
@@ -204,9 +204,9 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_base,
             Strategy::unlock,
-            Strategy::loss,
+            Strategy::decrease_balance_quote,
         )
     }
 
@@ -220,8 +220,8 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked,
-            Strategy::profit,
+            Strategy::locked_base,
+            Strategy::increase_balance_base,
         )
     }
 
@@ -235,8 +235,8 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked,
-            Strategy::profit,
+            Strategy::locked_quote,
+            Strategy::increase_balance_quote,
         )
     }
 }

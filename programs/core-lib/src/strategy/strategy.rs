@@ -43,7 +43,7 @@ impl Strategy {
         self.available.quote
     }
 
-    pub fn locked(&self) -> Quantity {
+    pub fn locked_base(&self) -> Quantity {
         self.locked.base
     }
 
