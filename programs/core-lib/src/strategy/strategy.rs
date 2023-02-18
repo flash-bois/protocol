@@ -2,7 +2,7 @@ use crate::decimal::{Balances, Fraction, Price, Quantity, Shares, Value};
 use crate::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct Strategy {
     /// Quantity of tokens used in lending (borrowed)
     lent: Option<Quantity>,

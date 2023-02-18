@@ -5,6 +5,19 @@ use super::{
 use crate::structs::FixedSizeVector;
 use checked_decimal_macro::Decimal;
 
+use checked_decimal_macro::num_traits::ToPrimitive;
+use std::{
+    ops::Range,
+    slice::{Iter, IterMut},
+};
+use vec_macro::fixed_vector;
+
+#[fixed_vector(Position, 64)]
+struct Positions {
+    head: u8,
+    elements: [Position; 64],
+}
+
 #[derive(Default)]
 struct UserTemporaryValues {
     pub liabilities: Value,
@@ -14,7 +27,7 @@ struct UserTemporaryValues {
 
 #[derive(Default)]
 pub struct UserStatement {
-    positions: FixedSizeVector<Position, 64>,
+    positions: Positions,
     values: UserTemporaryValues,
 }
 

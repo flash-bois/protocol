@@ -4,6 +4,31 @@ use std::{
     slice::{Iter, IterMut},
 };
 
+use crate::strategy::Strategy;
+use vec_macro::fixed_vector;
+
+pub trait Print {
+    fn print();
+}
+
+#[cfg(test)]
+mod test_vec {
+    use super::*;
+
+    #[fixed_vector(Strategy, 10)]
+    pub struct TestFixed {
+        head: u8,
+        elements: [Strategy; 10],
+    }
+
+    #[test]
+    fn test_it() {
+        let mut test_vec = TestFixed::default();
+        assert!(test_vec.add(Strategy::default()).is_ok(), "adds position");
+        println!("{:?}", test_vec.index_before_head(0)); // WTF?
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct FixedSizeVector<T, const N: usize>
 where
