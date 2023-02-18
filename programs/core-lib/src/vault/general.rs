@@ -108,7 +108,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn lock(
+    pub fn lock_base(
         &mut self,
         quantity: Quantity,
         total_available: Quantity,
@@ -119,11 +119,26 @@ impl Vault {
             total_available,
             service,
             Strategy::available,
-            Strategy::lock,
+            Strategy::lock_base,
         )
     }
 
-    pub fn unlock(
+    pub fn lock_quote(
+        &mut self,
+        quantity: Quantity,
+        total_available: Quantity,
+        service: ServiceType,
+    ) -> Result<(), ()> {
+        self.split(
+            quantity,
+            total_available,
+            service,
+            Strategy::available,
+            Strategy::lock_quote,
+        )
+    }
+
+    pub fn unlock_base(
         &mut self,
         quantity: Quantity,
         total_locked: Quantity,
@@ -134,7 +149,22 @@ impl Vault {
             total_locked,
             service,
             Strategy::locked_base,
-            Strategy::unlock,
+            Strategy::unlock_base,
+        )
+    }
+
+    pub fn unlock_quote(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), ()> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked_quote,
+            Strategy::unlock_quote,
         )
     }
 
@@ -187,7 +217,7 @@ impl Vault {
             total_locked,
             service,
             Strategy::locked_base,
-            Strategy::unlock,
+            Strategy::unlock_base,
             Strategy::increase_balance_base,
         )
     }
@@ -205,7 +235,7 @@ impl Vault {
             total_locked,
             service,
             Strategy::locked_base,
-            Strategy::unlock,
+            Strategy::unlock_quote,
             Strategy::decrease_balance_quote,
         )
     }

@@ -24,7 +24,7 @@ impl Vault {
             lend.calculate_borrow_quantity(oracle, amount, user_allowed_borrow)?;
 
         let shares = lend.borrow(borrow_quantity)?;
-        self.lock(borrow_quantity, total_available, ServiceType::Lend)?;
+        self.lock_base(borrow_quantity, total_available, ServiceType::Lend)?;
 
         let position_temp = Position::Borrow {
             vault_index: self.id,
@@ -61,7 +61,7 @@ impl Vault {
         let (unlock_quantity, burned_shares) =
             lend.repay(repay_quantity, borrowed_quantity, borrowed_shares)?;
 
-        self.unlock(unlock_quantity, total_locked, ServiceType::Lend)?;
+        self.unlock_base(unlock_quantity, total_locked, ServiceType::Lend)?;
 
         let position_temp = Position::Borrow {
             vault_index: self.id,

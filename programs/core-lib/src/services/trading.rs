@@ -137,12 +137,13 @@ impl Trade {
     pub fn open_short(
         &mut self,
         quantity: Quantity,
-        quote_quantity: Quantity,
         collateral: Value,
         oracle: &Oracle,
+        quote_oracle: &Oracle,
         current_time: Time,
     ) -> Result<Receipt, ()> {
         let position_value = oracle.calculate_value(quantity);
+        let quote_quantity = quote_oracle.calculate_needed_quantity(position_value);
         let collateralization = Fraction::from_decimal_up(position_value.div_up(collateral));
 
         if collateralization > self.max_open_leverage {

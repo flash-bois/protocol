@@ -1,9 +1,10 @@
-use super::{lending::Lend, swapping::Swap};
+use super::{lending::Lend, swapping::Swap, trading::Trade};
 
 #[derive(Clone, Debug, Default)]
 pub struct Services {
     pub swap: Option<Swap>,
     pub lend: Option<Lend>,
+    pub trade: Option<Trade>,
 }
 
 #[derive(Clone, Copy)]
@@ -23,5 +24,9 @@ impl Services {
 
     pub fn lend_mut(&mut self) -> Result<&mut Lend, ()> {
         self.lend.as_mut().ok_or(())
+    }
+
+    pub fn trade_mut(&mut self) -> Result<&mut Trade, ()> {
+        self.trade.as_mut().ok_or(())
     }
 }
