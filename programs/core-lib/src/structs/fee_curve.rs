@@ -9,6 +9,10 @@ pub enum CurveSegment {
     Constant {
         c: Fraction,
     },
+    Linear {
+        a: Fraction,
+        b: Fraction,
+    },
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,7 +50,10 @@ impl FeeCurve {
     ) -> Fraction {
         match function {
             CurveSegment::None => Fraction::from_integer(0),
-            CurveSegment::Constant { c } => c.mul_up(upper - lower),
+            CurveSegment::Constant { c } => c,
+            CurveSegment::Linear { a, b } => {
+                (lower + upper).mul_up(a / Fraction::from_integer(2)) + b
+            }
         }
     }
 
@@ -61,30 +68,35 @@ impl FeeCurve {
 
         if smaller_index == greater_index {
             // most common case by far
-            return Ok(self
-                .single_segment_mean(self.values[smaller_index], smaller, greater)
-                .div_up(greater - smaller));
+            return Ok(self.single_segment_mean(self.values[smaller_index], smaller, greater));
         }
 
         let mut sum =
             ((smaller_index + 1)..greater_index).fold(Fraction::from_integer(0), |sum, index| {
-                sum + self.single_segment_mean(
-                    self.values[index],
-                    self.bounds[index - 1],
-                    self.bounds[index],
-                )
+                sum + self
+                    .single_segment_mean(
+                        self.values[index],
+                        self.bounds[index - 1],
+                        self.bounds[index],
+                    )
+                    .mul_up(self.bounds[index] - self.bounds[index - 1])
             });
 
-        sum += self.single_segment_mean(
-            self.values[smaller_index],
-            smaller,
-            self.bounds[smaller_index],
-        );
-        sum += self.single_segment_mean(
-            self.values[greater_index],
-            self.bounds[greater_index - 1],
-            greater,
-        );
+        sum += self
+            .single_segment_mean(
+                self.values[smaller_index],
+                smaller,
+                self.bounds[smaller_index],
+            )
+            .mul_up(self.bounds[smaller_index] - smaller);
+
+        sum += self
+            .single_segment_mean(
+                self.values[greater_index],
+                self.bounds[greater_index - 1],
+                greater,
+            )
+            .mul_up(greater - self.bounds[greater_index - 1]);
 
         Ok(sum.div_up(greater - smaller))
     }
@@ -94,8 +106,14 @@ impl FeeCurve {
         self.values[index]
     }
 
-    pub fn add_constant_fee(&mut self, fee: Fraction, bound: Fraction) {
-        self.add_segment(CurveSegment::Constant { c: fee }, bound)
+    pub fn add_constant_fee(&mut self, fee: Fraction, bound: Fraction) -> &mut Self {
+        self.add_segment(CurveSegment::Constant { c: fee }, bound);
+        self
+    }
+
+    pub fn add_linear_fee(&mut self, a: Fraction, b: Fraction, bound: Fraction) -> &mut Self {
+        self.add_segment(CurveSegment::Linear { a, b }, bound);
+        self
     }
 
     fn add_segment(&mut self, curve: CurveSegment, bound: Fraction) {

@@ -1,27 +1,30 @@
 pub mod deposit;
+pub mod general;
 pub mod lend;
+pub mod swap;
 
 use crate::{
-    decimal::{DecimalPlaces, Price, Quantity, Shares, Time, Utilization, Value},
-    services::{lending::Lend, ServiceType, ServiceUpdate, Services},
+    decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization, Value},
+    services::{lending::Lend, swapping::Swap, ServiceType, ServiceUpdate, Services},
     strategy::{Strategies, Strategy},
     structs::{FeeCurve, Oracle},
 };
 
-pub use deposit::Token;
+#[cfg(test)]
+use checked_decimal_macro::Factories;
+
+pub use self::deposit::Token;
+
 #[derive(Clone, Debug, Default)]
 pub struct Vault {
     pub id: u8,
 
-    pub oracle: Option<Oracle>,
-    pub quote_oracle: Option<Oracle>,
+    oracle: Option<Oracle>,
+    quote_oracle: Option<Oracle>,
 
     pub services: Services,
     pub strategies: Strategies,
 }
-
-#[cfg(test)]
-use checked_decimal_macro::Factories;
 
 impl Vault {
     pub fn add_strategy(
@@ -33,9 +36,9 @@ impl Vault {
         if has_lend && self.services.lend.is_none() {
             return Err(());
         }
-        // if has_swap && self.services.swap.is_none() {
-        //     return Err(());
-        // }
+        if has_swap && self.services.swap.is_none() {
+            return Err(());
+        }
 
         // if has_trade && self.services.trade.is_none() {
         //     return Err(());
@@ -52,41 +55,27 @@ impl Vault {
         confidence: Price,
         spread_limit: Price,
         time: Time,
+        for_token: Token,
     ) -> Result<(), ()> {
-        if self.oracle.is_some() {
+        if match for_token {
+            Token::Base => self.oracle.is_some(),
+            Token::Quote => self.quote_oracle.is_some(),
+        } {
             return Err(());
         }
 
-        self.oracle = Some(Oracle::new(
+        let oracle = Some(Oracle::new(
             decimal_places,
             price,
             confidence,
-            time,
             spread_limit,
+            time,
         )?);
 
-        Ok(())
-    }
-
-    pub fn enable_quote_oracle(
-        &mut self,
-        decimal_places: DecimalPlaces,
-        price: Price,
-        confidence: Price,
-        spread_limit: Price,
-        time: Time,
-    ) -> Result<(), ()> {
-        if self.quote_oracle.is_some() {
-            return Err(());
+        match for_token {
+            Token::Base => self.oracle = oracle,
+            Token::Quote => self.quote_oracle = oracle,
         }
-
-        self.quote_oracle = Some(Oracle::new(
-            decimal_places,
-            price,
-            confidence,
-            time,
-            spread_limit,
-        )?);
 
         Ok(())
     }
@@ -116,15 +105,20 @@ impl Vault {
         Ok(())
     }
 
-    pub fn enable_swapping(&mut self, swapping_fee: FeeCurve) -> Result<(), ()> {
+    pub fn enable_swapping(
+        &mut self,
+        selling_fee: FeeCurve,
+        buying_fee: FeeCurve,
+        kept_fee: Fraction,
+    ) -> Result<(), ()> {
         if self.oracle.is_none() {
             return Err(());
         }
-        // if self.services.swap.is_some() {
-        //     return Err(());
-        // }
+        if self.services.swap.is_some() {
+            return Err(());
+        }
 
-        // TODO: create swap
+        self.services.swap = Some(Swap::new(selling_fee, buying_fee, kept_fee));
 
         Ok(())
     }
@@ -133,18 +127,30 @@ impl Vault {
         self.services.lend.as_mut().ok_or(())
     }
 
+    pub fn swap_service(&mut self) -> Result<&mut Swap, ()> {
+        self.services.swap.as_mut().ok_or(())
+    }
+
+    pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
+        self.quote_oracle.as_ref().ok_or(())
+    }
+
+    pub fn oracle(&self) -> Result<&Oracle, ()> {
+        self.oracle.as_ref().ok_or(())
+    }
+
     fn settle_fees(&mut self, service: ServiceType) -> Result<(), ()> {
         let (service_updatable, service_accrued_fees): (&mut dyn ServiceUpdate, Quantity) =
             match service {
                 ServiceType::Lend => {
                     let service = self.lend_service()?;
-                    let fees = service.accrue_fee(None);
-                    (service, fees)
+                    let fees = service.accrue_fee();
+                    (service, fees.base)
                 }
                 _ => unimplemented!(),
             };
 
-        let locked = service_updatable.locked();
+        let locked = service_updatable.locked().base;
         let service_locked_global = locked - service_accrued_fees;
 
         if service_accrued_fees.is_zero() {
@@ -177,62 +183,6 @@ impl Vault {
         Ok(())
     }
 
-    fn lock(
-        &mut self,
-        quantity: Quantity,
-        total_available: Quantity,
-        service: ServiceType,
-    ) -> Result<(), ()> {
-        let mut locked_so_far = Quantity(0);
-        let mut last_index = 0;
-
-        for i in self.strategies.indexes() {
-            let strategy = self.strategies.get_mut_checked(i).unwrap();
-            if strategy.uses(service) {
-                last_index = i;
-                let to_lock = quantity.big_mul_div(strategy.available(), total_available);
-                locked_so_far += to_lock;
-                strategy.lock(to_lock, service, &mut self.services);
-            }
-        }
-
-        if locked_so_far < quantity {
-            let strategy = self.strategies.get_mut_checked(last_index).unwrap();
-            strategy.lock(quantity - locked_so_far, service, &mut self.services);
-        }
-        Ok(())
-    }
-
-    fn unlock(
-        &mut self,
-        quantity: Quantity,
-        total_locked: Quantity,
-        service: ServiceType,
-    ) -> Result<(), ()> {
-        if quantity == Quantity(0) {
-            return Ok(());
-        }
-
-        let mut unlocked_so_far = Quantity(0);
-        let mut last_index = 0;
-
-        for i in self.strategies.indexes() {
-            let strategy = self.strategies.get_mut_checked(i).unwrap();
-            if strategy.uses(service) {
-                last_index = i;
-                let to_unlock = quantity.big_mul_div(strategy.locked(), total_locked);
-                unlocked_so_far += to_unlock;
-                strategy.unlock(to_unlock, service, &mut self.services);
-            }
-        }
-
-        if unlocked_so_far < quantity {
-            let strategy = self.strategies.get_mut_checked(last_index).unwrap();
-            strategy.unlock(quantity - unlocked_so_far, service, &mut self.services);
-        }
-        Ok(())
-    }
-
     pub fn refresh(&mut self, current_time: Time) -> Result<(), ()> {
         // TODO check oracle if it is refreshed
 
@@ -256,9 +206,18 @@ impl Vault {
         vault.enable_oracle(
             DecimalPlaces::Six,
             Price::from_integer(2),
-            Price::from_scale(1, 2),
             Price::from_scale(5, 3),
+            Price::from_scale(1, 2),
             0,
+            Token::Base,
+        )?;
+        vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 3),
+            Price::from_scale(2, 3),
+            0,
+            Token::Quote,
         )?;
         vault.enable_lending(
             FeeCurve::default(),
@@ -266,7 +225,11 @@ impl Vault {
             Quantity(u64::MAX),
             0,
         )?;
-        vault.enable_swapping(FeeCurve::default())?;
+        vault.enable_swapping(
+            FeeCurve::default(),
+            FeeCurve::default(),
+            Fraction::from_scale(1, 1),
+        )?;
         vault.add_strategy(true, true, false)?;
         Ok(vault)
     }

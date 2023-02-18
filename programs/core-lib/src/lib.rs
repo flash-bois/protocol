@@ -1,6 +1,6 @@
 mod decimal;
-mod services;
+pub mod services;
 mod strategy;
 mod structs;
 mod user;
-mod vault;
+pub mod vault;

@@ -1,7 +1,7 @@
 use checked_decimal_macro::{BetweenDecimals, BigOps, Factories};
 
 use crate::{
-    decimal::{Fraction, Precise, Quantity, Shares, Time, Utilization, Value},
+    decimal::{Balances, Fraction, Precise, Quantity, Shares, Time, Utilization, Value},
     structs::FeeCurve,
     structs::Oracle,
 };
@@ -37,29 +37,58 @@ pub struct Lend {
 }
 
 impl ServiceUpdate for Lend {
-    fn add_available(&mut self, quantity: Quantity) {
+    fn add_liquidity_base(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn add_liquidity_quote(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn remove_liquidity_base(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn remove_liquidity_quote(&mut self, _: Quantity) {
+        unreachable!("Lending does not need data about liquidity")
+    }
+    fn add_available_quote(&mut self, _: Quantity) {
+        unreachable!("Lending of quote tokens is separate")
+    }
+    fn remove_available_quote(&mut self, _: Quantity) {
+        unreachable!()
+    }
+
+    fn add_available_base(&mut self, quantity: Quantity) {
         self.available += quantity;
         self.utilization = self.current_utilization();
     }
 
-    fn remove_available(&mut self, quantity: Quantity) {
+    fn remove_available_base(&mut self, quantity: Quantity) {
         self.available -= quantity;
         self.utilization = self.current_utilization();
     }
 
-    fn available(&self) -> Quantity {
-        self.available
+    fn available(&self) -> Balances {
+        Balances {
+            base: self.available,
+            quote: Quantity(0),
+        }
     }
 
-    fn locked(&self) -> Quantity {
-        self.borrowed
+    fn locked(&self) -> Balances {
+        Balances {
+            base: self.borrowed,
+            quote: Quantity(0),
+        }
     }
 
-    fn accrue_fee(&mut self, oracle: Option<&Oracle>) -> Quantity {
+    fn accrue_fee(&mut self) -> Balances {
         let accrued_fee = self.unclaimed_fee;
         self.unclaimed_fee = Quantity(0);
         self.borrowed += accrued_fee;
-        accrued_fee
+
+        Balances {
+            base: accrued_fee,
+            quote: Quantity(0),
+        }
     }
 }
 
@@ -297,7 +326,7 @@ mod shares_tests {
         fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
         let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
 
-        lending.add_available(Quantity(2_000_000));
+        lending.add_available_base(Quantity(2_000_000));
         lending.accrue_interest_rate(current_time);
 
         assert_eq!(
@@ -318,7 +347,7 @@ mod shares_tests {
         );
 
         assert!(lending.borrow(Quantity(1_600_000)).is_ok(), "can borrow");
-        lending.remove_available(Quantity(1_600_000));
+        lending.remove_available_base(Quantity(1_600_000));
 
         assert_eq!(
             lending,
@@ -345,7 +374,7 @@ mod shares_tests {
             )
             .unwrap();
 
-        lending.add_available(partially_repaid);
+        lending.add_available_base(partially_repaid);
 
         let (full_repaid, _shares_fully_repaid) = lending
             .repay(
@@ -355,7 +384,7 @@ mod shares_tests {
             )
             .unwrap();
 
-        lending.add_available(full_repaid);
+        lending.add_available_base(full_repaid);
 
         assert_eq!(
             lending,
@@ -384,13 +413,13 @@ mod shares_tests {
 
         let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
 
-        lending.add_available(Quantity(736796576003955192));
+        lending.add_available_base(Quantity(736796576003955192));
 
         current_time += 100;
         lending.accrue_interest_rate(current_time);
-        lending.accrue_fee(None);
+        lending.accrue_fee();
 
-        lending.add_available(Quantity(536908355173637734));
+        lending.add_available_base(Quantity(536908355173637734));
 
         // available, shares = 736796576003955192 + 536908355173637734 = 1273704931177592926
         assert_eq!(
@@ -407,10 +436,10 @@ mod shares_tests {
 
         current_time += 100;
         lending.accrue_interest_rate(current_time);
-        lending.accrue_fee(None);
+        lending.accrue_fee();
 
         lending.borrow(Quantity(184186871548154787)).unwrap();
-        lending.remove_available(Quantity(184186871548154787));
+        lending.remove_available_base(Quantity(184186871548154787));
 
         assert_eq!(
             lending,
@@ -431,9 +460,15 @@ mod shares_tests {
 
         current_time += 50;
         lending.accrue_interest_rate(current_time);
-        let fee_q = lending.accrue_fee(None);
-        assert_eq!(fee_q, Quantity(923194261225651));
-        lending.add_available(Quantity(71548154787));
+        let fee_q = lending.accrue_fee();
+        assert_eq!(
+            fee_q,
+            Balances {
+                base: Quantity(923194261225651),
+                quote: Quantity(0)
+            }
+        );
+        lending.add_available_base(Quantity(71548154787));
 
         // fee after 50 cycles 923194261225650.2331872421761314 (EXACT)
         // fee = 184186871548154787 * (Pow[1.0001,50] - 1) = 923194261225650.2331872421761314 (ROUNDED UP)
@@ -460,14 +495,14 @@ mod shares_tests {
 
         current_time += 50;
         lending.accrue_interest_rate(current_time);
-        let fee_q = lending.accrue_fee(None);
+        let fee_q = lending.accrue_fee();
 
         lending.borrow(Quantity(11051825915530)).unwrap();
-        lending.remove_available(Quantity(11051825915530));
+        lending.remove_available_base(Quantity(11051825915530));
 
         // fee after 100 cycles : 923194261225651 + 927821559777366.7562086 = 1851015821003017.756 (ROUND UP)
 
-        let fee_q = lending.accrue_fee(None);
+        let fee_q = lending.accrue_fee();
 
         assert_eq!(
             lending,
@@ -501,7 +536,7 @@ mod shares_tests {
         // owed 186048939195073335
 
         // 35495932680513284 - 1851015821003018 = 33644916859510266
-        lending.add_available(repaid);
+        lending.add_available_base(repaid);
 
         assert_eq!(
             lending,
@@ -533,7 +568,7 @@ mod shares_tests {
             )
             .unwrap();
 
-        lending.add_available(repaid);
+        lending.add_available_base(repaid);
 
         assert_eq!(
             lending,

@@ -139,16 +139,18 @@ mod position_management {
                 Price::from_scale(1, 5),
                 Price::from_scale(5, 3),
                 0,
+                Token::Base,
             )
             .unwrap();
 
         first_vault
-            .enable_quote_oracle(
+            .enable_oracle(
                 DecimalPlaces::Six,
                 Price::from_integer(1),
                 Price::from_scale(1, 5),
                 Price::from_scale(5, 3),
                 0,
+                Token::Quote,
             )
             .unwrap();
 
@@ -170,16 +172,18 @@ mod position_management {
                 Price::from_scale(1, 5),
                 Price::from_scale(5, 3),
                 0,
+                Token::Base,
             )
             .unwrap();
 
         second_vault
-            .enable_quote_oracle(
+            .enable_oracle(
                 DecimalPlaces::Six,
                 Price::from_integer(1),
                 Price::from_scale(1, 5),
                 Price::from_scale(5, 3),
                 0,
+                Token::Quote,
             )
             .unwrap();
 

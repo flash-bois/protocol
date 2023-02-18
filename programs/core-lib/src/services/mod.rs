@@ -1,4 +1,7 @@
 pub mod lending;
+mod service;
 pub mod services;
+pub mod swapping;
 
-pub use services::{ServiceType, ServiceUpdate, Services};
+pub use service::*;
+pub use services::*;

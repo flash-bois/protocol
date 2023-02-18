@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign, Sub, SubAssign};
+
 pub use checked_decimal_macro::*;
 
 /// Keeps track of time in unix epoch time
@@ -8,6 +10,51 @@ pub type Time = u32;
 pub enum DecimalPlaces {
     Six = 6,
     Nine = 9,
+}
+
+/// Balances of both base and quote tokens
+#[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
+pub struct Balances {
+    /// Token characteristic for vault
+    pub base: Quantity,
+    /// Stable token
+    pub quote: Quantity,
+}
+
+impl Sub for Balances {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        Self {
+            base: self.base - other.base,
+            quote: self.quote - other.quote,
+        }
+    }
+}
+
+impl Add for Balances {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            base: self.base + other.base,
+            quote: self.quote + other.quote,
+        }
+    }
+}
+
+impl AddAssign for Balances {
+    fn add_assign(&mut self, other: Self) {
+        self.base += other.base;
+        self.quote += other.quote;
+    }
+}
+
+impl SubAssign for Balances {
+    fn sub_assign(&mut self, other: Self) {
+        self.base -= other.base;
+        self.quote -= other.quote;
+    }
 }
 
 /// Used to represent a quantity of token (of its smallest unit)

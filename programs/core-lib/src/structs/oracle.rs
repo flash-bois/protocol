@@ -32,8 +32,8 @@ impl Oracle {
         decimals: DecimalPlaces,
         price: Price,
         confidence: Price,
-        time: Time,
         spread_limit: Price,
+        time: Time,
     ) -> Result<Self, ()> {
         let mut oracle = Self {
             price: Price::from_integer(0),
@@ -126,6 +126,31 @@ impl Oracle {
 }
 
 #[cfg(test)]
+impl Oracle {
+    pub fn new_for_test() -> Self {
+        Self::new(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::from_scale(1, 3),
+            Price::from_scale(5, 3),
+            0,
+        )
+        .unwrap()
+    }
+
+    pub fn new_stable_for_test() -> Self {
+        Self::new(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 3),
+            Price::from_scale(5, 3),
+            0,
+        )
+        .unwrap()
+    }
+}
+
+#[cfg(test)]
 mod test_oracle {
     use checked_decimal_macro::{Decimal, Factories};
 
@@ -139,8 +164,8 @@ mod test_oracle {
             DecimalPlaces::Six,
             Price::from_integer(2),
             Price::from_scale(1, 3),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
 
@@ -195,8 +220,8 @@ mod test_oracle {
             DecimalPlaces::Nine,
             Price::from_scale(2, 6),
             Price::from_scale(1, 9),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
         assert_eq!(
@@ -211,8 +236,8 @@ mod test_oracle {
             DecimalPlaces::Six,
             Price::from_scale(5, 1),
             Price::from_scale(1, 3),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
 
@@ -267,8 +292,8 @@ mod test_oracle {
             DecimalPlaces::Nine,
             Price::from_scale(2, 6),
             Price::from_scale(1, 9),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
         assert_eq!(
@@ -283,8 +308,8 @@ mod test_oracle {
             DecimalPlaces::Six,
             Price::from_integer(2),
             Price::from_scale(1, 3),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
 
@@ -312,8 +337,8 @@ mod test_oracle {
             DecimalPlaces::Six,
             Price::from_integer(2),
             Price::from_scale(1, 3),
-            0,
             Price::from_scale(5, 3),
+            0,
         )
         .unwrap();
 
