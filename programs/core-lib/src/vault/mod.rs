@@ -13,7 +13,7 @@ use crate::{
 #[cfg(test)]
 use checked_decimal_macro::Factories;
 
-use self::deposit::Token;
+pub use self::deposit::Token;
 
 #[derive(Clone, Debug, Default)]
 pub struct Vault {

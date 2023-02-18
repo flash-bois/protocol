@@ -140,12 +140,12 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle.as_ref().unwrap();
+                let oracle = vault.oracle().unwrap();
                 let service = vault.services.lend.as_ref().unwrap();
 
                 let amount = service
                     .borrow_shares()
-                    .calculate_owed(shares, service.locked());
+                    .calculate_owed(shares, service.locked().base);
                 oracle.calculate_value(amount)
             }
             _ => unreachable!("should be called on liability, oopsie"),
@@ -161,8 +161,8 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle.as_ref().unwrap();
-                let quote_oracle = vault.quote_oracle.as_ref().unwrap();
+                let oracle = vault.oracle().unwrap();
+                let quote_oracle = vault.quote_oracle().unwrap();
 
                 let strategy = vault
                     .strategies

@@ -16,7 +16,7 @@ impl Vault {
 
         let oracle = self.oracle.as_ref().unwrap();
         let lend = self.services.lend.as_mut().ok_or(()).unwrap();
-        let total_available = lend.available();
+        let total_available = lend.available().base;
 
         let user_allowed_borrow = user_statement.permitted_debt();
 
@@ -56,7 +56,7 @@ impl Vault {
         self.refresh(current_time)?;
 
         let lend = self.lend_service()?;
-        let total_locked = lend.locked();
+        let total_locked = lend.locked().base;
 
         let (unlock_quantity, burned_shares) =
             lend.repay(repay_quantity, borrowed_quantity, borrowed_shares)?;

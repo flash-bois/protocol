@@ -174,13 +174,13 @@ impl Strategy {
         balance: Quantity,
         services: &mut Services,
     ) -> Result<Shares, ()> {
-        if self.is_lending_enabled() {
-            services.lend_mut()?.add_available_base(quantity);
+        if let Ok(lend) = services.lend_mut() {
+            lend.add_available_base(quantity);
         }
 
-        if self.is_swapping_enabled() {
-            services.swap_mut()?.add_liquidity_base(quantity);
-            services.swap_mut()?.add_liquidity_quote(quote_quantity);
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_liquidity_base(quantity);
+            swap.add_liquidity_quote(quote_quantity);
         }
 
         let shares = self.total_shares.get_change_down(input_quantity, balance);
@@ -260,9 +260,6 @@ impl Strategy {
     pub fn unlock_quote(&mut self, quantity: Quantity, sub: ServiceType, services: &mut Services) {
         *self.locked_in_quote(sub) -= quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.add_available_quote(quantity);
-        }
         if let Ok(swap) = services.swap_mut() {
             swap.add_available_quote(quantity);
         }
