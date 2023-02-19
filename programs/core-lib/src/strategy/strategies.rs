@@ -6,7 +6,7 @@ use std::{
 };
 use vec_macro::SafeArray;
 
-#[derive(Clone, Debug, SafeArray)]
+#[derive(Clone, Copy, Debug, SafeArray, PartialEq)]
 pub struct Strategies {
     head: u8,
     elements: [Strategy; 6],

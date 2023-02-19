@@ -8,7 +8,8 @@ use crate::{
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[repr(packed)]
 pub struct Lend {
     /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
     /// it should not be modified inside service

@@ -3,8 +3,7 @@ use quote::quote;
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    parse_macro_input, Attribute, Expr, Generics, Ident, Lit, Result, Token, Type, TypeArray,
-    Visibility,
+    parse_macro_input, Attribute, Expr, Generics, Ident, Lit, Token, Type, TypeArray, Visibility,
 };
 
 #[allow(dead_code)]
@@ -26,7 +25,7 @@ struct FixedArrayStruct {
 }
 
 impl Parse for FixedArrayStruct {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let context;
 
@@ -185,7 +184,7 @@ pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn add(&mut self, el: #el_type) -> Result<(), ()> {
+            pub fn add(&mut self, el: #el_type) -> std::result::Result<(), ()> {
                 let head = self.head_usize();
 
                 if !self.index_in_capacity(head) {

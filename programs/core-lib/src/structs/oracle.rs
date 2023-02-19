@@ -7,7 +7,8 @@ pub enum OraclePriceType {
     Buy,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(packed)]
 /// Oracle is a struct that holds the price of an asset.
 pub struct Oracle {
     /// The price of the asset.

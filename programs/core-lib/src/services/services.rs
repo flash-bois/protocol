@@ -1,6 +1,7 @@
 use super::{lending::Lend, swapping::Swap};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(packed)]
 pub struct Services {
     pub swap: Option<Swap>,
     pub lend: Option<Lend>,

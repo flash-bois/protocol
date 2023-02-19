@@ -21,3 +21,4 @@ solana-sdk = "1.14.11"
 checked_decimal_macro = "0.1.4"
 
 core-lib = { path = "../core-lib"}
+vec_macro = { path = "../vec_macro"}

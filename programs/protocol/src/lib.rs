@@ -1,4 +1,6 @@
 mod errors;
+//mod instructions;
+mod structs;
 mod utils;
 
 use anchor_lang::prelude::*;

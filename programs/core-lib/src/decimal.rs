@@ -14,6 +14,7 @@ pub enum DecimalPlaces {
 
 /// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
+#[repr(packed)]
 pub struct Balances {
     /// Token characteristic for vault
     pub base: Quantity,
@@ -59,6 +60,7 @@ impl SubAssign for Balances {
 
 /// Used to represent a quantity of token (of its smallest unit)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(0, U256)]
 pub struct Quantity(pub u64);
 
@@ -78,6 +80,7 @@ pub const _RATE_INTERVAL: Time = 21600000u32;
 
 /// Keeps fractions that need less precision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(6)]
 pub struct Fraction(u64);
 
@@ -93,6 +96,7 @@ impl Fraction {
 
 /// Keeps fractions that need less precision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(6)]
 pub struct Utilization(u128);
 
@@ -113,6 +117,7 @@ pub struct BigFraction(pub u128);
 
 /// Keeps shares of pool or debt
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(0)]
 pub struct Shares {
     pub number_of_shares: u128,
@@ -120,21 +125,25 @@ pub struct Shares {
 
 /// Keeps price data
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(9)]
 pub struct Price(u64);
 
 /// Keeps the value of a token, pool or position
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(9)]
 pub struct Value(u128);
 
 /// Used to keep cumulative funding rate (can be positive or negative)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(24)]
 pub struct FundingRate(pub i128);
 
 /// Used for calculations that need more precision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+#[repr(packed)]
 #[decimal(24)]
 pub struct Precise(u128);
 

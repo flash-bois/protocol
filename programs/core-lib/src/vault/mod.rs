@@ -15,7 +15,8 @@ use checked_decimal_macro::Factories;
 
 pub use self::deposit::Token;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(packed)]
 pub struct Vault {
     pub id: u8,
 

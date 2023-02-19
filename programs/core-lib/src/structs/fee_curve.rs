@@ -16,6 +16,7 @@ pub enum CurveSegment {
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(packed)]
 pub struct FeeCurve {
     used: usize,
     bounds: [Fraction; MAX_FEES],

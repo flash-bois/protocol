@@ -5,7 +5,8 @@ use crate::structs::{FeeCurve, Oracle};
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(packed)]
 pub struct Swap {
     /// Liquidity available to be bought by a swapper.
     available: Balances,
