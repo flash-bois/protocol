@@ -61,9 +61,9 @@ pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
     let len: usize = match parsed_struct.array.len {
         Expr::Lit(ref l) => match l.lit {
             Lit::Int(ref int) => int.base10_parse().unwrap(),
-            _ => 0,
+            _ => panic!("cannot parse array length"),
         },
-        _ => 0,
+        _ => panic!("cannot parse array length"),
     };
 
     let mut stream = TokenStream::new();
