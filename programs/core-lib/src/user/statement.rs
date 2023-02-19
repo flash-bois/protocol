@@ -9,9 +9,9 @@ use std::{
     ops::Range,
     slice::{Iter, IterMut},
 };
-use vec_macro::fixed_vector;
+use vec_macro::SafeArray;
 
-#[fixed_vector(Position, 64)]
+#[derive(SafeArray)]
 struct Positions {
     head: u8,
     elements: [Position; 64],

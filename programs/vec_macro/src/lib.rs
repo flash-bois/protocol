@@ -1,56 +1,83 @@
-extern crate proc_macro;
-
-//use checked_decimal_macro::num_traits::ToPrimitive;
 use proc_macro::TokenStream;
 use quote::quote;
-
 use syn::{
+    braced,
     parse::{Parse, ParseStream},
-    parse_macro_input,
+    parse_macro_input, Attribute, Expr, Generics, Ident, Lit, Result, Token, Type, TypeArray,
+    Visibility,
 };
 
-struct MacroInput {
-    inner_type: syn::Type,
-    len: u8,
+#[allow(dead_code)]
+struct FixedArrayStruct {
+    pub attrs: Vec<Attribute>,
+    pub vis: Visibility,
+    pub struct_token: Token![struct],
+    pub ident: Ident,
+    pub generics: Generics,
+    pub brace_token: syn::token::Brace,
+    pub head_ident: Ident,
+    pub colon_token: Token![:],
+    pub head_ty: Type,
+    pub punctuation: Token![,],
+    pub arr_ident: Ident,
+    pub colon_token2: Token![:],
+    pub array: TypeArray,
+    pub semi_token2: Option<Token![,]>,
 }
 
-impl Parse for MacroInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let inner_type = input.parse::<syn::Type>()?;
-        let _comma = input.parse::<syn::token::Comma>()?;
-        let len = input.parse::<syn::LitInt>()?;
+impl Parse for FixedArrayStruct {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
+        let context;
 
-        Ok(MacroInput {
-            inner_type,
-            len: len.base10_parse().unwrap(),
+        Ok(FixedArrayStruct {
+            attrs,
+            vis: input.parse()?,
+            struct_token: input.parse()?,
+            ident: input.parse()?,
+            generics: input.parse()?,
+            brace_token: braced!(context in input),
+            head_ident: context.parse()?,
+            colon_token: context.parse()?,
+            head_ty: context.parse()?,
+            punctuation: context.parse()?,
+            arr_ident: context.parse()?,
+            colon_token2: context.parse()?,
+            array: context.parse()?,
+            semi_token2: context.parse()?,
         })
     }
 }
 
-#[proc_macro_attribute]
-pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
-    let k = item.clone();
-    let item_struct = parse_macro_input!(k as syn::ItemStruct);
-    let struct_name = item_struct.ident;
+#[proc_macro_derive(SafeArray)]
+pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
+    let parsed_struct = parse_macro_input!(tokens as FixedArrayStruct);
+    let struct_name = parsed_struct.ident;
 
-    let args = syn::parse_macro_input!(args as MacroInput);
-    let array_type = args.inner_type.clone();
-    let array_length = args.len as usize;
+    let head_name = parsed_struct.head_ident;
+    let arr_name = parsed_struct.arr_ident;
+    let el_type = *parsed_struct.array.elem;
 
-    let mut stream = proc_macro::TokenStream::new();
+    let len: usize = match parsed_struct.array.len {
+        Expr::Lit(ref l) => match l.lit {
+            Lit::Int(ref int) => int.base10_parse().unwrap(),
+            _ => 0,
+        },
+        _ => 0,
+    };
+
+    let mut stream = TokenStream::new();
 
     stream.extend(TokenStream::from(quote!(
-        impl Default for #struct_name {
-            fn default() -> #struct_name{
+        impl #struct_name {
+            pub fn new() -> #struct_name {
                 #struct_name {
-                    head: 0,
-                    elements: [(); #array_length].map(|_| #array_type::default()),
+                    #head_name: 0,
+                    #arr_name: [(); #len].map(|_| #el_type::default()),
                 }
             }
-        }
 
-        impl #struct_name {
-            pub fn iter<'a>(&'a self) -> Option<Iter<'a, #array_type>> {
+            pub fn iter<'a>(&'a self) -> Option<Iter<'a, #el_type>> {
                 if self.head == 0 {
                     return None;
                 }
@@ -60,7 +87,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 Some(self.elements.get(range)?.iter())
             }
 
-            pub fn iter_mut<'a>(&'a mut self) -> Option<IterMut<'a, #array_type>> {
+            pub fn iter_mut<'a>(&'a mut self) -> Option<IterMut<'a, #el_type>> {
                 if self.head == 0 {
                     return None;
                 }
@@ -70,7 +97,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 Some(self.elements.get_mut(range)?.iter_mut())
             }
 
-            pub fn find_mut(&mut self, search: &#array_type) -> Option<&mut #array_type> {
+            pub fn find_mut(&mut self, search: &#el_type) -> Option<&mut #el_type> {
                 if let Some(mut iter) = self.iter_mut() {
                     return iter.find(|el| *search == **el);
                 }
@@ -78,7 +105,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 None
             }
 
-            pub fn enumerate_find_mut(&mut self, search: &#array_type) -> Option<(usize, &mut #array_type)> {
+            pub fn enumerate_find_mut(&mut self, search: &#el_type) -> Option<(usize, &mut #el_type)> {
                 if let Some(iter) = self.iter_mut() {
                     return iter.enumerate().find(|(_id, pos)| *search == **pos);
                 }
@@ -115,12 +142,12 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
 
             /// checks if index is in allocated range
             fn index_in_capacity(&self, id: usize) -> bool {
-                id < #array_length
+                id < #len
             }
 
             /// returns immutable element under the index, does not check if it is before head,
             /// only check if it in array allocated area
-            pub fn get(&self, id: usize) -> Option<&#array_type> {
+            pub fn get(&self, id: usize) -> Option<&#el_type> {
                 if self.index_in_capacity(id) {
                     self.elements.get(id)
                 } else {
@@ -130,7 +157,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
 
             /// returns mutable element under the index, does not check if it is before head,
             /// only check if it in array allocated area
-            pub fn get_mut(&mut self, id: usize) -> Option<&mut #array_type> {
+            pub fn get_mut(&mut self, id: usize) -> Option<&mut #el_type> {
                 if self.index_in_capacity(id) {
                     self.elements.get_mut(id)
                 } else {
@@ -140,7 +167,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
 
             /// returns mutable element under the index,
             /// check if it is in initialized range
-            pub fn get_mut_checked(&mut self, id: usize) -> Option<&mut #array_type> {
+            pub fn get_mut_checked(&mut self, id: usize) -> Option<&mut #el_type> {
                 if self.index_before_head(id) {
                     self.elements.get_mut(id)
                 } else {
@@ -150,7 +177,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
 
             /// returns immutable mutable element under the index,
             /// check if it is in initialized range
-            pub fn get_checked(&self, id: usize) -> Option<&#array_type> {
+            pub fn get_checked(&self, id: usize) -> Option<&#el_type> {
                 if self.index_before_head(id) {
                     self.elements.get(id)
                 } else {
@@ -158,7 +185,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn add(&mut self, el: #array_type) -> Result<(), ()> {
+            pub fn add(&mut self, el: #el_type) -> Result<(), ()> {
                 let head = self.head_usize();
 
                 if !self.index_in_capacity(head) {
@@ -171,7 +198,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(())
             }
 
-            pub fn remove(&mut self) -> Option<&#array_type> {
+            pub fn remove(&mut self) -> Option<&#el_type> {
                 if self.head == 0 {
                     return None;
                 }
@@ -180,7 +207,7 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 self.get(self.head_usize())
             }
 
-            pub fn last_mut(&mut self) -> Option<&mut #array_type> {
+            pub fn last_mut(&mut self) -> Option<&mut #el_type> {
                 if self.head > 0 {
                     self.get_mut(self.head_usize() - 1)
                 } else {
@@ -188,17 +215,21 @@ pub fn fixed_vector(args: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn last(&self) -> Option<&#array_type> {
+            pub fn last(&self) -> Option<&#el_type> {
                 if self.head > 0 {
                     self.get(self.head_usize() - 1)
                 } else {
                     None
                 }
         }
-    }
-    )));
+        }
 
-    stream.extend(item.clone());
+        impl Default for #struct_name {
+            fn default() -> #struct_name{
+                #struct_name::new()
+            }
+        }
+    )));
 
     stream
 }

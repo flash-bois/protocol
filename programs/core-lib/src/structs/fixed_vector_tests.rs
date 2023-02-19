@@ -1,11 +1,41 @@
 #[cfg(test)]
+mod tests_2 {
+    use checked_decimal_macro::num_traits::ToPrimitive;
+    use std::{
+        ops::Range,
+        slice::{Iter, IterMut},
+    };
+    use vec_macro::SafeArray;
+
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+    struct TestStruct {
+        size: u8,
+        quantity: u32,
+    }
+
+    #[derive(SafeArray)]
+    struct TestVec {
+        head: u8,
+        elements: [TestStruct; 128],
+    }
+
+    #[test]
+    fn test_new() {
+        let new_vec = TestVec::new();
+
+        assert_eq!(new_vec.head, 0u8);
+        assert_eq!(new_vec.last(), None);
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::{
         ops::Range,
         slice::{Iter, IterMut},
     };
-    use vec_macro::fixed_vector;
+    use vec_macro::SafeArray;
 
     #[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
     struct TestStruct {
@@ -13,7 +43,7 @@ mod tests {
         quantity: u32,
     }
 
-    #[fixed_vector(TestStruct, 128)]
+    #[derive(SafeArray)]
     struct TestVec {
         head: u8,
         elements: [TestStruct; 128],
