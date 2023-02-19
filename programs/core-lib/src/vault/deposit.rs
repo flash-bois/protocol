@@ -1,6 +1,5 @@
 use super::*;
 use crate::user::{Position, UserStatement};
-use checked_decimal_macro::Factories;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Token {

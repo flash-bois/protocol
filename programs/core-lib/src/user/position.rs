@@ -4,14 +4,14 @@ use super::{
 };
 use crate::services::ServiceUpdate;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum Side {
     Long,
     Short,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum Position {
     #[default]
     Empty,
@@ -194,7 +194,7 @@ impl Position {
         }
     }
 
-    pub fn position_profit(&self, vaults: &[Vault]) -> TradeResult {
+    pub fn position_profit(&self, _vaults: &[Vault]) -> TradeResult {
         TradeResult::None
     }
 }

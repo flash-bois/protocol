@@ -74,7 +74,7 @@ impl Quantity {
 }
 
 /// Number of seconds in 6 hours
-pub const RATE_INTERVAL: Time = 21600000u32;
+pub const _RATE_INTERVAL: Time = 21600000u32;
 
 /// Keeps fractions that need less precision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]

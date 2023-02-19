@@ -1,8 +1,8 @@
-use crate::decimal::{Balances, Fraction, Price, Quantity, Shares, Value};
+use crate::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct Strategy {
     /// Quantity of tokens used in lending (borrowed)
     lent: Option<Quantity>,
@@ -95,11 +95,11 @@ impl Strategy {
         self.traded.as_ref().ok_or(())
     }
 
-    fn sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+    fn _sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
         self.sold.as_mut().ok_or(())
     }
 
-    fn traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+    fn _traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
         self.traded.as_mut().ok_or(())
     }
 

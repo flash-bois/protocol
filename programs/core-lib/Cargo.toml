@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 checked_decimal_macro = "0.1.4"
+vec_macro = { path = "../vec_macro"}
+

@@ -1,5 +1,13 @@
-use crate::structs::FixedSizeVector;
-
 use super::Strategy;
+use checked_decimal_macro::num_traits::ToPrimitive;
+use std::{
+    ops::Range,
+    slice::{Iter, IterMut},
+};
+use vec_macro::SafeArray;
 
-pub type Strategies = FixedSizeVector<Strategy, 6>;
+#[derive(Clone, Debug, SafeArray)]
+pub struct Strategies {
+    head: u8,
+    elements: [Strategy; 6],
+}

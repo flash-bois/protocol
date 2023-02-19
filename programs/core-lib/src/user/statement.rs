@@ -2,8 +2,20 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::structs::FixedSizeVector;
+
+use checked_decimal_macro::num_traits::ToPrimitive;
 use checked_decimal_macro::Decimal;
+use std::{
+    ops::Range,
+    slice::{Iter, IterMut},
+};
+use vec_macro::SafeArray;
+
+#[derive(SafeArray)]
+struct Positions {
+    head: u8,
+    elements: [Position; 64],
+}
 
 #[derive(Default)]
 struct UserTemporaryValues {
@@ -14,7 +26,7 @@ struct UserTemporaryValues {
 
 #[derive(Default)]
 pub struct UserStatement {
-    positions: FixedSizeVector<Position, 64>,
+    positions: Positions,
     values: UserTemporaryValues,
 }
 
@@ -63,7 +75,7 @@ impl UserStatement {
         }
     }
 
-    fn trades_values(&self, vaults: &[Vault]) -> TradeResult {
+    fn _trades_values(&self, vaults: &[Vault]) -> TradeResult {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_trade())
                 .fold(TradeResult::Profitable(Value::new(0)), |sum, curr| {
