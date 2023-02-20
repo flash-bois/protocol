@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 checked_decimal_macro = "0.1.4"
 vec_macro = { path = "../vec_macro"}
-
+borsh = "0.10.2"
+anchor-lang = "0.26.0"

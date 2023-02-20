@@ -10,8 +10,8 @@
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "test:sdk": "ts-mocha -t 100000 tests/sdk/*",
-    "test:anchor": "ts-mocha -t 100000 tests/protocol.ts",
-
+    "test:anchor": "anchor test tests/anchor/*.ts",
+    "test:anchor:create_state": "anchor test tests/anchor/create_state.ts",
     "wasm": "cd ./programs/wasm && wasm-pack build --target nodejs"
   },
   "repository": {

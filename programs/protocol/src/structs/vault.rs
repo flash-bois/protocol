@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use core_lib::vault::Vault;
+use core_lib::vault::*;
 
 #[repr(packed)]
 #[zero_copy]
