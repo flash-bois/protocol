@@ -22,8 +22,8 @@ pub mod protocol {
 
     pub fn create_state(ctx: Context<CreateState>, nonce: u8) -> anchor_lang::Result<()> {
         msg!("Initializing here");
-        ctx.accounts.handler(nonce)
-        // *ctx.bumps.get("state").unwrap()
+        ctx.accounts
+            .handler(nonce, *ctx.bumps.get("state").unwrap())
     }
 }
 

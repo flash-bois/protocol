@@ -29,29 +29,28 @@ describe('state with default vaults', () => {
     let tx = new Transaction();
 
 
-    // let create_state_account_tx = SystemProgram.createAccount({
-    //   fromPubkey: admin.publicKey,
-    //   newAccountPubkey: vaults.publicKey,
-    //   space: vaults_size,
-    //   lamports: await provider.connection.getMinimumBalanceForRentExemption(
-    //     vaults_size
-    //   ),
-    //   programId: SystemProgram.programId
-    // })
+    let create_state_account_tx = SystemProgram.createAccount({
+      fromPubkey: admin.publicKey,
+      newAccountPubkey: vaults.publicKey,
+      space: program.account.vaults.size,
+      lamports: await provider.connection.getMinimumBalanceForRentExemption(
+        vaults_size
+      ),
+      programId: SystemProgram.programId
+    })
 
-    // tx.add(create_state_account_tx)
+    tx.add(create_state_account_tx)
 
-    tx.add(await program.account.vaults.createInstruction(vaults))
 
     let create_state_tx = await program.methods.createState(nonce).accounts({
       admin: admin.publicKey,
-      // state: state_address,
+      state: state_address,
       programAuthority: programAuthority,
       rent: SYSVAR_RENT_PUBKEY,
       systemProgram: SystemProgram.programId,
       vaults: vaults.publicKey
     }).instruction()
-    tx.add(create_state_tx)
+    // tx.add(create_state_tx)
 
     const blockhash = await provider.connection.getRecentBlockhash()
     tx.recentBlockhash = blockhash.blockhash
