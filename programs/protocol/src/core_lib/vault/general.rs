@@ -3,6 +3,7 @@ use crate::core_lib::{
     services::{ServiceType, Services},
     strategy::Strategy,
 };
+use checked_decimal_macro::Decimal;
 
 use super::Vault;
 
@@ -22,7 +23,7 @@ impl Vault {
         part: fn(&Strategy) -> Quantity,
         action: ActionFn,
     ) -> Result<(), ()> {
-        let mut processed = Quantity(0);
+        let mut processed = Quantity::new(0);
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
@@ -59,8 +60,8 @@ impl Vault {
         action_a: ActionFn,
         action_b: ActionFn,
     ) -> Result<(), ()> {
-        let mut processed_a = Quantity(0);
-        let mut processed_b = Quantity(0);
+        let mut processed_a = Quantity::new(0);
+        let mut processed_b = Quantity::new(0);
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {

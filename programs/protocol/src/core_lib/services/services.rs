@@ -1,11 +1,35 @@
 use super::{lending::Lend, swapping::Swap};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[repr(packed)]
-pub struct Services {
-    pub swap: Option<Swap>,
-    pub lend: Option<Lend>,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct Services {
+        pub swap: Option<Swap>,
+        pub lend: Option<Lend>,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    #[repr(packed)]
+    pub struct Services {
+        pub swap: Option<Swap>,
+        pub lend: Option<Lend>,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Services;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Services;
 
 #[derive(Clone, Copy)]
 pub enum ServiceType {

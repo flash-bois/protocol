@@ -15,13 +15,38 @@ pub enum CurveSegment {
     },
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(packed)]
-pub struct FeeCurve {
-    used: usize,
-    bounds: [Fraction; MAX_FEES],
-    values: [CurveSegment; MAX_FEES],
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[derive(Default, Debug, PartialEq, Eq)]
+    pub struct FeeCurve {
+        pub used: usize,
+        pub bounds: [Fraction; MAX_FEES],
+        pub values: [CurveSegment; MAX_FEES],
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    #[repr(packed)]
+    pub struct FeeCurve {
+        pub used: usize,
+        pub bounds: [Fraction; MAX_FEES],
+        pub values: [CurveSegment; MAX_FEES],
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::FeeCurve;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::FeeCurve;
 
 impl FeeCurve {
     fn find_index(&self, utilization: Fraction) -> usize {

@@ -170,7 +170,7 @@ mod position_management {
             .enable_lending(
                 FeeCurve::default(),
                 Utilization::from_scale(8, 1),
-                Quantity(u64::MAX),
+                Quantity::new(u64::MAX),
                 0,
             )
             .unwrap();
@@ -203,7 +203,7 @@ mod position_management {
             .enable_lending(
                 FeeCurve::default(),
                 Utilization::from_scale(8, 1),
-                Quantity(u64::MAX),
+                Quantity::new(u64::MAX),
                 0,
             )
             .unwrap();
@@ -213,11 +213,23 @@ mod position_management {
         let mut vaults = [first_vault, second_vault];
 
         vaults[0]
-            .deposit(&mut user_statement, Token::Base, Quantity(10000000), 0, 0)
+            .deposit(
+                &mut user_statement,
+                Token::Base,
+                Quantity::new(10000000),
+                0,
+                0,
+            )
             .unwrap();
 
         vaults[1]
-            .deposit(&mut user_statement, Token::Base, Quantity(5000000), 0, 0)
+            .deposit(
+                &mut user_statement,
+                Token::Base,
+                Quantity::new(5000000),
+                0,
+                0,
+            )
             .unwrap();
 
         vaults[1]
@@ -235,21 +247,21 @@ mod position_management {
                 vault_index: 0,
                 strategy_index: 0,
                 shares: Shares::new(5000000),
-                amount: Quantity(5000000),
-                quote_amount: Quantity(5000000),
+                amount: Quantity::new(5000000),
+                quote_amount: Quantity::new(5000000),
             })
             .unwrap();
 
         user_statement.refresh(&mut vaults);
 
         vaults[0]
-            .borrow(&mut user_statement, Quantity(5000000), 0)
+            .borrow(&mut user_statement, Quantity::new(5000000), 0)
             .unwrap();
 
         user_statement.refresh(&mut vaults);
 
         vaults[1]
-            .borrow(&mut user_statement, Quantity(4000000), 0)
+            .borrow(&mut user_statement, Quantity::new(4000000), 0)
             .unwrap();
 
         assert!(
@@ -276,8 +288,8 @@ mod position_management {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
-            amount: Quantity(1718),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(1718),
+            quote_amount: Quantity::new(0),
         };
 
         user_statement
@@ -285,8 +297,8 @@ mod position_management {
                 vault_index: 0,
                 strategy_index: 0,
                 shares: Shares::new(1234),
-                amount: Quantity(5678),
-                quote_amount: Quantity(0),
+                amount: Quantity::new(5678),
+                quote_amount: Quantity::new(0),
             })
             .unwrap();
 
@@ -294,7 +306,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(91011),
-                amount: Quantity(121314),
+                amount: Quantity::new(121314),
             })
             .unwrap();
 
@@ -304,7 +316,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(1920),
-                amount: Quantity(2122),
+                amount: Quantity::new(2122),
             })
             .unwrap();
 
@@ -330,8 +342,8 @@ mod position_management {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
-            amount: Quantity(1718),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(1718),
+            quote_amount: Quantity::new(0),
         };
 
         user_statement
@@ -339,8 +351,8 @@ mod position_management {
                 vault_index: 0,
                 strategy_index: 0,
                 shares: Shares::new(1234),
-                amount: Quantity(5678),
-                quote_amount: Quantity(0),
+                amount: Quantity::new(5678),
+                quote_amount: Quantity::new(0),
             })
             .unwrap();
 
@@ -348,7 +360,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(91011),
-                amount: Quantity(121314),
+                amount: Quantity::new(121314),
             })
             .unwrap();
 
@@ -358,7 +370,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(1920),
-                amount: Quantity(2122),
+                amount: Quantity::new(2122),
             })
             .unwrap();
 
@@ -384,8 +396,8 @@ mod position_management {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
-            amount: Quantity(1718),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(1718),
+            quote_amount: Quantity::new(0),
         };
 
         user_statement
@@ -393,8 +405,8 @@ mod position_management {
                 vault_index: 0,
                 strategy_index: 0,
                 shares: Shares::new(1234),
-                amount: Quantity(5678),
-                quote_amount: Quantity(0),
+                amount: Quantity::new(5678),
+                quote_amount: Quantity::new(0),
             })
             .unwrap();
 
@@ -404,7 +416,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(91011),
-                amount: Quantity(121314),
+                amount: Quantity::new(121314),
             })
             .unwrap();
 
@@ -412,7 +424,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(1920),
-                amount: Quantity(2122),
+                amount: Quantity::new(2122),
             })
             .unwrap();
 
@@ -438,8 +450,8 @@ mod position_management {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
-            amount: Quantity(1718),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(1718),
+            quote_amount: Quantity::new(0),
         };
 
         user_statement
@@ -447,8 +459,8 @@ mod position_management {
                 vault_index: 0,
                 strategy_index: 0,
                 shares: Shares::new(1234),
-                amount: Quantity(5678),
-                quote_amount: Quantity(0),
+                amount: Quantity::new(5678),
+                quote_amount: Quantity::new(0),
             })
             .unwrap();
 
@@ -460,7 +472,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(91011),
-                amount: Quantity(121314),
+                amount: Quantity::new(121314),
             })
             .unwrap();
 
@@ -468,7 +480,7 @@ mod position_management {
             .add_position(Position::Borrow {
                 vault_index: 0,
                 shares: Shares::new(1920),
-                amount: Quantity(2122),
+                amount: Quantity::new(2122),
             })
             .unwrap();
 
@@ -476,8 +488,8 @@ mod position_management {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         let found_position = user_statement
@@ -491,8 +503,8 @@ mod position_management {
             vault_index: 1,
             strategy_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         assert!(user_statement

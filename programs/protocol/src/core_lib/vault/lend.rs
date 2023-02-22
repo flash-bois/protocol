@@ -66,7 +66,7 @@ impl Vault {
         let position_temp = Position::Borrow {
             vault_index: self.id,
             shares: Shares::new(0),
-            amount: Quantity(0),
+            amount: Quantity::new(0),
         };
 
         match user_statement.search_mut_id(&position_temp) {

@@ -21,6 +21,7 @@ pub mod protocol {
     use super::*;
 
     pub fn create_state(ctx: Context<CreateState>, nonce: u8) -> anchor_lang::Result<()> {
-        instructions::create_state::handler(ctx, nonce)
+        ctx.accounts
+            .handler(*ctx.bumps.get("state").unwrap(), nonce)
     }
 }
