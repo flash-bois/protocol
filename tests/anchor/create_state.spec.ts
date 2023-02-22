@@ -50,7 +50,7 @@ describe('state with default vaults', () => {
       systemProgram: SystemProgram.programId,
       vaults: vaults.publicKey
     }).instruction()
-    // tx.add(create_state_tx)
+    tx.add(create_state_tx)
 
     const blockhash = await provider.connection.getRecentBlockhash()
     tx.recentBlockhash = blockhash.blockhash
