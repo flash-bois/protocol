@@ -5,14 +5,15 @@
   "author": "fashbois",
   "scripts": {
     "start-sdk": "ts-node sdk/src/index.ts",
-    "build:wasm:dev": "cd ./programs/wasm && wasm-pack build --target nodejs",
-    "build:wasm:prod": "cd ./programs/wasm && wasm-pack build --target nodejs --out-dir lib --release",
+    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
+    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "test:sdk": "ts-mocha -t 100000 tests/sdk/*",
+    "test:sdk": "ts-mocha -t 100000 tests/wasm/*",
     "test:anchor": "anchor test tests/anchor/*.ts",
+    "test:wasm": "ts-node tests/wasm/*.ts",
     "test:anchor:create_state": "anchor test tests/anchor/create_state.ts",
-    "wasm": "cd ./programs/wasm && wasm-pack build --target nodejs"
+    "wasm": "npm run build:wasm:dev"
   },
   "repository": {
     "type": "git",

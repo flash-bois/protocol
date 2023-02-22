@@ -24,3 +24,10 @@ pub mod protocol {
         instructions::create_state::handler(ctx, nonce)
     }
 }
+
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+
+// #[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[wasm_bindgen]
+pub fn nothing() {}

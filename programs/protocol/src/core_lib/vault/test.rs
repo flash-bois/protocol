@@ -20,5 +20,5 @@ mod non_zero {
 #[cfg(feature = "anchor")]
 pub use zero::TestStruct;
 
-#[cfg(not(feature = "anchor"))]
-pub use mon_zero::TestStruct;
+// #[cfg(not(feature = "anchor"))]
+// pub use mon_zero::TestStruct;
