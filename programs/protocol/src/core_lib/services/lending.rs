@@ -1,4 +1,4 @@
-use checked_decimal_macro::{BetweenDecimals, BigOps, Factories};
+use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories};
 
 use crate::core_lib::{
     decimal::{Balances, Fraction, Precise, Quantity, Shares, Time, Utilization, Value},
@@ -8,34 +8,80 @@ use crate::core_lib::{
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-#[repr(packed)]
-pub struct Lend {
-    /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
-    /// it should not be modified inside service
-    available: Quantity,
-    /// liquidity already borrowed
-    /// containing accrued fee
-    borrowed: Quantity,
-    /// fee curve
-    fee: FeeCurve,
-    /// unix timestamp of last interest rate accrued
-    last_fee_paid: Time,
-    /// initial fee time for borrow
-    initial_fee_time: Time,
-    /// current utilization  (borrowed / balance (available + borrowed))
-    utilization: Utilization,
-    /// max utilization
-    max_utilization: Utilization,
-    /// borrow shares
-    borrow_shares: Shares,
-    /// ratio of borrow/collateral at which statement can be liquidated
-    borrow_limit: Quantity,
-    /// fee that had been accrued, but not yet distributed
-    unclaimed_fee: Quantity,
-    /// sum of all fees accrued (for statistics)
-    total_fee: Quantity,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default)]
+    pub struct Lend {
+        /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
+        /// it should not be modified inside service
+        pub available: Quantity,
+        /// liquidity already borrowed
+        /// containing accrued fee
+        pub borrowed: Quantity,
+        /// fee curve
+        pub fee: FeeCurve,
+        /// unix timestamp of last interest rate accrued
+        pub last_fee_paid: u32,
+        /// initial fee time for borrow
+        pub initial_fee_time: u32,
+        /// current utilization  (borrowed / balance (available + borrowed))
+        pub utilization: Utilization,
+        /// max utilization
+        pub max_utilization: Utilization,
+        /// borrow shares
+        pub borrow_shares: Shares,
+        /// ratio of borrow/collateral at which statement can be liquidated
+        pub borrow_limit: Quantity,
+        /// fee that had been accrued, but not yet distributed
+        pub unclaimed_fee: Quantity,
+        /// sum of all fees accrued (for statistics)
+        pub total_fee: Quantity,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+    #[repr(packed)]
+    pub struct Lend {
+        /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
+        /// it should not be modified inside service
+        pub available: Quantity,
+        /// liquidity already borrowed
+        /// containing accrued fee
+        pub borrowed: Quantity,
+        /// fee curve
+        pub fee: FeeCurve,
+        /// unix timestamp of last interest rate accrued
+        pub last_fee_paid: u32,
+        /// initial fee time for borrow
+        pub initial_fee_time: u32,
+        /// current utilization  (borrowed / balance (available + borrowed))
+        pub utilization: Utilization,
+        /// max utilization
+        pub max_utilization: Utilization,
+        /// borrow shares
+        pub borrow_shares: Shares,
+        /// ratio of borrow/collateral at which statement can be liquidated
+        pub borrow_limit: Quantity,
+        /// fee that had been accrued, but not yet distributed
+        pub unclaimed_fee: Quantity,
+        /// sum of all fees accrued (for statistics)
+        pub total_fee: Quantity,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Lend;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Lend;
 
 impl ServiceUpdate for Lend {
     fn add_liquidity_base(&mut self, _: Quantity) {
@@ -70,25 +116,25 @@ impl ServiceUpdate for Lend {
     fn available(&self) -> Balances {
         Balances {
             base: self.available,
-            quote: Quantity(0),
+            quote: Quantity::new(0),
         }
     }
 
     fn locked(&self) -> Balances {
         Balances {
             base: self.borrowed,
-            quote: Quantity(0),
+            quote: Quantity::new(0),
         }
     }
 
     fn accrue_fee(&mut self) -> Balances {
         let accrued_fee = self.unclaimed_fee;
-        self.unclaimed_fee = Quantity(0);
+        self.unclaimed_fee = Quantity::new(0);
         self.borrowed += accrued_fee;
 
         Balances {
             base: accrued_fee,
-            quote: Quantity(0),
+            quote: Quantity::new(0),
         }
     }
 }
@@ -134,7 +180,7 @@ impl Lend {
     ///
     /// * `borrow` - quantity that have to be borrowed
     /// * `payout` - quantity repaid do user
-    ///
+    //
     pub fn calculate_borrow_quantity(
         &self,
         oracle: &Oracle,
@@ -325,52 +371,55 @@ mod shares_tests {
         let max_utilization = Utilization::from_scale(80, 2);
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
-        let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
+        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0);
 
-        lending.add_available_base(Quantity(2_000_000));
+        lending.add_available_base(Quantity::new(2_000_000));
         lending.accrue_interest_rate(current_time);
 
         assert_eq!(
             lending,
             Lend {
-                available: Quantity(2_000_000),
+                available: Quantity::new(2_000_000),
                 max_utilization,
                 fee,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 last_fee_paid: current_time,
                 ..Default::default()
             }
         );
 
         assert!(
-            lending.borrow(Quantity(1_600_001)).is_err(),
+            lending.borrow(Quantity::new(1_600_001)).is_err(),
             "can't borrow due to too high utilization"
         );
 
-        assert!(lending.borrow(Quantity(1_600_000)).is_ok(), "can borrow");
-        lending.remove_available_base(Quantity(1_600_000));
+        assert!(
+            lending.borrow(Quantity::new(1_600_000)).is_ok(),
+            "can borrow"
+        );
+        lending.remove_available_base(Quantity::new(1_600_000));
 
         assert_eq!(
             lending,
             Lend {
-                available: Quantity(400_000),
+                available: Quantity::new(400_000),
                 max_utilization,
                 fee,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 utilization: max_utilization,
                 borrow_shares: Shares::from_integer(1_600_000),
-                borrowed: Quantity(1_600_000),
+                borrowed: Quantity::new(1_600_000),
                 last_fee_paid: current_time,
                 ..Default::default()
             }
         );
 
-        assert!(lending.borrow(Quantity(1)).is_err(), "can't borrow");
+        assert!(lending.borrow(Quantity::new(1)).is_err(), "can't borrow");
 
         let (partially_repaid, shares_partially_repaid) = lending
             .repay(
-                Quantity(1_530_264),
-                Quantity(1_600_000),
+                Quantity::new(1_530_264),
+                Quantity::new(1_600_000),
                 Shares::from_integer(1_600_000),
             )
             .unwrap();
@@ -379,8 +428,8 @@ mod shares_tests {
 
         let (full_repaid, _shares_fully_repaid) = lending
             .repay(
-                Quantity(1_600_000) - partially_repaid,
-                Quantity(1_600_000) - partially_repaid,
+                Quantity::new(1_600_000) - partially_repaid,
+                Quantity::new(1_600_000) - partially_repaid,
                 Shares::from_integer(1_600_000) - shares_partially_repaid,
             )
             .unwrap();
@@ -390,9 +439,9 @@ mod shares_tests {
         assert_eq!(
             lending,
             Lend {
-                available: Quantity(2_000_000),
+                available: Quantity::new(2_000_000),
                 max_utilization,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 fee,
                 last_fee_paid: current_time,
                 ..Default::default()
@@ -412,22 +461,22 @@ mod shares_tests {
         fee.add_constant_fee(Fraction::new(10000), Fraction::from_scale(80, 2)); // 1% 100 basis point
         fee.add_constant_fee(Fraction::new(20000), Fraction::from_scale(100, 2)); // 2% 200 basis point
 
-        let mut lending = Lend::new(fee, max_utilization, Quantity(u64::MAX), 0);
+        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0);
 
-        lending.add_available_base(Quantity(736796576003955192));
+        lending.add_available_base(Quantity::new(736796576003955192));
 
         current_time += 100;
         lending.accrue_interest_rate(current_time);
         lending.accrue_fee();
 
-        lending.add_available_base(Quantity(536908355173637734));
+        lending.add_available_base(Quantity::new(536908355173637734));
 
         // available, shares = 736796576003955192 + 536908355173637734 = 1273704931177592926
         assert_eq!(
             lending,
             Lend {
-                available: Quantity(1273704931177592926),
-                borrow_limit: Quantity(u64::MAX),
+                available: Quantity::new(1273704931177592926),
+                borrow_limit: Quantity::new(u64::MAX),
                 max_utilization,
                 fee,
                 last_fee_paid: current_time,
@@ -439,17 +488,17 @@ mod shares_tests {
         lending.accrue_interest_rate(current_time);
         lending.accrue_fee();
 
-        lending.borrow(Quantity(184186871548154787)).unwrap();
-        lending.remove_available_base(Quantity(184186871548154787));
+        lending.borrow(Quantity::new(184186871548154787)).unwrap();
+        lending.remove_available_base(Quantity::new(184186871548154787));
 
         assert_eq!(
             lending,
             Lend {
                 // available = 1273704931177592926 - 184186871548154787 = 1089518059629438139
-                available: Quantity(1089518059629438139),
-                borrowed: Quantity(184186871548154787),
+                available: Quantity::new(1089518059629438139),
+                borrowed: Quantity::new(184186871548154787),
                 borrow_shares: Shares::new(184186871548154787),
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 max_utilization,
                 fee,
                 // utilization = Divide[184186871548154787,184186871548154787 + 1089518059629438139] = 0.14460717473
@@ -465,11 +514,11 @@ mod shares_tests {
         assert_eq!(
             fee_q,
             Balances {
-                base: Quantity(923194261225651),
-                quote: Quantity(0)
+                base: Quantity::new(923194261225651),
+                quote: Quantity::new(0)
             }
         );
-        lending.add_available_base(Quantity(71548154787));
+        lending.add_available_base(Quantity::new(71548154787));
 
         // fee after 50 cycles 923194261225650.2331872421761314 (EXACT)
         // fee = 184186871548154787 * (Pow[1.0001,50] - 1) = 923194261225650.2331872421761314 (ROUNDED UP)
@@ -478,13 +527,13 @@ mod shares_tests {
             lending,
             Lend {
                 // available = 1089518059629438139 + 71548154787 = 1089518131177592926
-                available: Quantity(1089518131177592926),
+                available: Quantity::new(1089518131177592926),
                 // borrowed = 184186871548154787 + 923194261225651 (ROUNDED UP) = 185110065809380438
-                borrowed: Quantity(185110065809380438),
+                borrowed: Quantity::new(185110065809380438),
                 borrow_shares: Shares::new(184186871548154787),
-                unclaimed_fee: Quantity(0),
-                borrow_limit: Quantity(u64::MAX),
-                total_fee: Quantity(923194261225651),
+                unclaimed_fee: Quantity::new(0),
+                borrow_limit: Quantity::new(u64::MAX),
+                total_fee: Quantity::new(923194261225651),
                 // utilization = Divide[185110065809380438,185110065809380438 + 1089518131177592926] = 0.1452267149 (ROUND UP)
                 utilization: Utilization::from_scale(145227, 6),
                 max_utilization,
@@ -498,8 +547,8 @@ mod shares_tests {
         lending.accrue_interest_rate(current_time);
         let _fee_q = lending.accrue_fee();
 
-        lending.borrow(Quantity(11051825915530)).unwrap();
-        lending.remove_available_base(Quantity(11051825915530));
+        lending.borrow(Quantity::new(11051825915530)).unwrap();
+        lending.remove_available_base(Quantity::new(11051825915530));
 
         // fee after 100 cycles : 923194261225651 + 927821559777366.7562086 = 1851015821003017.756 (ROUND UP)
 
@@ -509,18 +558,18 @@ mod shares_tests {
             lending,
             Lend {
                 // available = 1089518131177592926 - 11051825915530 = 1089507079351677396
-                available: Quantity(1089507079351677396),
+                available: Quantity::new(1089507079351677396),
                 // borrowed = 185110065809380438 + 927821559777367 (ROUNDED UP) + 11051825915530
-                borrowed: Quantity(186048939195073335),
+                borrowed: Quantity::new(186048939195073335),
                 // borrow_shares = 184186871548154787 * Divide[11051825915530, 186037887369157804.761220936]  + 184186871548154787
                 // borrow_shares = 184197813412035648.0949073166577736701
                 borrow_shares: Shares::new(184197813412035649),
                 max_utilization,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 fee,
                 utilization: Utilization::from_scale(145858, 6), // 0.145857129
-                unclaimed_fee: Quantity(0),                      // ROUNDED UP
-                total_fee: Quantity(1851015821003018),           // ROUNDED UP
+                unclaimed_fee: Quantity::new(0),                 // ROUNDED UP
+                total_fee: Quantity::new(1851015821003018),      // ROUNDED UP
                 last_fee_paid: current_time,
                 ..Default::default()
             }
@@ -528,8 +577,8 @@ mod shares_tests {
 
         let (repaid, first_repaid_shares) = lending
             .repay(
-                Quantity(35495932680513284),
-                Quantity(184197923374070317),
+                Quantity::new(35495932680513284),
+                Quantity::new(184197923374070317),
                 Shares::new(184197813412035649),
             )
             .unwrap();
@@ -543,19 +592,19 @@ mod shares_tests {
             lending,
             Lend {
                 // available =  1089507079351677396 + 35495932680513284 = 1125003012032190680
-                available: Quantity(1125003012032190680),
+                available: Quantity::new(1125003012032190680),
                 // borrowed = 186048939195073335 - 35495932680513284 = 150553006514560049
-                borrowed: Quantity(150553006514560051),
+                borrowed: Quantity::new(150553006514560051),
                 // borrow_shares = 184197813412035649 - (184197813412035649 * Divide[35495932680513284, 186048939195073335]
                 // borrow_shares = 184197813412035649 - 35142759819318017.87950604465 (ROUND DOWN) = 149055053592717632
                 borrow_shares: Shares::new(149055053592717632),
                 max_utilization,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 fee,
                 // Divide[150553006514560051, 150553006514560051 + 1123151996211187662]
                 utilization: Utilization::from_scale(118030, 6),
-                unclaimed_fee: Quantity(0),
-                total_fee: Quantity(1851015821003018),
+                unclaimed_fee: Quantity::new(0),
+                total_fee: Quantity::new(1851015821003018),
                 last_fee_paid: current_time,
                 ..Default::default()
             }
@@ -563,8 +612,8 @@ mod shares_tests {
 
         let (repaid, second_repaid_shares) = lending
             .repay(
-                Quantity(150553006514560051),
-                Quantity(150553006514560051),
+                Quantity::new(150553006514560051),
+                Quantity::new(150553006514560051),
                 Shares::new(149055053592717632),
             )
             .unwrap();
@@ -575,13 +624,13 @@ mod shares_tests {
             lending,
             Lend {
                 // available = 150553006514560051 + 1125003012032190680 = 1275556018546750731
-                available: Quantity(1275556018546750731),
+                available: Quantity::new(1275556018546750731),
                 max_utilization,
                 fee,
-                borrow_limit: Quantity(u64::MAX),
+                borrow_limit: Quantity::new(u64::MAX),
                 last_fee_paid: current_time,
-                unclaimed_fee: Quantity(0),
-                total_fee: Quantity(1851015821003018),
+                unclaimed_fee: Quantity::new(0),
+                total_fee: Quantity::new(1851015821003018),
                 ..Default::default()
             }
         );

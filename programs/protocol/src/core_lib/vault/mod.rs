@@ -10,24 +10,52 @@ use crate::core_lib::{
     strategy::{Strategies, Strategy},
     structs::{FeeCurve, Oracle},
 };
+use checked_decimal_macro::Decimal;
 
 #[cfg(test)]
 use checked_decimal_macro::Factories;
 
 pub use self::deposit::Token;
 
-//#[cfg_attr(feature = "anchor", zero_copy)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[repr(packed)]
-pub struct Vault {
-    pub id: u8,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
 
-    oracle: Option<Oracle>,
-    quote_oracle: Option<Oracle>,
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct Vault {
+        pub id: u8,
 
-    pub services: Services,
-    pub strategies: Strategies,
+        pub oracle: Option<Oracle>,
+        pub quote_oracle: Option<Oracle>,
+
+        pub services: Services,
+        pub strategies: Strategies,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+    #[derive(Debug, Default, PartialEq, Clone, Copy)]
+    #[repr(packed)]
+    pub struct Vault {
+        pub id: u8,
+
+        oracle: Option<Oracle>,
+        quote_oracle: Option<Oracle>,
+
+        pub services: Services,
+        pub strategies: Strategies,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Vault;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Vault;
 
 impl Vault {
     pub fn add_strategy(
@@ -82,6 +110,21 @@ impl Vault {
 
         Ok(())
     }
+    pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
+        self.quote_oracle.as_ref().ok_or(())
+    }
+
+    pub fn oracle(&self) -> Result<&Oracle, ()> {
+        self.oracle.as_ref().ok_or(())
+    }
+
+    pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
+        self.quote_oracle.as_mut().ok_or(())
+    }
+
+    pub fn oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
+        self.oracle.as_mut().ok_or(())
+    }
 
     pub fn enable_lending(
         &mut self,
@@ -134,14 +177,6 @@ impl Vault {
         self.services.swap.as_mut().ok_or(())
     }
 
-    pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
-        self.quote_oracle.as_ref().ok_or(())
-    }
-
-    pub fn oracle(&self) -> Result<&Oracle, ()> {
-        self.oracle.as_ref().ok_or(())
-    }
-
     fn settle_fees(&mut self, service: ServiceType) -> Result<(), ()> {
         let (service_updatable, service_accrued_fees): (&mut dyn ServiceUpdate, Quantity) =
             match service {
@@ -160,7 +195,7 @@ impl Vault {
             return Ok(());
         }
 
-        let mut distributed_so_far = Quantity(0);
+        let mut distributed_so_far = Quantity::new(0);
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
@@ -225,7 +260,7 @@ impl Vault {
         vault.enable_lending(
             FeeCurve::default(),
             Utilization::from_integer(1),
-            Quantity(u64::MAX),
+            Quantity::new(u64::MAX),
             0,
         )?;
         vault.enable_swapping(

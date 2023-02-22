@@ -1,5 +1,6 @@
 use super::*;
 use crate::core_lib::user::{Position, UserStatement};
+use checked_decimal_macro::Decimal;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Token {
@@ -17,8 +18,8 @@ impl Vault {
         let base_balance = strategy.balance();
         let quote_balance = strategy.balance_quote();
 
-        if base_balance == Quantity(0) || quote_balance == Quantity(0) {
-            return Quantity(0);
+        if base_balance == Quantity::new(0) || quote_balance == Quantity::new(0) {
+            return Quantity::new(0);
         }
 
         match input_token {
@@ -44,7 +45,7 @@ impl Vault {
     ) -> (Quantity, Quantity) {
         let known_value = known_oracle.calculate_value(known_amount);
 
-        let opposite_quantity = if opposite_quantity == Quantity(0) {
+        let opposite_quantity = if opposite_quantity == Quantity::new(0) {
             opposite_oracle.calculate_needed_quantity(known_value)
         } else {
             opposite_quantity

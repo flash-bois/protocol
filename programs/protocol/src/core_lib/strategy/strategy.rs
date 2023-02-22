@@ -1,31 +1,75 @@
 use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
 
-/// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Copy, Clone, Default, PartialEq)]
-pub struct Strategy {
-    /// Quantity of tokens used in lending (borrowed)
-    lent: Option<Quantity>,
-    /// Quantity of tokens used in swapping (swapped for other tokens)
-    sold: Option<Balances>,
-    /// Quantity of tokens used in trading (currently locked in a position)
-    traded: Option<Balances>,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
 
-    /// Quantity of tokens available for use (not used)
-    available: Balances,
-    /// Sum of all locked tokens for each of the
-    locked: Balances,
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct Strategy {
+        /// Quantity of tokens used in lending (borrowed)
+        pub lent: Option<Quantity>,
+        /// Quantity of tokens used in swapping (swapped for other tokens)
+        pub sold: Option<Balances>,
+        /// Quantity of tokens used in trading (currently locked in a position)
+        pub traded: Option<Balances>,
 
-    /// Total amount of shares in a strategy
-    total_shares: Shares,
-    // fee accrued from services
-    accrued_fee: Quantity,
+        /// Quantity of tokens available for use (not used)
+        pub available: Balances,
+        /// Sum of all locked tokens for each of the
+        pub locked: Balances,
 
-    /// Ratio at which shares in this strategy can be used as a collateral
-    collateral_ratio: Fraction,
-    /// Ratio at which value of shares is calculated during liquidation
-    liquidation_threshold: Fraction,
+        /// Total amount of shares in a strategy
+        pub total_shares: Shares,
+        // fee accrued from services
+        pub accrued_fee: Quantity,
+
+        /// Ratio at which shares in this strategy can be used as a collateral
+        pub collateral_ratio: Fraction,
+        /// Ratio at which value of shares is calculated during liquidation
+        pub liquidation_threshold: Fraction,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+    #[repr(packed)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    pub struct Strategy {
+        /// Quantity of tokens used in lending (borrowed)
+        lent: Option<Quantity>,
+        /// Quantity of tokens used in swapping (swapped for other tokens)
+        sold: Option<Balances>,
+        /// Quantity of tokens used in trading (currently locked in a position)
+        traded: Option<Balances>,
+
+        /// Quantity of tokens available for use (not used)
+        available: Balances,
+        /// Sum of all locked tokens for each of the
+        locked: Balances,
+
+        /// Total amount of shares in a strategy
+        total_shares: Shares,
+        // fee accrued from services
+        accrued_fee: Quantity,
+
+        /// Ratio at which shares in this strategy can be used as a collateral
+        collateral_ratio: Fraction,
+        /// Ratio at which value of shares is calculated during liquidation
+        liquidation_threshold: Fraction,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Strategy;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Strategy;
+
+/// Strategy is where liquidity providers can deposit their tokens
 
 #[cfg(test)]
 impl Strategy {

@@ -211,14 +211,14 @@ mod position_equality {
         let borrow = Position::Borrow {
             vault_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
+            amount: Quantity::new(0),
         };
         let provide = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         assert_eq!(first_empty, second_empty);
@@ -232,19 +232,19 @@ mod position_equality {
         let borrow = Position::Borrow {
             vault_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
+            amount: Quantity::new(0),
         };
 
         let non_matching_borrow = Position::Borrow {
             vault_index: 1,
             shares: Shares::new(0),
-            amount: Quantity(0),
+            amount: Quantity::new(0),
         };
 
         let matching_borrow = Position::Borrow {
             vault_index: 0,
             shares: Shares::new(1),
-            amount: Quantity(1),
+            amount: Quantity::new(1),
         };
 
         assert_ne!(borrow, non_matching_borrow);
@@ -257,32 +257,32 @@ mod position_equality {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         let non_matching_provide = Position::LiquidityProvide {
             vault_index: 1,
             strategy_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         let matching_provide = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1),
-            amount: Quantity(1),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(1),
+            quote_amount: Quantity::new(0),
         };
 
         let reverse_non_matching_provide = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 0,
             shares: Shares::new(0),
-            amount: Quantity(0),
-            quote_amount: Quantity(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         assert_ne!(provide, non_matching_provide);

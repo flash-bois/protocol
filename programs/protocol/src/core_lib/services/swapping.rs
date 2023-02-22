@@ -5,27 +5,66 @@ use crate::core_lib::structs::{FeeCurve, Oracle};
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[repr(packed)]
-pub struct Swap {
-    /// Liquidity available to be bought by a swapper.
-    available: Balances,
-    /// Current balance, greater or equal to available.
-    balances: Balances,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
 
-    /// Total amount of tokens earned for liquidity providers.
-    total_earned_fee: Balances,
-    /// Total amount of tokens already paid for liquidity providers.
-    total_paid_fee: Balances,
-    /// Total amount of fee tokens kept as fee (insurance, PoL or burn).
-    total_kept_fee: Balances,
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct Swap {
+        /// Liquidity available to be bought by a swapper.
+        pub available: Balances,
+        /// Current balance, greater or equal to available.
+        pub balances: Balances,
 
-    /// Struct for calculation of swapping fee.
-    selling_fee: FeeCurve,
-    buying_fee: FeeCurve,
-    /// Fraction of paid fee to be kept.
-    kept_fee: Fraction,
+        /// Total amount of tokens earned for liquidity providers.
+        pub total_earned_fee: Balances,
+        /// Total amount of tokens already paid for liquidity providers.
+        pub total_paid_fee: Balances,
+        /// Total amount of fee tokens kept as fee (insurance, PoL or burn).
+        pub total_kept_fee: Balances,
+
+        /// Struct for calculation of swapping fee.
+        pub selling_fee: FeeCurve,
+        pub buying_fee: FeeCurve,
+        /// Fraction of paid fee to be kept.
+        pub kept_fee: Fraction,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    #[repr(packed)]
+    pub struct Swap {
+        /// Liquidity available to be bought by a swapper.
+        pub available: Balances,
+        /// Current balance, greater or equal to available.
+        pub balances: Balances,
+
+        /// Total amount of tokens earned for liquidity providers.
+        pub total_earned_fee: Balances,
+        /// Total amount of tokens already paid for liquidity providers.
+        pub total_paid_fee: Balances,
+        /// Total amount of fee tokens kept as fee (insurance, PoL or burn).
+        pub total_kept_fee: Balances,
+
+        /// Struct for calculation of swapping fee.
+        pub selling_fee: FeeCurve,
+        pub buying_fee: FeeCurve,
+        /// Fraction of paid fee to be kept.
+        pub kept_fee: Fraction,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Swap;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Swap;
 
 impl ServiceUpdate for Swap {
     fn add_liquidity_base(&mut self, quantity: Quantity) {
@@ -174,6 +213,7 @@ impl Swap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use checked_decimal_macro::Decimal;
 
     #[test]
     fn test_buy_with_fee() {
@@ -188,8 +228,8 @@ mod tests {
             swap.fee_curve_buy()
                 .add_constant_fee(Fraction::from_integer(0), Fraction::from_integer(1)); // 0% fee
 
-            swap.add_liquidity_base(Quantity(10_000000));
-            swap.add_liquidity_quote(Quantity(20_000000));
+            swap.add_liquidity_base(Quantity::new(10_000000));
+            swap.add_liquidity_quote(Quantity::new(20_000000));
 
             let result = swap.buy(input, &base_oracle, &quote_oracle);
             assert_eq!(result, Ok(Quantity::from_integer(1_000000)));
@@ -198,8 +238,8 @@ mod tests {
         // basic swap with constant fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(1_000000));
-            swap.add_liquidity_quote(Quantity(5_000000));
+            swap.add_liquidity_base(Quantity::new(1_000000));
+            swap.add_liquidity_quote(Quantity::new(5_000000));
 
             swap.fee_curve_buy()
                 .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
@@ -211,8 +251,8 @@ mod tests {
         // basic swap with constant fee from 0 to 0
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(1_000000));
-            swap.add_liquidity_quote(Quantity(0));
+            swap.add_liquidity_base(Quantity::new(1_000000));
+            swap.add_liquidity_quote(Quantity::new(0));
 
             swap.fee_curve_buy()
                 .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
@@ -224,8 +264,8 @@ mod tests {
         // basic swap with changing fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(5_000000));
-            swap.add_liquidity_quote(Quantity(10_000000));
+            swap.add_liquidity_base(Quantity::new(5_000000));
+            swap.add_liquidity_quote(Quantity::new(10_000000));
 
             swap.fee_curve_buy()
                 .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(45, 2)) // 0.3% fee
@@ -238,8 +278,8 @@ mod tests {
         // swap with linear fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(5_000000));
-            swap.add_liquidity_quote(Quantity(10_000000));
+            swap.add_liquidity_base(Quantity::new(5_000000));
+            swap.add_liquidity_quote(Quantity::new(10_000000));
 
             swap.fee_curve_buy().add_linear_fee(
                 Fraction::from_scale(3, 3),
@@ -265,8 +305,8 @@ mod tests {
             swap.fee_curve_sell()
                 .add_constant_fee(Fraction::from_integer(0), Fraction::from_integer(1)); // 0% fee
 
-            swap.add_liquidity_base(Quantity(10_000000));
-            swap.add_liquidity_quote(Quantity(20_000000));
+            swap.add_liquidity_base(Quantity::new(10_000000));
+            swap.add_liquidity_quote(Quantity::new(20_000000));
 
             let result = swap.sell(input, &base_oracle, &quote_oracle);
             assert_eq!(result, Ok(Quantity::from_integer(2_000000)));
@@ -275,8 +315,8 @@ mod tests {
         // basic swap with constant fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(1_000000));
-            swap.add_liquidity_quote(Quantity(5_000000));
+            swap.add_liquidity_base(Quantity::new(1_000000));
+            swap.add_liquidity_quote(Quantity::new(5_000000));
 
             swap.fee_curve_sell()
                 .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
@@ -288,8 +328,8 @@ mod tests {
         // basic swap with constant fee from 0 to 0
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(0));
-            swap.add_liquidity_quote(Quantity(2_000000));
+            swap.add_liquidity_base(Quantity::new(0));
+            swap.add_liquidity_quote(Quantity::new(2_000000));
 
             swap.fee_curve_sell()
                 .add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_integer(1)); // 1% fee
@@ -301,8 +341,8 @@ mod tests {
         // basic swap with changing fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(5_000000));
-            swap.add_liquidity_quote(Quantity(10_000000));
+            swap.add_liquidity_base(Quantity::new(5_000000));
+            swap.add_liquidity_quote(Quantity::new(10_000000));
 
             swap.fee_curve_sell()
                 .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(55, 2)) // 0.3% fee
@@ -315,8 +355,8 @@ mod tests {
         // swap with linear fee
         {
             let mut swap = Swap::default();
-            swap.add_liquidity_base(Quantity(5_000000));
-            swap.add_liquidity_quote(Quantity(10_000000));
+            swap.add_liquidity_base(Quantity::new(5_000000));
+            swap.add_liquidity_quote(Quantity::new(10_000000));
 
             swap.fee_curve_sell().add_linear_fee(
                 Fraction::from_scale(3, 3),

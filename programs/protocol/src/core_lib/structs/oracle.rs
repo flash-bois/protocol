@@ -7,25 +7,62 @@ pub enum OraclePriceType {
     Buy,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(packed)]
-/// Oracle is a struct that holds the price of an asset.
-pub struct Oracle {
-    /// The price of the asset.
-    price: Price,
-    /// The confidence of the price. It is a range around the price.
-    confidence: Price,
-    /// The time of the last update.
-    last_update: Time,
-    /// The maximum time interval between updates.
-    max_update_interval: Time,
-    /// If true, the oracle will force use the spread instead of the spot price.
-    use_spread: bool,
-    /// Limit of quotient above which the confidence is too great to use spot price.
-    spread_limit: Price,
-    /// The number of decimals of the asset.
-    decimals: DecimalPlaces,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq)]
+    /// Oracle is a struct that holds the price of an asset.
+    pub struct Oracle {
+        /// The price of the asset.
+        pub price: Price,
+        /// The confidence of the price. It is a range around the price.
+        pub confidence: Price,
+        /// The time of the last update.
+        pub last_update: u32,
+        /// The maximum time interval between updates.
+        pub max_update_interval: u32,
+        /// If true, the oracle will force use the spread instead of the spot price.
+        pub use_spread: bool,
+        /// Limit of quotient above which the confidence is too great to use spot price.
+        pub spread_limit: Price,
+        /// The number of decimals of the asset.
+        pub decimals: DecimalPlaces,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[repr(packed)]
+    /// Oracle is a struct that holds the price of an asset.
+    pub struct Oracle {
+        /// The price of the asset.
+        pub price: Price,
+        /// The confidence of the price. It is a range around the price.
+        pub confidence: Price,
+        /// The time of the last update.
+        pub last_update: u32,
+        /// The maximum time interval between updates.
+        pub max_update_interval: u32,
+        /// If true, the oracle will force use the spread instead of the spot price.
+        pub use_spread: bool,
+        /// Limit of quotient above which the confidence is too great to use spot price.
+        pub spread_limit: Price,
+        /// The number of decimals of the asset.
+        pub decimals: DecimalPlaces,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Oracle;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::Oracle;
 
 impl Oracle {
     /// Creates a new Oracle with the given price and confidence.
@@ -171,15 +208,15 @@ mod test_oracle {
         .unwrap();
 
         assert_eq!(
-            oracle.calculate_value(Quantity(100_000000)),
+            oracle.calculate_value(Quantity::new(100_000000)),
             Value::from_integer(200)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1),),
+            oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(2, 6)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1_000000_000000),),
+            oracle.calculate_value(Quantity::new(1_000000_000000),),
             Value::from_integer(2_000000)
         );
 
@@ -188,15 +225,15 @@ mod test_oracle {
             .unwrap();
 
         assert_eq!(
-            oracle.calculate_value(Quantity(100_000000),),
+            oracle.calculate_value(Quantity::new(100_000000),),
             Value::from_integer(5000000)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1),),
+            oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(50000, 6)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1_000000_000000),),
+            oracle.calculate_value(Quantity::new(1_000000_000000),),
             Value::from_integer(50000000000u64)
         );
 
@@ -205,15 +242,15 @@ mod test_oracle {
             .unwrap();
 
         assert_eq!(
-            oracle.calculate_value(Quantity(100_000000),),
+            oracle.calculate_value(Quantity::new(100_000000),),
             Value::from_scale(200, 6)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1),),
+            oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(0, 6)
         );
         assert_eq!(
-            oracle.calculate_value(Quantity(1_000000_000000),),
+            oracle.calculate_value(Quantity::new(1_000000_000000),),
             Value::from_integer(2u64)
         );
 
@@ -226,7 +263,7 @@ mod test_oracle {
         )
         .unwrap();
         assert_eq!(
-            oracle.calculate_value(Quantity(1_000000_000000000),),
+            oracle.calculate_value(Quantity::new(1_000000_000000000),),
             Value::from_integer(2u64)
         );
     }
@@ -243,15 +280,15 @@ mod test_oracle {
         .unwrap();
 
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(100_000000),),
+            oracle.calculate_needed_value(Quantity::new(100_000000),),
             Value::from_integer(200)
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1),),
+            oracle.calculate_needed_value(Quantity::new(1),),
             Value::from_scale(2, 6)
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1_000000_000000)),
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
             Value::from_integer(2_000000)
         );
 
@@ -260,15 +297,15 @@ mod test_oracle {
             .unwrap();
 
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(100_000000),),
+            oracle.calculate_needed_value(Quantity::new(100_000000),),
             Value::from_scale(2, 3)
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1),),
+            oracle.calculate_needed_value(Quantity::new(1),),
             Value::from_scale(1, Value::scale())
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1_000000_000000)),
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
             Value::from_integer(20)
         );
 
@@ -277,15 +314,15 @@ mod test_oracle {
             .unwrap();
 
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(100_000000)),
+            oracle.calculate_needed_value(Quantity::new(100_000000)),
             Value::from_integer(50000000)
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1)),
+            oracle.calculate_needed_value(Quantity::new(1)),
             Value::from_scale(5, 1)
         );
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1_000000_000000)),
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
             Value::from_integer(500000_000000u64)
         );
 
@@ -298,7 +335,7 @@ mod test_oracle {
         )
         .unwrap();
         assert_eq!(
-            oracle.calculate_needed_value(Quantity(1_000000_000000000)),
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000000)),
             Value::from_integer(500000_000000u64)
         );
     }
@@ -316,19 +353,19 @@ mod test_oracle {
 
         assert_eq!(
             oracle.calculate_quantity(Value::from_integer(200)),
-            Quantity(100_000000)
+            Quantity::new(100_000000)
         );
         assert_eq!(
             oracle.calculate_quantity(Value::from_scale(2, 6)),
-            Quantity(1)
+            Quantity::new(1)
         );
         assert_eq!(
             oracle.calculate_quantity(Value::from_integer(2_000000)),
-            Quantity(1_000000_000000)
+            Quantity::new(1_000000_000000)
         );
         assert_eq!(
             oracle.calculate_quantity(Value::from_scale(1, 6)),
-            Quantity(0)
+            Quantity::new(0)
         );
     }
 
@@ -345,23 +382,23 @@ mod test_oracle {
 
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_integer(100)),
-            Quantity(200_000000)
+            Quantity::new(200_000000)
         );
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_scale(1, 6)),
-            Quantity(2)
+            Quantity::new(2)
         );
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_integer(1_000000)),
-            Quantity(2_000000_000000)
+            Quantity::new(2_000000_000000)
         );
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_scale(1, 6)),
-            Quantity(2)
+            Quantity::new(2)
         );
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_scale(1, 7)),
-            Quantity(1)
+            Quantity::new(1)
         );
     }
 }

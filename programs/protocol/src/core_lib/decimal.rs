@@ -2,7 +2,6 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 pub use checked_decimal_macro::*;
 
-/// Keeps track of time in unix epoch time
 pub type Time = u32;
 
 /// Used to represent number of decimal points in a quantity of token
@@ -12,15 +11,182 @@ pub enum DecimalPlaces {
     Nine = 9,
 }
 
-/// Balances of both base and quote tokens
-#[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
-#[repr(packed)]
-pub struct Balances {
-    /// Token characteristic for vault
-    pub base: Quantity,
-    /// Stable token
-    pub quote: Quantity,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct Balances {
+        /// Token characteristic for vault
+        pub base: Quantity,
+        /// Stable token
+        pub quote: Quantity,
+    }
+    /// Used to represent a quantity of token (of its smallest unit)
+
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(0, U256)]
+    pub struct Quantity {
+        pub val: u64,
+    }
+
+    /// Keeps fractions that need less precision
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(6)]
+    pub struct Fraction {
+        pub val: u64,
+    }
+
+    /// Keeps fractions that need less precision
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(6)]
+    pub struct Utilization {
+        pub val: u128,
+    }
+
+    /// Keeps fractions that need greater precision
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(12)]
+    pub struct BigFraction {
+        pub val: u128,
+    }
+
+    /// Keeps shares of pool or debt
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(0)]
+    pub struct Shares {
+        pub number_of_shares: u128,
+    }
+
+    /// Keeps price data
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(9)]
+    pub struct Price {
+        pub val: u64,
+    }
+
+    /// Keeps the value of a token, pool or position
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(9)]
+    pub struct Value {
+        pub val: u128,
+    }
+
+    /// Used to keep cumulative funding rate (can be positive or negative)
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(24)]
+    pub struct FundingRate {
+        pub val: i128,
+    }
+
+    /// Used for calculations that need more precision
+    #[zero_copy]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(24)]
+    pub struct Precise {
+        pub val: u128,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+    #[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
+    #[repr(packed)]
+    pub struct Balances {
+        /// Token characteristic for vault
+        pub base: Quantity,
+        /// Stable token
+        pub quote: Quantity,
+    }
+
+    /// Used to represent a quantity of token (of its smallest unit)
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(0, U256)]
+    pub struct Quantity {
+        pub val: u64,
+    }
+
+    /// Keeps fractions that need less precision
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(6)]
+    pub struct Fraction {
+        pub val: u64,
+    }
+
+    /// Keeps fractions that need less precision
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(6)]
+    pub struct Utilization {
+        pub val: u128,
+    }
+
+    /// Keeps fractions that need greater precision
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(12)]
+    pub struct BigFraction {
+        pub val: u128,
+    }
+
+    /// Keeps shares of pool or debt
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(0)]
+    pub struct Shares {
+        pub number_of_shares: u128,
+    }
+
+    /// Keeps price data
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(9)]
+    pub struct Price {
+        pub val: u64,
+    }
+
+    /// Keeps the value of a token, pool or position
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(9)]
+    pub struct Value {
+        pub val: u128,
+    }
+
+    /// Used to keep cumulative funding rate (can be positive or negative)
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(24)]
+    pub struct FundingRate {
+        pub val: i128,
+    }
+
+    /// Used for calculations that need more precision
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(packed)]
+    #[decimal(24)]
+    pub struct Precise {
+        pub val: u128,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::*;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::*;
 
 impl Sub for Balances {
     type Output = Self;
@@ -58,12 +224,6 @@ impl SubAssign for Balances {
     }
 }
 
-/// Used to represent a quantity of token (of its smallest unit)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(0, U256)]
-pub struct Quantity(pub u64);
-
 impl Quantity {
     pub fn big_mul_div(&self, mul: Self, div: Self) -> Self {
         let res = self
@@ -71,18 +231,12 @@ impl Quantity {
             .checked_div(U256::from(div.get()))
             .unwrap();
 
-        Self(res.as_u64())
+        Self { val: res.as_u64() }
     }
 }
 
 /// Number of seconds in 6 hours
 pub const _RATE_INTERVAL: Time = 21600000u32;
-
-/// Keeps fractions that need less precision
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(6)]
-pub struct Fraction(u64);
 
 impl Fraction {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
@@ -94,12 +248,6 @@ impl Fraction {
     }
 }
 
-/// Keeps fractions that need less precision
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(6)]
-pub struct Utilization(u128);
-
 impl Utilization {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
         if used == Quantity::from_integer(0) {
@@ -109,43 +257,6 @@ impl Utilization {
         Self::from_decimal(used).div_up(total)
     }
 }
-
-/// Keeps fractions that need greater precision
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[decimal(12)]
-pub struct BigFraction(pub u128);
-
-/// Keeps shares of pool or debt
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(0)]
-pub struct Shares {
-    pub number_of_shares: u128,
-}
-
-/// Keeps price data
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(9)]
-pub struct Price(u64);
-
-/// Keeps the value of a token, pool or position
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(9)]
-pub struct Value(u128);
-
-/// Used to keep cumulative funding rate (can be positive or negative)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(24)]
-pub struct FundingRate(pub i128);
-
-/// Used for calculations that need more precision
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
-#[repr(packed)]
-#[decimal(24)]
-pub struct Precise(u128);
 
 impl Precise {
     pub fn pow(self, exp: u32) -> Self {
@@ -347,9 +458,9 @@ mod big_tests {
 
     #[test]
     fn big_mul_div() {
-        let q = Quantity(12345678);
-        let r = Quantity(65421512);
-        let s = Quantity(42143214);
+        let q = Quantity::new(12345678);
+        let r = Quantity::new(65421512);
+        let s = Quantity::new(42143214);
 
         assert_eq!(q.big_mul_div(r, s), q * r / s);
     }
@@ -452,22 +563,37 @@ mod test_shares {
     #[test]
     fn increases_down() {
         let mut shares = Shares::new(0);
-        let mut all_liquidity = Quantity(0);
+        let mut all_liquidity = Quantity::new(0);
 
-        increase_down_and_check(&mut shares, &mut all_liquidity, Quantity(0), Shares::new(0));
+        increase_down_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(0),
+            Shares::new(0),
+        );
         // shares after = 0
         // liquidity after = 0
-        increase_down_and_check(&mut shares, &mut all_liquidity, Quantity(1), Shares::new(1));
+        increase_down_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(1),
+            Shares::new(1),
+        );
         // shares after = 1
         // liquidity after = 1
-        increase_down_and_check(&mut shares, &mut all_liquidity, Quantity(1), Shares::new(1));
+        increase_down_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(1),
+            Shares::new(1),
+        );
         // shares after = 2
         // liquidity after = 2
 
         increase_down_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(2_135_642_322_912_235),
+            Quantity::new(2_135_642_322_912_235),
             Shares::new(2_135_642_322_912_235),
         );
         //shares after = 2135642322912237
@@ -476,7 +602,7 @@ mod test_shares {
         increase_down_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(146_545_765_475_763),
+            Quantity::new(146_545_765_475_763),
             Shares::new(146_545_765_475_763),
         );
         // shares after = 2282188088388000
@@ -485,7 +611,7 @@ mod test_shares {
         //#######################################################
         //  now We're modifying all_liquidity to change "debt"  #
 
-        all_liquidity += Quantity(3_412_563_665_124);
+        all_liquidity += Quantity::new(3_412_563_665_124);
 
         // shares after = 2282188088388000
         // liquidity after = 2285600652053124
@@ -495,35 +621,50 @@ mod test_shares {
         increase_down_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(686_455_763_423),
+            Quantity::new(686_455_763_423),
             Shares::new(685_430_836_345),
         );
 
         // shares after = 2282873519224346
         // liquidity after = 2286287107816547
 
-        assert_eq!(all_liquidity, Quantity(2_286_287_107_816_547));
+        assert_eq!(all_liquidity, Quantity::new(2_286_287_107_816_547));
         assert_eq!(shares, Shares::new(2_282_873_519_224_345))
     }
 
     #[test]
     fn increases_up() {
         let mut shares = Shares::new(0);
-        let mut all_liquidity = Quantity(0);
+        let mut all_liquidity = Quantity::new(0);
 
-        increase_up_and_check(&mut shares, &mut all_liquidity, Quantity(0), Shares::new(0));
+        increase_up_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(0),
+            Shares::new(0),
+        );
         // shares after = 0
         // liquidity after = 0
-        increase_up_and_check(&mut shares, &mut all_liquidity, Quantity(1), Shares::new(1));
+        increase_up_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(1),
+            Shares::new(1),
+        );
         // shares after = 1
         // liquidity after = 1
-        increase_up_and_check(&mut shares, &mut all_liquidity, Quantity(1), Shares::new(1));
+        increase_up_and_check(
+            &mut shares,
+            &mut all_liquidity,
+            Quantity::new(1),
+            Shares::new(1),
+        );
         // shares after = 2
         // liquidity after = 2
         increase_up_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(2_135_642_322_912_235),
+            Quantity::new(2_135_642_322_912_235),
             Shares::new(2_135_642_322_912_235),
         );
         // shares after = 2135642322912237
@@ -532,7 +673,7 @@ mod test_shares {
         increase_up_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(146_545_765_475_763),
+            Quantity::new(146_545_765_475_763),
             Shares::new(146_545_765_475_763),
         );
         // shares after = 2282188088388000
@@ -541,7 +682,7 @@ mod test_shares {
         //#######################################################
         //  now We're modifying all_liquidity to change "debt"  #
 
-        all_liquidity += Quantity(3_412_563_665_124);
+        all_liquidity += Quantity::new(3_412_563_665_124);
 
         // shares after = 2282188088388000
         // liquidity after = 2285600652053124
@@ -551,30 +692,30 @@ mod test_shares {
         increase_up_and_check(
             &mut shares,
             &mut all_liquidity,
-            Quantity(686_455_763_423),
+            Quantity::new(686_455_763_423),
             Shares::new(685_430_836_346),
         );
 
         // shares after = 2282873519224346
         // liquidity after = 2286287107816547
 
-        assert_eq!(all_liquidity, Quantity(2_286_287_107_816_547));
+        assert_eq!(all_liquidity, Quantity::new(2_286_287_107_816_547));
         assert_eq!(shares, Shares::new(2_282_873_519_224_346))
     }
 
     #[test]
     fn decrease_down_with_owned() {
         let mut shares = Shares::new(2282873519224346);
-        let mut all_liquidity = Quantity(2286287107816547);
+        let mut all_liquidity = Quantity::new(2286287107816547);
 
         let mut owed = shares.calculate_owed(Shares::new(0), all_liquidity);
         //0.0
-        assert_eq!(owed, Quantity(0));
+        assert_eq!(owed, Quantity::new(0));
         decrease_down_and_check(&mut shares, &mut all_liquidity, owed, Shares::new(0));
 
         owed = shares.calculate_owed(Shares::new(1), all_liquidity);
         // 1.00149530342502
-        assert_eq!(owed, Quantity(2));
+        assert_eq!(owed, Quantity::new(2));
         decrease_down_and_check(&mut shares, &mut all_liquidity, owed, Shares::new(1));
 
         // 1.00149530342502
@@ -582,7 +723,7 @@ mod test_shares {
 
         owed = shares.calculate_owed(Shares::new(2_135_642_322_912_235), all_liquidity);
         // 2138835756192317.719
-        assert_eq!(owed, Quantity(2138835756192318));
+        assert_eq!(owed, Quantity::new(2138835756192318));
         decrease_down_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -592,7 +733,7 @@ mod test_shares {
 
         owed = shares.calculate_owed(Shares::new(146_545_765_475_763), all_liquidity);
         // 146764895860801.79419
-        assert_eq!(owed, Quantity(146764895860802));
+        assert_eq!(owed, Quantity::new(146764895860802));
         decrease_down_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -602,7 +743,7 @@ mod test_shares {
 
         owed = shares.calculate_owed(Shares::new(685_430_836_346), all_liquidity);
         // 686455763423
-        assert_eq!(owed, Quantity(686455763423));
+        assert_eq!(owed, Quantity::new(686455763423));
         decrease_down_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -611,22 +752,22 @@ mod test_shares {
         );
 
         assert_eq!(shares, Shares::new(0));
-        assert_eq!(all_liquidity, Quantity(0));
+        assert_eq!(all_liquidity, Quantity::new(0));
     }
 
     #[test]
     fn decrease_up_with_earned() {
         let mut shares = Shares::new(2282873519224345);
-        let mut all_liquidity = Quantity(2286287107816547);
+        let mut all_liquidity = Quantity::new(2286287107816547);
 
         let mut earned = shares.calculate_earned(Shares::new(0), all_liquidity);
         //0.0
-        assert_eq!(earned, Quantity(0));
+        assert_eq!(earned, Quantity::new(0));
         decrease_up_and_check(&mut shares, &mut all_liquidity, earned, Shares::new(0));
 
         earned = shares.calculate_earned(Shares::new(1), all_liquidity);
         // 1.00149530342502 (DOWN) so 1
-        assert_eq!(earned, Quantity(1));
+        assert_eq!(earned, Quantity::new(1));
         decrease_up_and_check(&mut shares, &mut all_liquidity, earned, Shares::new(1));
 
         // 1.00149530342502 (DOWN) so 1
@@ -634,7 +775,7 @@ mod test_shares {
 
         earned = shares.calculate_earned(Shares::new(2_135_642_322_912_235), all_liquidity);
         // 2.138835756192320.5275 (DOWN)
-        assert_eq!(earned, Quantity(2138835756192320));
+        assert_eq!(earned, Quantity::new(2138835756192320));
         decrease_up_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -644,7 +785,7 @@ mod test_shares {
 
         earned = shares.calculate_earned(Shares::new(146_545_765_475_763), all_liquidity);
         // 1.46764895860802.7910 (DOWN)
-        assert_eq!(earned, Quantity(146764895860802));
+        assert_eq!(earned, Quantity::new(146764895860802));
         decrease_up_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -654,7 +795,7 @@ mod test_shares {
 
         earned = shares.calculate_earned(Shares::new(685_430_836_345), all_liquidity);
         // 6.86455763423 (DOWN)
-        assert_eq!(earned, Quantity(686455763423));
+        assert_eq!(earned, Quantity::new(686455763423));
         decrease_up_and_check(
             &mut shares,
             &mut all_liquidity,
@@ -663,6 +804,6 @@ mod test_shares {
         );
 
         assert_eq!(shares, Shares::new(0));
-        assert_eq!(all_liquidity, Quantity(0));
+        assert_eq!(all_liquidity, Quantity::new(0));
     }
 }

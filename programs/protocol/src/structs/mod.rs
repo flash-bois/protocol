@@ -1,5 +1,5 @@
 pub mod state;
-pub mod vault;
+pub mod vaults;
 
 pub use state::*;
-pub use vault::*;
+pub use vaults::*;
