@@ -1,8 +1,10 @@
 use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories, Others};
 use std::cmp::min;
+use std::default;
 
 use crate::decimal::{
-    Balances, BigFraction, Fraction, FundingRate, Precise, Price, Quantity, Time, Value,
+    Balances, BigFraction, Both, Fraction, FundingRate, Precise, Price, Quantity, Shares, Time,
+    Value,
 };
 use crate::structs::oracle::{Oracle, OraclePriceType};
 use crate::structs::{FeeCurve, Receipt, Side};
@@ -16,15 +18,18 @@ pub struct Trade {
     /// total liquidity locked inside the vault
     locked: Balances,
     /// total value at the moment of opening a position
-    long_open_value: Value,
-    short_open_value: Value,
+    open_value: Both<Value>,
 
     /// struct for calculation of position fee
-    borrow_fee: FeeCurve,
+    borrow_fee: Both<FeeCurve>,
+    funding: Both<FundingRate>,
+    last_fee: Time,
+    funding_multiplier: Fraction,
+
     /// fee paid on opening a position
     open_fee: Fraction,
 
-    /// maximum leverage allowed
+    /// maximum leverage allowed at the moment of opening a position
     max_open_leverage: Fraction,
     /// maximum leverage allowed
     max_leverage: Fraction,
@@ -93,9 +98,11 @@ impl Trade {
         Self {
             available: Balances::default(),
             locked: Balances::default(),
-            long_open_value: Value::from_integer(0),
-            short_open_value: Value::from_integer(0),
-            borrow_fee: fee,
+            open_value: Both::<Value>::default(),
+            borrow_fee: Both::<FeeCurve>::default(),
+            funding: Both::<FundingRate>::default(),
+            funding_multiplier: Fraction::from_integer(1),
+            last_fee: start_time,
             open_fee,
             max_open_leverage: max_leverage,
             max_leverage,
@@ -121,12 +128,13 @@ impl Trade {
         }
 
         self.locked.base += quantity;
-        self.long_open_value += position_value;
+        self.open_value.base += position_value;
 
         Ok(Receipt {
             side: Side::Long,
             size: quantity,
             locked: quantity,
+            initial_funding: self.funding.base,
             open_price: oracle.price(OraclePriceType::Buy),
             open_value: position_value,
         })
@@ -151,14 +159,82 @@ impl Trade {
         }
 
         self.locked.quote += quote_quantity;
-        self.short_open_value += position_value;
+        self.open_value.quote += position_value;
 
         Ok(Receipt {
             side: Side::Short,
             size: quantity,
             locked: quote_quantity,
+            initial_funding: self.funding.quote,
             open_price: oracle.price(OraclePriceType::Sell),
             open_value: position_value,
         })
+    }
+
+    fn utilization(&self) -> Both<Fraction> {
+        Both::<Fraction> {
+            base: Fraction::from_decimal(self.locked.base)
+                / Fraction::from_decimal(self.available.base + self.locked.base),
+            quote: Fraction::from_decimal(self.locked.quote)
+                / Fraction::from_decimal(self.available.quote + self.locked.quote),
+        }
+    }
+
+    fn calculate_fee(&self, current_time: Time) -> Both<FundingRate> {
+        if current_time > self.last_fee {
+            let time_period = current_time - self.last_fee;
+
+            let utilization = self.utilization();
+
+            let base_fee = self
+                .borrow_fee
+                .base
+                .compounded_fee(utilization.base, time_period);
+            let quote_fee = self
+                .borrow_fee
+                .quote
+                .compounded_fee(utilization.quote, time_period);
+
+            Both {
+                base: FundingRate::from_decimal(base_fee),
+                quote: FundingRate::from_decimal(quote_fee),
+            }
+        } else {
+            Both::default()
+        }
+    }
+
+    fn calculate_funding(&self, oracle: &Oracle, quote_oracle: &Oracle) -> (Fraction, Side) {
+        let long_value = oracle.calculate_value(self.locked.base);
+        let short_value = quote_oracle.calculate_value(self.locked.quote);
+
+        let total_value = long_value + short_value;
+
+        if long_value >= short_value {
+            let longs = (long_value / total_value) - Value::from_scale(5, 1);
+            (
+                Fraction::from_decimal(longs) * self.funding_multiplier,
+                Side::Long,
+            )
+        } else {
+            let shorts = (short_value / total_value) - Value::from_scale(5, 1);
+            (
+                Fraction::from_decimal(shorts) * self.funding_multiplier,
+                Side::Short,
+            )
+        }
+    }
+
+    fn refresh(&mut self, oracle: &Oracle, quote_oracle: &Oracle, now: Time) {
+        let fee = self.calculate_fee(now);
+        let funding = match self.calculate_funding(oracle, quote_oracle) {
+            (funding, Side::Long) => FundingRate::from_decimal(funding),
+            (funding, Side::Short) => FundingRate(0) - FundingRate::from_decimal(funding),
+        };
+
+        self.funding.base += fee.base - funding;
+        self.funding.quote += fee.quote + funding;
+
+        FundingRate::from_decimal(fee.base);
     }
 }

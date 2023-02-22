@@ -12,14 +12,14 @@ pub enum DecimalPlaces {
     Nine = 9,
 }
 
-/// Balances of both base and quote tokens
 #[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
-pub struct Balances {
-    /// Token characteristic for vault
-    pub base: Quantity,
-    /// Stable token
-    pub quote: Quantity,
+pub struct Both<T> {
+    pub base: T,
+    pub quote: T,
 }
+
+/// Balances of both base and quote tokens
+pub type Balances = Both<Quantity>;
 
 impl Sub for Balances {
     type Output = Self;
