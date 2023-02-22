@@ -1,5 +1,5 @@
-import * as anchor from '@project-serum/anchor'
-import { Provider, BN, Program, utils } from '@project-serum/anchor'
+import * as anchor from '@coral-xyz/anchor'
+import { Provider, BN, Program, utils } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Protocol } from '../../target/types/protocol'
 
@@ -7,39 +7,40 @@ const SEED = "DotWave"
 const STATE_SEED = "state"
 
 describe('state with default vaults', () => {
-  const provider = anchor.AnchorProvider.env()
-  const program = anchor.workspace.protocol as Program<Protocol>
+  it('creates state', async () => {
+    const program = anchor.workspace.Protocol as Program<Protocol>
 
-  const admin = Keypair.generate()
-  const vaults = Keypair.generate()
-  const vaults_size = program.account.vaults.size;
 
-  anchor.setProvider(provider)
+    const admin = Keypair.generate()
+    const vaults = Keypair.generate()
+    const vaults_size = program.account.vaults.size
+    anchor.setProvider(anchor.AnchorProvider.local())
 
-  const [programAuthority, nonce] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED)],
-    program.programId
-  )
+    const [programAuthority, nonce] = PublicKey.findProgramAddressSync(
+      [Buffer.from(SEED)],
+      program.programId
+    )
 
-  const [state_address, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from(utils.bytes.utf8.encode(STATE_SEED))],
-    program.programId
-  )
+    const [state_address, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from(utils.bytes.utf8.encode(STATE_SEED))],
+      program.programId
+    )
 
-  it('Creates states!', async () => {
-    let tx = new Transaction();
 
-    let create_state_account_tx = SystemProgram.createAccount({
-      fromPubkey: admin.publicKey,
-      newAccountPubkey: vaults.publicKey,
-      space: vaults_size,
-      lamports: await provider.connection.getMinimumBalanceForRentExemption(
-        vaults_size
-      ),
-      programId: program.programId
-    })
+    await program.provider.connection.requestAirdrop(admin.publicKey, 10000000000)
+    await new Promise(f => setTimeout(f, 6000));
 
-    tx.add(create_state_account_tx)
+
+
+    // let pre_ix = SystemProgram.createAccount({
+    //   fromPubkey: admin.publicKey,
+    //   newAccountPubkey: vaults.publicKey,
+    //   space: vaults_size,
+    //   lamports: await program.provider.connection.getMinimumBalanceForRentExemption(
+    //     vaults_size
+    //   ),
+    //   programId: program.programId
+    // })
 
     let create_state_tx = await program.methods.createState(nonce).accounts({
       admin: admin.publicKey,
@@ -48,15 +49,20 @@ describe('state with default vaults', () => {
       rent: SYSVAR_RENT_PUBKEY,
       systemProgram: SystemProgram.programId,
       vaults: vaults.publicKey
-    }).transaction()
+    }).signers([admin]).rpc()
 
-    tx.add(create_state_tx)
+    // tx.add(create_state_tx)
+    // let blockhash = (await provider.connection.getLatestBlockhash('recent')).blockhash;
+    // tx.recentBlockhash = blockhash;
+    // tx.feePayer = admin.publicKey
 
-    const signers: Keypair[] = [vaults, admin]
-    tx.partialSign(...signers)
-    const raw_tx = tx.serialize()
+    // const signers: Keypair[] = [vaults, admin]
+    // tx.partialSign(...signers)
+    // const raw_tx = tx.serialize()
 
-    await provider.connection.sendRawTransaction(raw_tx)
+
+
+    // await provider.connection.sendRawTransaction(raw_tx)
 
     // const[userStatsPDA, _] = await PublicKey.findProgramAddress(
     //   [
@@ -67,4 +73,6 @@ describe('state with default vaults', () => {
     // )
   })
 })
+
+
 
