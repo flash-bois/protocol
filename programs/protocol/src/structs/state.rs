@@ -5,21 +5,7 @@ use std::ops::Range;
 use std::slice::{Iter, IterMut};
 use vec_macro::SafeArray;
 
-// use crate::core_lib::vault::*;
-
-// #[cfg_attr(not(feature = "anchor"), derive(Clone, Copy))]
-// #[cfg_attr(feature = "anchor", zero_copy)]
-// #[cfg(not(feature = "anchor"))]
-// #[derive(Clone, Copy)]
-
-// #[derive(Debug, Default, PartialEq)]
-// #[cfg_attr(not(feature = "anchor"), derive(Clone, Copy))]
-
-#[cfg_attr(feature = "anchor", zero_copy)]
-#[derive(Debug, Default, PartialEq)]
-pub struct TestStruct {
-    pub arr: [i32; 10],
-}
+use crate::core_lib::vault::test::*;
 
 #[repr(packed)]
 #[zero_copy]

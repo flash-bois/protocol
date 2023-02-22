@@ -1,9 +1,24 @@
 #[cfg(feature = "anchor")]
-use anchor_lang::prelude::*;
+mod zero {
+    use anchor_lang::prelude::*;
 
-#[cfg_attr(not(feature = "anchor"), derive(Clone, Copy))]
-#[derive(Debug, Default, PartialEq)]
-#[cfg_attr(feature = "anchor", zero_copy)]
-pub struct TestStruct {
-    pub arr: [i32; 10],
+    #[zero_copy]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct TestStruct {
+        pub arr: [i32; 10],
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    #[derive(Debug, Default, PartialEq, Clone, Copy)]
+    pub struct TestStruct {
+        pub arr: [i32; 10],
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::TestStruct;
+
+#[cfg(not(feature = "anchor"))]
+pub use mon_zero::TestStruct;
