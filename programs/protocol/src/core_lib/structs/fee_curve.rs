@@ -23,7 +23,7 @@ mod zero {
     #[zero_copy]
     #[derive(Default, Debug, PartialEq, Eq)]
     pub struct FeeCurve {
-        pub used: usize,
+        pub used: u8,
         pub bounds: [Fraction; MAX_FEES],
         pub values: [CurveSegment; MAX_FEES],
     }
@@ -50,19 +50,19 @@ pub use mon_zero::FeeCurve;
 
 impl FeeCurve {
     fn find_index(&self, utilization: Fraction) -> usize {
-        (0..self.used)
+        (0..self.used as usize)
             .find(|&i| utilization <= self.bounds[i])
             .unwrap_or(0)
     }
 
     fn find_indexes(&self, smaller: Fraction, greater: Fraction) -> Result<(usize, usize), ()> {
-        let index = (0..self.used)
+        let index = (0..self.used as usize)
             .find(|&i| smaller <= self.bounds[i])
             .unwrap_or(0);
 
         Ok((
             index,
-            (index..self.used)
+            (index..self.used as usize)
                 .find(|&i| greater <= self.bounds[i])
                 .ok_or(())?,
         ))
@@ -143,11 +143,11 @@ impl FeeCurve {
     }
 
     fn add_segment(&mut self, curve: CurveSegment, bound: Fraction) {
-        self.bounds[self.used] = bound;
-        self.values[self.used] = curve;
+        self.bounds[self.used as usize] = bound;
+        self.values[self.used as usize] = curve;
         self.used += 1;
 
-        self.bounds[..self.used].sort();
+        self.bounds[..self.used as usize].sort();
     }
 
     pub fn compounded_fee(&self, utilization: Fraction, time: Time) -> Precise {

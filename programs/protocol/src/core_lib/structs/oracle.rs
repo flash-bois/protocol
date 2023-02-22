@@ -21,9 +21,9 @@ mod zero {
         /// The confidence of the price. It is a range around the price.
         pub confidence: Price,
         /// The time of the last update.
-        pub last_update: Time,
+        pub last_update: u32,
         /// The maximum time interval between updates.
-        pub max_update_interval: Time,
+        pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
         pub use_spread: bool,
         /// Limit of quotient above which the confidence is too great to use spot price.
@@ -46,9 +46,9 @@ mod non_zero {
         /// The confidence of the price. It is a range around the price.
         pub confidence: Price,
         /// The time of the last update.
-        pub last_update: Time,
+        pub last_update: u32,
         /// The maximum time interval between updates.
-        pub max_update_interval: Time,
+        pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
         pub use_spread: bool,
         /// Limit of quotient above which the confidence is too great to use spot price.

@@ -25,9 +25,9 @@ mod zero {
         /// fee curve
         pub fee: FeeCurve,
         /// unix timestamp of last interest rate accrued
-        pub last_fee_paid: Time,
+        pub last_fee_paid: u32,
         /// initial fee time for borrow
-        pub initial_fee_time: Time,
+        pub initial_fee_time: u32,
         /// current utilization  (borrowed / balance (available + borrowed))
         pub utilization: Utilization,
         /// max utilization
@@ -59,9 +59,9 @@ mod non_zero {
         /// fee curve
         pub fee: FeeCurve,
         /// unix timestamp of last interest rate accrued
-        pub last_fee_paid: Time,
+        pub last_fee_paid: u32,
         /// initial fee time for borrow
-        pub initial_fee_time: Time,
+        pub initial_fee_time: u32,
         /// current utilization  (borrowed / balance (available + borrowed))
         pub utilization: Utilization,
         /// max utilization

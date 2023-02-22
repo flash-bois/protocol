@@ -2,7 +2,6 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 pub use checked_decimal_macro::*;
 
-/// Keeps track of time in unix epoch time
 pub type Time = u32;
 
 /// Used to represent number of decimal points in a quantity of token
