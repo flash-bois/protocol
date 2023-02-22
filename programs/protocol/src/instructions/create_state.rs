@@ -1,5 +1,6 @@
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 
 #[derive(Accounts)]
 #[instruction( nonce: u8 )]
@@ -14,11 +15,13 @@ pub struct CreateState<'info> {
     #[account(zero)]
     pub vaults: AccountLoader<'info, Vaults>,
     pub rent: Sysvar<'info, Rent>,
-    pub system_program: SystemAccount<'info>,
+    /// CHECK:
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 
 impl<'info> CreateState<'info> {
-    pub fn handler(&self, bump: u8, nonce: u8) -> Result<()> {
+    pub fn handler(&self, nonce: u8, bump: u8) -> Result<()> {
         let state = &mut self.state.load_init()?;
         let vaults = &mut self.vaults.load_init()?;
 
