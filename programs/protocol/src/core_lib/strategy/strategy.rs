@@ -1,5 +1,5 @@
-use crate::decimal::{Balances, Fraction, Quantity, Shares};
-use crate::services::{ServiceType, ServiceUpdate, Services};
+use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
+use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
 #[derive(Debug, Copy, Clone, Default, PartialEq)]

@@ -1,7 +1,7 @@
 use checked_decimal_macro::{BetweenDecimals, Factories};
 
-use crate::decimal::{Balances, Fraction, Quantity};
-use crate::structs::{FeeCurve, Oracle};
+use crate::core_lib::decimal::{Balances, Fraction, Quantity};
+use crate::core_lib::structs::{FeeCurve, Oracle};
 
 use super::ServiceUpdate;
 

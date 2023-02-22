@@ -1,11 +1,37 @@
-use super::VaultEntry;
 use anchor_lang::prelude::*;
+
 use checked_decimal_macro::num_traits::ToPrimitive;
 use std::ops::Range;
 use std::slice::{Iter, IterMut};
 use vec_macro::SafeArray;
 
-use core_lib::vault::*;
+// use crate::core_lib::vault::*;
+
+// #[cfg_attr(not(feature = "anchor"), derive(Clone, Copy))]
+// #[cfg_attr(feature = "anchor", zero_copy)]
+// #[cfg(not(feature = "anchor"))]
+// #[derive(Clone, Copy)]
+
+// #[derive(Debug, Default, PartialEq)]
+// #[cfg_attr(not(feature = "anchor"), derive(Clone, Copy))]
+
+#[cfg_attr(feature = "anchor", zero_copy)]
+#[derive(Debug, Default, PartialEq)]
+pub struct TestStruct {
+    pub arr: [i32; 10],
+}
+
+#[repr(packed)]
+#[zero_copy]
+#[derive(Debug, Default, PartialEq)]
+pub struct VaultEntry {
+    pub data: TestStruct,
+    pub base_token: Pubkey,
+    pub quote_token: Pubkey,
+    pub base_reserve: Pubkey,
+    pub quote_reserve: Pubkey,
+    pub bump: u8,
+}
 
 #[repr(packed)]
 #[zero_copy]

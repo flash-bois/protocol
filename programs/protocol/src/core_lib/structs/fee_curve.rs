@@ -1,4 +1,4 @@
-use crate::decimal::*;
+use crate::core_lib::decimal::*;
 
 const MAX_FEES: usize = 5;
 

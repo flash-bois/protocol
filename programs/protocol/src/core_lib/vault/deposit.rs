@@ -1,5 +1,5 @@
 use super::*;
-use crate::user::{Position, UserStatement};
+use crate::core_lib::user::{Position, UserStatement};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Token {

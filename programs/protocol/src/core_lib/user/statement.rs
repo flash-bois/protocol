@@ -99,7 +99,7 @@ impl UserStatement {
 mod position_management {
     use checked_decimal_macro::Factories;
 
-    use crate::{
+    use crate::core_lib::{
         decimal::{DecimalPlaces, Fraction, Price, Utilization},
         structs::FeeCurve,
         vault::Token,

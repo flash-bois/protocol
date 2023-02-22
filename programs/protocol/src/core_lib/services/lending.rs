@@ -1,6 +1,6 @@
 use checked_decimal_macro::{BetweenDecimals, BigOps, Factories};
 
-use crate::{
+use crate::core_lib::{
     decimal::{Balances, Fraction, Precise, Quantity, Shares, Time, Utilization, Value},
     structs::FeeCurve,
     structs::Oracle,

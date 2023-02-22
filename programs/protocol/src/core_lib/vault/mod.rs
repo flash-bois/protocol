@@ -2,8 +2,11 @@ pub mod deposit;
 pub mod general;
 pub mod lend;
 pub mod swap;
+pub mod test;
 
-use crate::{
+pub use test::*;
+
+use crate::core_lib::{
     decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization},
     services::{lending::Lend, swapping::Swap, ServiceType, ServiceUpdate, Services},
     strategy::{Strategies, Strategy},
@@ -15,6 +18,7 @@ use checked_decimal_macro::Factories;
 
 pub use self::deposit::Token;
 
+//#[cfg_attr(feature = "anchor", zero_copy)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(packed)]
 pub struct Vault {

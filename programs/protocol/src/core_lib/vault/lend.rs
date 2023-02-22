@@ -1,5 +1,5 @@
 use super::*;
-use crate::{
+use crate::core_lib::{
     services::lending::Borrowable,
     user::{Position, UserStatement},
 };

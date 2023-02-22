@@ -1,4 +1,4 @@
-use crate::{
+use crate::core_lib::{
     decimal::{Quantity, Time},
     services::{swapping::Swap, ServiceType, ServiceUpdate, Services},
     structs::Oracle,
@@ -57,8 +57,8 @@ impl Vault {
 mod tests {
     use checked_decimal_macro::Factories;
 
-    use crate::decimal::Fraction;
-    use crate::vault::deposit::Token;
+    use crate::core_lib::decimal::Fraction;
+    use crate::core_lib::vault::deposit::Token;
 
     use super::*;
 

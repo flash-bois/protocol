@@ -1,4 +1,4 @@
-use crate::decimal::{DecimalPlaces, Price, Quantity, Time, Value};
+use crate::core_lib::decimal::{DecimalPlaces, Price, Quantity, Time, Value};
 use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 
 pub enum OraclePriceType {
@@ -155,7 +155,7 @@ impl Oracle {
 mod test_oracle {
     use checked_decimal_macro::{Decimal, Factories};
 
-    use crate::decimal::{DecimalPlaces, Price, Quantity, Value};
+    use crate::core_lib::decimal::{DecimalPlaces, Price, Quantity, Value};
 
     use super::Oracle;
 

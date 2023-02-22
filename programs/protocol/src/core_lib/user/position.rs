@@ -2,7 +2,7 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::services::ServiceUpdate;
+use crate::core_lib::services::ServiceUpdate;
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
