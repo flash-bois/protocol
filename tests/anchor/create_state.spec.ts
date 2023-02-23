@@ -4,9 +4,7 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert } from 'chai'
 import { Protocol } from '../../target/types/protocol'
 
-const SEED = "DotWave"
 const STATE_SEED = "state"
-const VAULTS_SEED = "vaults"
 
 describe('state with default vaults', () => {
   const provider = anchor.AnchorProvider.env()
@@ -14,26 +12,16 @@ describe('state with default vaults', () => {
 
   const admin = Keypair.generate()
   const vaults = Keypair.generate()
-  const vaults_size = program.account.vaults.size;
+  const vaults_size = 14519;
   const connection = program.provider.connection;
 
   anchor.setProvider(provider)
-
-  // const [programAuthority, nonce] = PublicKey.findProgramAddressSync(
-  //   [Buffer.from(SEED)],
-  //   program.programId
-  // )
 
   const [state_address, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
     program.programId
   )
 
-
-  const [vaults_address, vaults_bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from(anchor.utils.bytes.utf8.encode(VAULTS_SEED))],
-    program.programId
-  )
 
   it('Creates state', async () => {
     let tx = new Transaction();
@@ -47,14 +35,12 @@ describe('state with default vaults', () => {
       lastValidBlockHeight
     })
 
-
-    // console.log(vaults_size + 8)
     const create_vaults_account_ix = SystemProgram.createAccount({
       fromPubkey: admin.publicKey,
       newAccountPubkey: vaults.publicKey,
-      space: 14519,
+      space: vaults_size,
       lamports: await provider.connection.getMinimumBalanceForRentExemption(
-        14519
+        vaults_size
       ),
       programId: program.programId
     })
@@ -70,23 +56,12 @@ describe('state with default vaults', () => {
     }).instruction()
 
     tx.add(create_state_ix)
-
-    // const extend_vaults_ix = await program.methods.extendVaults(vaults_bump).accounts({
-    //   admin: admin.publicKey,
-    //   state: state_address,
-    //   rent: SYSVAR_RENT_PUBKEY,
-    //   systemProgram: SystemProgram.programId,
-    //   vaults: vaults_address
-    // }).instruction()
-
-    // tx.add(extend_vaults_ix)
-
     tx.recentBlockhash = blockhash
     tx.feePayer = admin.publicKey
     tx.partialSign(admin, vaults)
 
     const raw_tx = tx.serialize()
-    const final_signature = await provider.connection.sendRawTransaction(raw_tx)
+    const final_signature = await provider.connection.sendRawTransaction(raw_tx, { skipPreflight: true })
 
     await program.provider.connection.confirmTransaction({
       blockhash,
@@ -94,11 +69,11 @@ describe('state with default vaults', () => {
       signature: final_signature
     })
 
-    //const vaults_account = await program.account.vaults.fetch(vaults_address)
+    const vaults_account = await program.account.vaults.fetch(vaults.publicKey)
     const state_account = await program.account.state.fetch(state_address)
 
 
-    // assert.ok(vaults_account)
+    assert.equal(vaults_account.arr.head, 0)
     assert.equal(state_account.admin.toString(), admin.publicKey.toString())
     assert.equal(state_account.bump, bump)
   })

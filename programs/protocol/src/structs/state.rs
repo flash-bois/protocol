@@ -8,13 +8,3 @@ pub struct State {
     pub vaults_acc: Pubkey,
     pub bump: u8,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ttt() {
-        println!("{}", std::mem::size_of::<State>());
-    }
-}
