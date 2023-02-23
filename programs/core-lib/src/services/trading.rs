@@ -167,39 +167,39 @@ impl Trade {
         oracle: &Oracle,
     ) -> Result<(BalanceChange, Quantity), ()> {
         let funding_fee = self.calculate_funding_fee(&receipt);
-        let Receipt {
-            size,
-            locked,
-            open_price,
-            open_value,
-            ..
-        } = receipt;
 
-        let open_fee = size * self.open_fee;
+        let position_change = self.calculate_long_value(&receipt, oracle);
+        let open_fee = receipt.size * self.open_fee;
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+
+        self.open_value.base -= receipt.open_value;
+        self.locked.base -= receipt.locked;
+
+        Ok((change, receipt.locked))
+    }
+
+    fn calculate_long_value(&self, receipt: &Receipt, oracle: &Oracle) -> BalanceChange {
+        let Receipt {
+            size, open_price, ..
+        } = receipt;
         let close_price = oracle.price(OraclePriceType::Sell);
 
-        let position_change = match close_price > open_price {
+        match close_price > *open_price {
             true => {
                 let profit_value =
-                    oracle.calculate_value_difference_down(size, close_price, open_price);
+                    oracle.calculate_value_difference_down(*size, close_price, *open_price);
                 let profit = oracle.calculate_quantity(profit_value);
 
                 BalanceChange::Profit(profit)
             }
             false => {
                 let loss_value =
-                    oracle.calculate_value_difference_up(size, open_price, close_price);
+                    oracle.calculate_value_difference_up(*size, *open_price, close_price);
                 let loss = oracle.calculate_needed_quantity(loss_value);
 
                 BalanceChange::Loss(loss)
             }
-        };
-
-        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
-        self.open_value.base -= open_value;
-        self.locked.base -= locked;
-
-        Ok((change, locked))
+        }
     }
 
     pub fn close_short(
@@ -211,39 +211,47 @@ impl Trade {
     ) -> Result<(BalanceChange, Quantity), ()> {
         let funding_fee = self.calculate_funding_fee(&receipt);
 
+        self.locked.quote -= receipt.locked;
+        self.open_value.quote -= receipt.open_value;
+
+        let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
+
+        let open_fee = receipt.size * self.open_fee;
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+
+        Ok((change, receipt.locked))
+    }
+
+    fn calculate_short_change(
+        &self,
+        receipt: &Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+    ) -> BalanceChange {
+        let close_price = oracle.price(OraclePriceType::Buy);
         let Receipt {
             size,
             open_price,
             locked,
-            open_value,
             ..
         } = receipt;
-        let close_price = oracle.price(OraclePriceType::Sell);
 
-        self.locked.quote -= locked;
-        self.open_value.quote -= open_value;
-
-        let position_change = match close_price > open_price {
+        match *open_price > close_price {
             true => {
-                let loss_value =
-                    oracle.calculate_value_difference_up(size, close_price, open_price);
-                let loss = quote_oracle.calculate_needed_quantity(loss_value);
-                BalanceChange::Loss(loss)
-            }
-            false => {
                 let profit_value =
-                    oracle.calculate_value_difference_down(size, open_price, close_price);
+                    oracle.calculate_value_difference_down(*size, *open_price, close_price);
                 let profit = quote_oracle.calculate_quantity(profit_value);
 
                 // maximum profit is limited by locked quote quantity (no change for constant price of quote)
-                BalanceChange::Profit(min(locked, profit))
+                BalanceChange::Profit(min(*locked, profit))
             }
-        };
-
-        let open_fee = size * self.open_fee;
-        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
-
-        Ok((change, locked))
+            false => {
+                let loss_value =
+                    oracle.calculate_value_difference_up(*size, close_price, *open_price);
+                let loss = quote_oracle.calculate_needed_quantity(loss_value);
+                BalanceChange::Loss(loss)
+            }
+        }
     }
 
     fn utilization(&self) -> Both<Fraction> {
