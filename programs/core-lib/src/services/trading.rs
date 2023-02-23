@@ -3,8 +3,8 @@ use std::cmp::min;
 use std::default;
 
 use crate::decimal::{
-    Balances, BigFraction, Both, Fraction, FundingRate, Precise, Price, Quantity, Shares, Time,
-    Value,
+    BalanceChange, Balances, BigFraction, Both, Fraction, FundingRate, Precise, Price, Quantity,
+    Shares, Time, Value,
 };
 use crate::structs::oracle::{Oracle, OraclePriceType};
 use crate::structs::{FeeCurve, Receipt, Side};
@@ -36,11 +36,6 @@ pub struct Trade {
 
     /// fees waiting to be distributed to liquidity providers
     accrued_fee: Balances,
-}
-
-pub enum BalanceChange {
-    Profit(Quantity),
-    Loss(Quantity),
 }
 
 impl ServiceUpdate for Trade {
@@ -89,12 +84,7 @@ impl ServiceUpdate for Trade {
 }
 
 impl Trade {
-    pub fn new(
-        fee: FeeCurve,
-        open_fee: Fraction,
-        max_leverage: Fraction,
-        start_time: Time,
-    ) -> Self {
+    pub fn new(open_fee: Fraction, max_leverage: Fraction, start_time: Time) -> Self {
         Self {
             available: Balances::default(),
             locked: Balances::default(),
@@ -171,6 +161,91 @@ impl Trade {
         })
     }
 
+    pub fn close_long(
+        &mut self,
+        receipt: Receipt,
+        oracle: &Oracle,
+    ) -> Result<(BalanceChange, Quantity), ()> {
+        let funding_fee = self.calculate_funding_fee(&receipt);
+        let Receipt {
+            size,
+            locked,
+            open_price,
+            open_value,
+            ..
+        } = receipt;
+
+        let open_fee = size * self.open_fee;
+        let close_price = oracle.price(OraclePriceType::Sell);
+
+        let position_change = match close_price > open_price {
+            true => {
+                let profit_value =
+                    oracle.calculate_value_difference_down(size, close_price, open_price);
+                let profit = oracle.calculate_quantity(profit_value);
+
+                BalanceChange::Profit(profit)
+            }
+            false => {
+                let loss_value =
+                    oracle.calculate_value_difference_up(size, open_price, close_price);
+                let loss = oracle.calculate_needed_quantity(loss_value);
+
+                BalanceChange::Loss(loss)
+            }
+        };
+
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+        self.open_value.base -= open_value;
+        self.locked.base -= locked;
+
+        Ok((change, size))
+    }
+
+    pub fn close_short(
+        &mut self,
+        receipt: Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+        now: Time,
+    ) -> Result<(BalanceChange, Quantity), ()> {
+        let funding_fee = self.calculate_funding_fee(&receipt);
+
+        let Receipt {
+            size,
+            open_price,
+            locked,
+            open_value,
+            ..
+        } = receipt;
+        let close_price = oracle.price(OraclePriceType::Sell);
+
+        self.locked.quote -= locked;
+        self.open_value.quote -= open_value;
+
+        let position_change = match close_price > open_price {
+            true => {
+                let loss_value =
+                    oracle.calculate_value_difference_up(size, close_price, open_price);
+                let loss = quote_oracle.calculate_needed_quantity(loss_value);
+                BalanceChange::Loss(loss)
+            }
+            false => {
+                let profit_value =
+                    oracle.calculate_value_difference_down(size, open_price, close_price);
+                let profit = quote_oracle.calculate_quantity(profit_value);
+
+                // maximum profit is limited by locked quote quantity (no change for constant price of quote)
+                BalanceChange::Profit(min(locked, profit))
+            }
+        };
+
+        let open_fee = size * self.open_fee;
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+
+        Ok((change, size))
+    }
+
     fn utilization(&self) -> Both<Fraction> {
         Both::<Fraction> {
             base: Fraction::from_decimal(self.locked.base)
@@ -236,5 +311,18 @@ impl Trade {
         self.funding.quote += fee.quote + funding;
 
         FundingRate::from_decimal(fee.base);
+    }
+
+    fn calculate_funding_fee(&self, receipt: &Receipt) -> BalanceChange {
+        let funding_change = match receipt.side {
+            Side::Long => self.funding.base - receipt.initial_funding,
+            Side::Short => self.funding.quote - receipt.initial_funding,
+        };
+
+        if funding_change > FundingRate::from_integer(0) {
+            BalanceChange::Loss(receipt.size * funding_change)
+        } else {
+            BalanceChange::Profit(receipt.size * (FundingRate::from_integer(0) - funding_change))
+        }
     }
 }
