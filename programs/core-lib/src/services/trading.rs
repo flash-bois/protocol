@@ -8,6 +8,7 @@ use crate::decimal::{
 };
 use crate::structs::oracle::{Oracle, OraclePriceType};
 use crate::structs::{FeeCurve, Receipt, Side};
+use crate::user::TradeResult;
 
 use super::ServiceUpdate;
 
@@ -203,18 +204,24 @@ impl Trade {
         receipt: &Receipt,
         oracle: &Oracle,
         quote_oracle: &Oracle,
-    ) -> Value {
+    ) -> TradeResult {
         let fee =
             self.calculate_funding_fee(receipt) + BalanceChange::Loss(receipt.size * self.open_fee);
 
         match receipt.side {
             Side::Long => match self.calculate_long_value(receipt, oracle) + fee {
-                BalanceChange::Profit(profit) => oracle.calculate_value(profit),
-                BalanceChange::Loss(loss) => oracle.calculate_needed_value(loss),
+                BalanceChange::Profit(profit) => {
+                    TradeResult::Profitable(oracle.calculate_value(profit))
+                }
+                BalanceChange::Loss(loss) => TradeResult::Loss(oracle.calculate_needed_value(loss)),
             },
             Side::Short => match self.calculate_short_change(receipt, oracle, quote_oracle) + fee {
-                BalanceChange::Profit(profit) => quote_oracle.calculate_value(profit),
-                BalanceChange::Loss(loss) => quote_oracle.calculate_needed_value(loss),
+                BalanceChange::Profit(profit) => {
+                    TradeResult::Profitable(quote_oracle.calculate_value(profit))
+                }
+                BalanceChange::Loss(loss) => {
+                    TradeResult::Loss(quote_oracle.calculate_needed_value(loss))
+                }
             },
         }
     }

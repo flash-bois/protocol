@@ -9,3 +9,4 @@ use crate::{
 
 pub use position::Position;
 pub use statement::UserStatement;
+pub use utils::TradeResult;
