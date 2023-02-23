@@ -50,14 +50,26 @@ impl Vault {
     pub fn close_position(
         &mut self,
         user_statement: &mut UserStatement,
-        receipt: Receipt, // TODO: take receipt from user_statement
+        side: Side,
         now: Time,
     ) -> Result<BalanceChange, ()> {
+        let temp_position = Position::Trading {
+            vault_index: self.id,
+            receipt: Receipt {
+                side,
+                ..Default::default()
+            },
+        };
+
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
+
+        let (position_id, found_position) =
+            user_statement.search_mut_id(&temp_position).ok_or(())?;
+        let receipt = found_position.receipt();
 
         let change = match receipt.side {
             Side::Long => {
-                let (change, unlock) = trade.close_long(receipt, oracle)?;
+                let (change, unlock) = trade.close_long(*receipt, oracle)?;
                 match change {
                     BalanceChange::Profit(profit) => {
                         let total_locked = trade.locked().base;
@@ -78,7 +90,7 @@ impl Vault {
                 change
             }
             Side::Short => {
-                let (change, unlock) = trade.close_short(receipt, oracle, &quote_oracle, now)?;
+                let (change, unlock) = trade.close_short(*receipt, oracle, &quote_oracle, now)?;
                 let total_locked = trade.locked().quote;
                 match change {
                     BalanceChange::Profit(profit) => self.unlock_with_loss_quote(
@@ -96,6 +108,8 @@ impl Vault {
                 change
             }
         };
+
+        user_statement.delete_position(position_id);
 
         Ok(change)
     }

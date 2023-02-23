@@ -54,6 +54,18 @@ impl PartialEq for Position {
                     ..
                 },
             ) => vault_index == vault_index_cmp,
+            (
+                Self::Trading {
+                    vault_index,
+                    receipt,
+                    ..
+                },
+                Self::Trading {
+                    vault_index: vault_index_cmp,
+                    receipt: receipt_cmp,
+                    ..
+                },
+            ) => vault_index == vault_index_cmp && receipt.side == receipt_cmp.side,
             (Self::Empty, Self::Empty) => true,
             _ => false,
         }
@@ -101,8 +113,14 @@ impl Position {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
-            Position::Trading { receipt, .. } => &mut receipt.size,
-            Position::Empty => unreachable!(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn receipt(&mut self) -> &mut Receipt {
+        match self {
+            Position::Trading { receipt, .. } => receipt,
+            _ => unreachable!(),
         }
     }
 
@@ -192,7 +210,9 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let (trade, oracle, quote_oracle) = vault.trade_and_oracles().unwrap();
+                let trade = vault.services.trade().unwrap();
+                let oracle = vault.oracle().unwrap();
+                let quote_oracle = vault.quote_oracle().unwrap();
                 let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
 
                 match profit_or_loss {

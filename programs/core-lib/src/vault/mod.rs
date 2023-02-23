@@ -152,20 +152,6 @@ impl Vault {
         Ok((services.trade_mut()?, oracle, quote_oracle))
     }
 
-    pub fn trade_and_oracles(&self) -> Result<(&Trade, &Oracle, &Oracle), ()> {
-        let Self {
-            services,
-            oracle,
-            quote_oracle,
-            ..
-        } = self;
-
-        let oracle = self.oracle.as_ref().ok_or(())?;
-        let quote_oracle = self.quote_oracle.as_ref().ok_or(())?;
-
-        Ok((services.trade()?, oracle, quote_oracle))
-    }
-
     pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
         self.quote_oracle.as_ref().ok_or(())
     }
