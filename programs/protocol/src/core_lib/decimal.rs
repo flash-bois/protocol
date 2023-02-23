@@ -1,12 +1,17 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::{
+    default,
+    ops::{Add, AddAssign, Sub, SubAssign},
+};
 
 pub use checked_decimal_macro::*;
 
 pub type Time = u32;
 
 /// Used to represent number of decimal points in a quantity of token
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
 pub enum DecimalPlaces {
+    #[default]
     Six = 6,
     Nine = 9,
 }

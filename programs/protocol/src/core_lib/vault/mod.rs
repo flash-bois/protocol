@@ -28,9 +28,8 @@ mod zero {
     pub struct Vault {
         pub services: Services,
         pub strategies: Strategies,
-        pub oracle: Option<Oracle>,
-        pub quote_oracle: Option<Oracle>,
-
+        pub oracle: Oracle,
+        pub quote_oracle: Oracle,
         pub id: u8,
     }
 }
@@ -43,8 +42,8 @@ mod non_zero {
     pub struct Vault {
         pub id: u8,
 
-        oracle: Option<Oracle>,
-        quote_oracle: Option<Oracle>,
+        oracle: Oracle,
+        quote_oracle: Oracle,
 
         pub services: Services,
         pub strategies: Strategies,
@@ -64,10 +63,10 @@ impl Vault {
         has_swap: bool,
         has_trade: bool,
     ) -> Result<(), ()> {
-        if has_lend && self.services.lend.is_none() {
+        if has_lend && self.services.lend_mut().is_ok() {
             return Err(());
         }
-        if has_swap && self.services.swap.is_none() {
+        if has_swap && self.services.swap_mut().is_ok() {
             return Err(());
         }
 
@@ -88,20 +87,14 @@ impl Vault {
         time: Time,
         for_token: Token,
     ) -> Result<(), ()> {
-        if match for_token {
-            Token::Base => self.oracle.is_some(),
-            Token::Quote => self.quote_oracle.is_some(),
-        } {
-            return Err(());
-        }
+        // if match for_token {
+        //     Token::Base => self.oracle.is_some(),
+        //     Token::Quote => self.quote_oracle.is_some(),
+        // } {
+        //     return Err(());
+        // }
 
-        let oracle = Some(Oracle::new(
-            decimal_places,
-            price,
-            confidence,
-            spread_limit,
-            time,
-        )?);
+        let oracle = Oracle::new(decimal_places, price, confidence, spread_limit, time)?;
 
         match for_token {
             Token::Base => self.oracle = oracle,
@@ -111,19 +104,23 @@ impl Vault {
         Ok(())
     }
     pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
-        self.quote_oracle.as_ref().ok_or(())
+        // self.quote_oracle.as_ref().ok_or(())
+        Ok(&self.quote_oracle)
     }
 
     pub fn oracle(&self) -> Result<&Oracle, ()> {
-        self.oracle.as_ref().ok_or(())
+        // self.oracle.as_ref().ok_or(())
+        Ok(&self.oracle)
     }
 
     pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        self.quote_oracle.as_mut().ok_or(())
+        // self.quote_oracle.as_mut().ok_or(())
+        Ok(&mut self.quote_oracle)
     }
 
     pub fn oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        self.oracle.as_mut().ok_or(())
+        // self.oracle.as_mut().ok_or(())
+        Ok(&mut self.oracle)
     }
 
     pub fn enable_lending(
@@ -133,20 +130,16 @@ impl Vault {
         borrow_limit: Quantity,
         initial_fee_time: Time,
     ) -> Result<(), ()> {
-        if self.services.lend.is_some() {
+        if self.services.lend_mut().is_err() {
             return Err(());
         }
 
-        if self.oracle.is_none() {
-            return Err(());
-        }
+        // if self.oracle.is_none() {
+        //     return Err(());
+        // }
 
-        self.services.lend = Some(Lend::new(
-            lending_fee,
-            max_utilization,
-            borrow_limit,
-            initial_fee_time,
-        ));
+        self.services.lend =
+            Lend::new(lending_fee, max_utilization, borrow_limit, initial_fee_time);
 
         Ok(())
     }
@@ -157,24 +150,24 @@ impl Vault {
         buying_fee: FeeCurve,
         kept_fee: Fraction,
     ) -> Result<(), ()> {
-        if self.oracle.is_none() {
-            return Err(());
-        }
-        if self.services.swap.is_some() {
+        // if self.oracle.is_none() {
+        //     return Err(());
+        // }
+        if self.services.swap_mut().is_ok() {
             return Err(());
         }
 
-        self.services.swap = Some(Swap::new(selling_fee, buying_fee, kept_fee));
+        self.services.swap = Swap::new(selling_fee, buying_fee, kept_fee);
 
         Ok(())
     }
 
     pub fn lend_service(&mut self) -> Result<&mut Lend, ()> {
-        self.services.lend.as_mut().ok_or(())
+        Ok(&mut self.services.lend)
     }
 
     pub fn swap_service(&mut self) -> Result<&mut Swap, ()> {
-        self.services.swap.as_mut().ok_or(())
+        Ok(&mut self.services.swap)
     }
 
     fn settle_fees(&mut self, service: ServiceType) -> Result<(), ()> {
@@ -224,10 +217,10 @@ impl Vault {
     pub fn refresh(&mut self, current_time: Time) -> Result<(), ()> {
         // TODO check oracle if it is refreshed
 
-        if let Some(ref mut service) = self.services.lend {
-            service.accrue_interest_rate(current_time);
-            self.settle_fees(ServiceType::Lend)?
-        }
+        let service = &mut self.services.lend;
+
+        service.accrue_interest_rate(current_time);
+        self.settle_fees(ServiceType::Lend)?;
 
         // if self.services.swap.is_some() {
         //     self.settle_fees(ServiceType::Swap)?

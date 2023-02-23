@@ -36,3 +36,14 @@ pub use zero::Strategies;
 
 #[cfg(not(feature = "anchor"))]
 pub use mon_zero::Strategies;
+
+#[cfg(test)]
+mod tt {
+    use super::*;
+
+    #[test]
+    fn get_size() {
+        println!("{}", std::mem::size_of::<Strategy>());
+        println!()
+    }
+}

@@ -14,8 +14,8 @@ impl Vault {
     ) -> Result<(), ()> {
         self.refresh(current_time)?; // should be called in the outer function and after that user_statement.refresh
 
-        let oracle = self.oracle.as_ref().unwrap();
-        let lend = self.services.lend.as_mut().ok_or(()).unwrap();
+        let oracle = &self.oracle;
+        let lend = &mut self.services.lend;
         let total_available = lend.available().base;
 
         let user_allowed_borrow = user_statement.permitted_debt();

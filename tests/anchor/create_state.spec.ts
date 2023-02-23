@@ -12,7 +12,8 @@ describe('state with default vaults', () => {
 
   const admin = Keypair.generate()
   const vaults = Keypair.generate()
-  const vaults_size = 14519;
+
+  const vaults_size = program.account.vaults.size;
   const connection = program.provider.connection;
 
   anchor.setProvider(provider)
@@ -47,7 +48,7 @@ describe('state with default vaults', () => {
 
     tx.add(create_vaults_account_ix)
 
-    const create_state_ix = await program.methods.createState(bump).accounts({
+    const create_state_ix = await program.methods.createState().accounts({
       admin: admin.publicKey,
       state: state_address,
       rent: SYSVAR_RENT_PUBKEY,

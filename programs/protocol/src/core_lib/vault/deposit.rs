@@ -3,6 +3,7 @@ use crate::core_lib::user::{Position, UserStatement};
 use checked_decimal_macro::Decimal;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Token {
     Base,
     Quote,

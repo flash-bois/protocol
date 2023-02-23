@@ -3,6 +3,7 @@ use crate::core_lib::decimal::*;
 const MAX_FEES: usize = 5;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum CurveSegment {
     #[default]
     None,
@@ -47,7 +48,7 @@ mod non_zero {
 pub use zero::FeeCurve;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::FeeCurve;
+pub use non_zero::FeeCurve;
 
 impl FeeCurve {
     fn find_index(&self, utilization: Fraction) -> usize {

@@ -20,8 +20,12 @@ use anchor_lang::prelude::*;
 pub mod protocol {
     use super::*;
 
-    pub fn create_state(ctx: Context<CreateState>, bump: u8) -> anchor_lang::Result<()> {
-        instructions::create_state::handler(ctx, bump)
+    pub fn create_state(ctx: Context<CreateState>) -> anchor_lang::Result<()> {
+        instructions::create_state::handler(ctx)
+    }
+
+    pub fn create_statement(ctx: Context<CreateStatement>) -> anchor_lang::Result<()> {
+        instructions::create_statement::handler(ctx)
     }
 }
 

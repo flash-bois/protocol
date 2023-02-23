@@ -13,7 +13,7 @@ pub struct CreateState<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateState>, bump: u8) -> Result<()> {
+pub fn handler(ctx: Context<CreateState>) -> Result<()> {
     let state = &mut ctx.accounts.state.load_init()?;
 
     msg!("Initializing state");
@@ -21,7 +21,7 @@ pub fn handler(ctx: Context<CreateState>, bump: u8) -> Result<()> {
     **state = State {
         admin: *ctx.accounts.admin.key,
         vaults_acc: *ctx.accounts.vaults.to_account_info().key,
-        bump,
+        bump: *ctx.bumps.get("state").unwrap(),
     };
 
     msg!("Initializing vaults");

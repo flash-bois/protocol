@@ -11,24 +11,68 @@ use std::{
 };
 use vec_macro::SafeArray;
 
-#[derive(SafeArray)]
-struct Positions {
-    head: u8,
-    elements: [Position; 64],
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[repr(packed)]
+    #[derive(SafeArray, Debug)]
+    pub struct Positions {
+        pub head: u8,
+        pub elements: [Position; 64],
+    }
+
+    #[zero_copy]
+    #[derive(Default, Debug)]
+    #[repr(packed)]
+    pub struct UserTemporaryValues {
+        pub liabilities: Value,
+        pub collateral: CollateralValues,
+        // pub trades: Trades,
+    }
+
+    #[zero_copy]
+    #[derive(Default, Debug)]
+    #[repr(packed)]
+    pub struct UserStatement {
+        pub positions: Positions,
+        pub values: UserTemporaryValues,
+    }
 }
 
-#[derive(Default)]
-struct UserTemporaryValues {
-    pub liabilities: Value,
-    pub collateral: CollateralValues,
-    // pub trades: Trades,
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(SafeArray, Clone, Copy, Debug)]
+    pub struct Positions {
+        pub head: u8,
+        pub elements: [Position; 64],
+    }
+
+    #[derive(Default, Clone, Copy, Debug)]
+    #[repr(packed)]
+    pub struct UserTemporaryValues {
+        pub liabilities: Value,
+        pub collateral: CollateralValues,
+        // pub trades: Trades,
+    }
+
+    #[derive(Default, Clone, Copy, Debug)]
+    #[repr(packed)]
+    pub struct UserStatement {
+        pub positions: Positions,
+        pub values: UserTemporaryValues,
+    }
 }
 
-#[derive(Default)]
-pub struct UserStatement {
-    positions: Positions,
-    values: UserTemporaryValues,
-}
+#[cfg(feature = "anchor")]
+pub use zero::*;
+
+#[cfg(not(feature = "anchor"))]
+pub use non_zero::*;
 
 impl UserStatement {
     pub fn add_position(&mut self, position: Position) -> Result<(), ()> {

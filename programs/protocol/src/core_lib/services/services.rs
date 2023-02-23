@@ -9,8 +9,8 @@ mod zero {
     #[repr(packed)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Services {
-        pub swap: Option<Swap>,
-        pub lend: Option<Lend>,
+        pub swap: Swap,
+        pub lend: Lend,
     }
 }
 
@@ -21,8 +21,8 @@ mod non_zero {
     #[derive(Clone, Copy, Debug, Default, PartialEq)]
     #[repr(packed)]
     pub struct Services {
-        pub swap: Option<Swap>,
-        pub lend: Option<Lend>,
+        pub swap: Swap,
+        pub lend: Lend,
     }
 }
 
@@ -33,6 +33,7 @@ pub use zero::Services;
 pub use mon_zero::Services;
 
 #[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum ServiceType {
     /// Lending allows borrowing of tokens
     Lend,
@@ -44,10 +45,10 @@ pub enum ServiceType {
 
 impl Services {
     pub fn swap_mut(&mut self) -> Result<&mut Swap, ()> {
-        self.swap.as_mut().ok_or(())
+        Ok(&mut self.swap)
     }
 
     pub fn lend_mut(&mut self) -> Result<&mut Lend, ()> {
-        self.lend.as_mut().ok_or(())
+        Ok(&mut self.lend)
     }
 }

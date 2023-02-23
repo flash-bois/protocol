@@ -1,6 +1,7 @@
 use crate::core_lib::decimal::{DecimalPlaces, Price, Quantity, Time, Value};
 use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 
+#[repr(u8)]
 pub enum OraclePriceType {
     Spot,
     Sell,
@@ -14,7 +15,7 @@ mod zero {
 
     #[zero_copy]
     #[repr(packed)]
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Default, PartialEq, Eq)]
     /// Oracle is a struct that holds the price of an asset.
     pub struct Oracle {
         /// The price of the asset.
@@ -26,7 +27,7 @@ mod zero {
         /// The maximum time interval between updates.
         pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
-        pub use_spread: bool,
+        pub use_spread: u8,
         /// Limit of quotient above which the confidence is too great to use spot price.
         pub spread_limit: Price,
         /// The number of decimals of the asset.
@@ -38,7 +39,7 @@ mod zero {
 mod non_zero {
     use super::*;
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
     #[repr(packed)]
     /// Oracle is a struct that holds the price of an asset.
     pub struct Oracle {
@@ -79,7 +80,7 @@ impl Oracle {
             confidence: Price::from_integer(0),
             last_update: 0,
             max_update_interval: 0,
-            use_spread: false,
+            use_spread: 0,
             decimals,
             spread_limit,
         };
@@ -123,7 +124,7 @@ impl Oracle {
     /// Checks if either the confidence is too great to use spot price or the `use_spread` flag is
     /// set.
     pub fn should_use_spread(&self) -> bool {
-        self.use_spread || self.confidence / self.price > self.spread_limit
+        self.use_spread == 1 || self.confidence / self.price > self.spread_limit
     }
 
     /// Calculates the value for a given quantity of token.

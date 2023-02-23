@@ -12,6 +12,7 @@ pub enum Side {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
+#[repr(u8)]
 pub enum Position {
     #[default]
     Empty,
@@ -141,7 +142,7 @@ impl Position {
             } => {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle().unwrap();
-                let service = vault.services.lend.as_ref().unwrap();
+                let service = vault.services.lend;
 
                 let amount = service
                     .borrow_shares()
