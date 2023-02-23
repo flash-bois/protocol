@@ -178,6 +178,47 @@ impl Trade {
         Ok((change, receipt.locked))
     }
 
+    pub fn close_short(
+        &mut self,
+        receipt: Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+        now: Time,
+    ) -> Result<(BalanceChange, Quantity), ()> {
+        let funding_fee = self.calculate_funding_fee(&receipt);
+
+        self.locked.quote -= receipt.locked;
+        self.open_value.quote -= receipt.open_value;
+
+        let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
+
+        let open_fee = receipt.size * self.open_fee;
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+
+        Ok((change, receipt.locked))
+    }
+
+    pub fn calculate_value(
+        &self,
+        receipt: &Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+    ) -> Value {
+        let fee =
+            self.calculate_funding_fee(receipt) + BalanceChange::Loss(receipt.size * self.open_fee);
+
+        match receipt.side {
+            Side::Long => match self.calculate_long_value(receipt, oracle) + fee {
+                BalanceChange::Profit(profit) => oracle.calculate_value(profit),
+                BalanceChange::Loss(loss) => oracle.calculate_needed_value(loss),
+            },
+            Side::Short => match self.calculate_short_change(receipt, oracle, quote_oracle) + fee {
+                BalanceChange::Profit(profit) => quote_oracle.calculate_value(profit),
+                BalanceChange::Loss(loss) => quote_oracle.calculate_needed_value(loss),
+            },
+        }
+    }
+
     fn calculate_long_value(&self, receipt: &Receipt, oracle: &Oracle) -> BalanceChange {
         let Receipt {
             size, open_price, ..
@@ -200,26 +241,6 @@ impl Trade {
                 BalanceChange::Loss(loss)
             }
         }
-    }
-
-    pub fn close_short(
-        &mut self,
-        receipt: Receipt,
-        oracle: &Oracle,
-        quote_oracle: &Oracle,
-        now: Time,
-    ) -> Result<(BalanceChange, Quantity), ()> {
-        let funding_fee = self.calculate_funding_fee(&receipt);
-
-        self.locked.quote -= receipt.locked;
-        self.open_value.quote -= receipt.open_value;
-
-        let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
-
-        let open_fee = receipt.size * self.open_fee;
-        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
-
-        Ok((change, receipt.locked))
     }
 
     fn calculate_short_change(
