@@ -30,7 +30,7 @@ mod non_zero {
 pub use zero::Services;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Services;
+pub use non_zero::Services;
 
 #[derive(Clone, Copy)]
 #[repr(u8)]

@@ -201,7 +201,7 @@ mod non_zero {
 pub use zero::*;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::*;
+pub use non_zero::*;
 
 impl Sub for Balances {
     type Output = Self;

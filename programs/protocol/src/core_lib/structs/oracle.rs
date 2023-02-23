@@ -52,7 +52,7 @@ mod non_zero {
         /// The maximum time interval between updates.
         pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
-        pub use_spread: bool,
+        pub use_spread: u8,
         /// Limit of quotient above which the confidence is too great to use spot price.
         pub spread_limit: Price,
         /// The number of decimals of the asset.
@@ -64,7 +64,7 @@ mod non_zero {
 pub use zero::Oracle;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Oracle;
+pub use non_zero::Oracle;
 
 impl Oracle {
     /// Creates a new Oracle with the given price and confidence.

@@ -42,8 +42,8 @@ mod non_zero {
     pub struct Vault {
         pub id: u8,
 
-        oracle: Oracle,
-        quote_oracle: Oracle,
+        pub oracle: Oracle,
+        pub quote_oracle: Oracle,
 
         pub services: Services,
         pub strategies: Strategies,
@@ -54,7 +54,7 @@ mod non_zero {
 pub use zero::Vault;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Vault;
+pub use non_zero::Vault;
 
 impl Vault {
     pub fn add_strategy(

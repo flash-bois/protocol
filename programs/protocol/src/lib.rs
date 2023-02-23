@@ -1,4 +1,6 @@
 mod core_lib;
+
+#[cfg(feature = "anchor")]
 mod errors;
 
 #[cfg(feature = "anchor")]

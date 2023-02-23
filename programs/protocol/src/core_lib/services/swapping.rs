@@ -65,7 +65,7 @@ mod non_zero {
 pub use zero::Swap;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Swap;
+pub use non_zero::Swap;
 
 impl ServiceUpdate for Swap {
     fn add_liquidity_base(&mut self, quantity: Quantity) {

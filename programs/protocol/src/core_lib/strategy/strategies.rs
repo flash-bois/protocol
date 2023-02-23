@@ -35,7 +35,7 @@ mod non_zero {
 pub use zero::Strategies;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Strategies;
+pub use non_zero::Strategies;
 
 #[cfg(test)]
 mod tt {

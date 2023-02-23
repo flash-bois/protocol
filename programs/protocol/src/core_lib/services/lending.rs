@@ -82,7 +82,7 @@ mod non_zero {
 pub use zero::Lend;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Lend;
+pub use non_zero::Lend;
 
 impl ServiceUpdate for Lend {
     fn add_liquidity_base(&mut self, _: Quantity) {

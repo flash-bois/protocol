@@ -41,26 +41,26 @@ mod non_zero {
     #[derive(Clone, Copy, Debug, Default, PartialEq)]
     pub struct Strategy {
         /// Quantity of tokens used in lending (borrowed)
-        lent: Option<Quantity>,
+        pub lent: Option<Quantity>,
         /// Quantity of tokens used in swapping (swapped for other tokens)
-        sold: Option<Balances>,
+        pub sold: Option<Balances>,
         /// Quantity of tokens used in trading (currently locked in a position)
-        traded: Option<Balances>,
+        pub traded: Option<Balances>,
 
         /// Quantity of tokens available for use (not used)
-        available: Balances,
+        pub available: Balances,
         /// Sum of all locked tokens for each of the
-        locked: Balances,
+        pub locked: Balances,
 
         /// Total amount of shares in a strategy
-        total_shares: Shares,
+        pub total_shares: Shares,
         // fee accrued from services
-        accrued_fee: Quantity,
+        pub accrued_fee: Quantity,
 
         /// Ratio at which shares in this strategy can be used as a collateral
-        collateral_ratio: Fraction,
+        pub collateral_ratio: Fraction,
         /// Ratio at which value of shares is calculated during liquidation
-        liquidation_threshold: Fraction,
+        pub liquidation_threshold: Fraction,
     }
 }
 
@@ -68,7 +68,7 @@ mod non_zero {
 pub use zero::Strategy;
 
 #[cfg(not(feature = "anchor"))]
-pub use mon_zero::Strategy;
+pub use non_zero::Strategy;
 
 /// Strategy is where liquidity providers can deposit their tokens
 
