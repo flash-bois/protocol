@@ -1,14 +1,14 @@
-use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories, Others};
+use checked_decimal_macro::{BetweenDecimals, Factories, Others};
 use std::cmp::min;
-use std::default;
 
-use crate::decimal::{
-    BalanceChange, Balances, BigFraction, Both, Fraction, FundingRate, Precise, Price, Quantity,
-    Shares, Time, Value,
+use crate::{
+    decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value},
+    structs::{
+        oracle::{Oracle, OraclePriceType},
+        FeeCurve, Receipt, Side,
+    },
+    user::TradeResult,
 };
-use crate::structs::oracle::{Oracle, OraclePriceType};
-use crate::structs::{FeeCurve, Receipt, Side};
-use crate::user::TradeResult;
 
 use super::ServiceUpdate;
 
@@ -37,6 +37,9 @@ pub struct Trade {
 
     /// fees waiting to be distributed to liquidity providers
     accrued_fee: Balances,
+
+    collateral_ratio: Fraction,
+    liquidation_threshold: Fraction,
 }
 
 impl ServiceUpdate for Trade {
@@ -85,7 +88,21 @@ impl ServiceUpdate for Trade {
 }
 
 impl Trade {
-    pub fn new(open_fee: Fraction, max_leverage: Fraction, start_time: Time) -> Self {
+    pub fn collateral_ratio(&self) -> Fraction {
+        self.collateral_ratio
+    }
+
+    pub fn liquidation_threshold(&self) -> Fraction {
+        self.liquidation_threshold
+    }
+
+    pub fn new(
+        open_fee: Fraction,
+        max_leverage: Fraction,
+        start_time: Time,
+        collateral_ratio: Fraction,
+        liquidation_threshold: Fraction,
+    ) -> Self {
         Self {
             available: Balances::default(),
             locked: Balances::default(),
@@ -97,6 +114,8 @@ impl Trade {
             open_fee,
             max_open_leverage: max_leverage,
             max_leverage,
+            collateral_ratio,
+            liquidation_threshold,
             accrued_fee: Balances::default(),
         }
     }

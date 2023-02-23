@@ -138,7 +138,7 @@ impl Vault {
         self.services.trade_mut()
     }
 
-    pub fn trade_and_oracles(&mut self) -> Result<(&mut Trade, &Oracle, &Oracle), ()> {
+    pub fn trade_mut_and_oracles(&mut self) -> Result<(&mut Trade, &Oracle, &Oracle), ()> {
         let Self {
             services,
             oracle,

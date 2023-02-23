@@ -1,7 +1,4 @@
-use super::{
-    utils::{CollateralValues, TradeResult},
-    *,
-};
+use super::{utils::CollateralValues, *};
 use crate::structs::FixedSizeVector;
 use checked_decimal_macro::Decimal;
 
@@ -43,8 +40,8 @@ impl UserStatement {
     fn liabilities_value(&self, vaults: &[Vault]) -> Value {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_liability())
-                .fold(Value::new(0), |sum, curr| {
-                    sum + curr.liability_value(vaults)
+                .fold(Value::new(0), |sum, current| {
+                    sum + current.liability_value(vaults)
                 })
         } else {
             Value::new(0)
@@ -55,31 +52,35 @@ impl UserStatement {
     fn collaterals_values(&self, vaults: &[Vault]) -> CollateralValues {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_collateral())
-                .fold(CollateralValues::default(), |sum, curr| {
-                    sum + curr.collateral_values(vaults)
+                .fold(CollateralValues::default(), |sum, current| {
+                    sum + current.collateral_values(vaults)
                 })
         } else {
             CollateralValues::default()
         }
     }
 
-    fn trades_values(&self, vaults: &[Vault]) -> TradeResult {
+    fn trades_values(&self, vaults: &[Vault]) -> (Value, CollateralValues) {
         if let Some(iter) = self.positions.iter() {
-            iter.filter(|&pos| pos.is_trade())
-                .fold(TradeResult::Profitable(Value::new(0)), |sum, curr| {
-                    sum + curr.position_profit(vaults)
-                })
+            iter.filter(|&pos| pos.is_trade()).fold(
+                (Value::new(0), CollateralValues::default()),
+                |(loss, prof), current| {
+                    let (position_loss, position_profit) = current.pos_loss_n_profit(vaults);
+
+                    (loss + position_loss, prof + position_profit)
+                },
+            )
         } else {
-            TradeResult::None
+            (Value::new(0), CollateralValues::default())
         }
     }
 
     /// calculates user temporary values for collateral and liabilities positions
     pub fn refresh(&mut self, vaults: &[Vault]) {
-        self.values.liabilities = self.liabilities_value(vaults);
-        self.values.collateral = self.collaterals_values(vaults);
+        let (loss, profit) = self.trades_values(vaults);
 
-        // TODO: handle trades
+        self.values.liabilities = self.liabilities_value(vaults) + loss;
+        self.values.collateral = self.collaterals_values(vaults) + profit;
     }
 }
 

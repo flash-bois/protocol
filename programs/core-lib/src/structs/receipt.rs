@@ -1,13 +1,14 @@
-use crate::decimal::{FundingRate, Price, Quantity, Shares, Value};
+use crate::decimal::{FundingRate, Price, Quantity, Value};
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Side {
+    #[default]
     Long,
     Short,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Receipt {
     /// side of the position: either long or short
     pub side: Side,
