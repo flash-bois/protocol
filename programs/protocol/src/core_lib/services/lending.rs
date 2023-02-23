@@ -14,6 +14,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default)]
     pub struct Lend {
         /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service

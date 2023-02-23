@@ -13,6 +13,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq)]
     /// Oracle is a struct that holds the price of an asset.
     pub struct Oracle {

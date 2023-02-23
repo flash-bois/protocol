@@ -21,6 +21,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Default, Debug, PartialEq, Eq)]
     pub struct FeeCurve {
         pub used: u8,

@@ -11,6 +11,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, Default, PartialEq, Eq)]
     pub struct Swap {
         /// Liquidity available to be bought by a swapper.

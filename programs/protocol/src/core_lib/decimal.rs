@@ -17,6 +17,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, Default, PartialEq, Eq)]
     pub struct Balances {
         /// Token characteristic for vault
@@ -27,6 +28,7 @@ mod zero {
     /// Used to represent a quantity of token (of its smallest unit)
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(0, U256)]
     pub struct Quantity {
@@ -35,6 +37,7 @@ mod zero {
 
     /// Keeps fractions that need less precision
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(6)]
     pub struct Fraction {
@@ -43,6 +46,7 @@ mod zero {
 
     /// Keeps fractions that need less precision
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(6)]
     pub struct Utilization {
@@ -51,6 +55,7 @@ mod zero {
 
     /// Keeps fractions that need greater precision
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(12)]
     pub struct BigFraction {
@@ -59,6 +64,7 @@ mod zero {
 
     /// Keeps shares of pool or debt
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(0)]
     pub struct Shares {
@@ -67,6 +73,7 @@ mod zero {
 
     /// Keeps price data
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(9)]
     pub struct Price {
@@ -75,6 +82,7 @@ mod zero {
 
     /// Keeps the value of a token, pool or position
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(9)]
     pub struct Value {
@@ -83,6 +91,7 @@ mod zero {
 
     /// Used to keep cumulative funding rate (can be positive or negative)
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(24)]
     pub struct FundingRate {
@@ -91,6 +100,7 @@ mod zero {
 
     /// Used for calculations that need more precision
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
     #[decimal(24)]
     pub struct Precise {

@@ -6,6 +6,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Services {
         pub swap: Option<Swap>,

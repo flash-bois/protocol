@@ -23,15 +23,15 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Vault {
-        pub id: u8,
-
+        pub services: Services,
+        pub strategies: Strategies,
         pub oracle: Option<Oracle>,
         pub quote_oracle: Option<Oracle>,
 
-        pub services: Services,
-        pub strategies: Strategies,
+        pub id: u8,
     }
 }
 

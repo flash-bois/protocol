@@ -20,10 +20,8 @@ use anchor_lang::prelude::*;
 pub mod protocol {
     use super::*;
 
-    pub fn create_state(ctx: Context<CreateState>, nonce: u8) -> anchor_lang::Result<()> {
-        msg!("Initializing here");
-        ctx.accounts
-            .handler(nonce, *ctx.bumps.get("state").unwrap())
+    pub fn create_state(ctx: Context<CreateState>, bump: u8) -> anchor_lang::Result<()> {
+        instructions::create_state::handler(ctx, bump)
     }
 }
 

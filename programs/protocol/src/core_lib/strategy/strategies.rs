@@ -12,6 +12,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
+    #[repr(packed)]
     #[derive(Debug, SafeArray, PartialEq)]
     pub struct Strategies {
         pub head: u8,
