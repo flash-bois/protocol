@@ -95,11 +95,11 @@ impl Strategy {
         self.traded.as_ref().ok_or(())
     }
 
-    fn sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+    fn _sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
         self.sold.as_mut().ok_or(())
     }
 
-    fn traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
+    fn _traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
         self.traded.as_mut().ok_or(())
     }
 

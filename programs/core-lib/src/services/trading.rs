@@ -1,10 +1,14 @@
 use checked_decimal_macro::{BetweenDecimals, Factories, Others};
 use std::cmp::min;
 
-use crate::decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value};
-use crate::structs::oracle::{Oracle, OraclePriceType};
-use crate::structs::{FeeCurve, Receipt, Side};
-use crate::user::TradeResult;
+use crate::{
+    decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value},
+    structs::{
+        oracle::{Oracle, OraclePriceType},
+        FeeCurve, Receipt, Side,
+    },
+    user::TradeResult,
+};
 
 use super::ServiceUpdate;
 

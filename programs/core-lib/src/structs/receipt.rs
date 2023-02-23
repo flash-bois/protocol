@@ -1,4 +1,4 @@
-use crate::decimal::{FundingRate, Price, Quantity, Shares, Value};
+use crate::decimal::{FundingRate, Price, Quantity, Value};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
