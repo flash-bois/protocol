@@ -73,6 +73,36 @@ impl Quantity {
     }
 }
 
+pub enum BalanceChange {
+    Profit(Quantity),
+    Loss(Quantity),
+}
+
+impl Add for BalanceChange {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Profit(a), Self::Profit(b)) => Self::Profit(a + b),
+            (Self::Loss(a), Self::Loss(b)) => Self::Loss(a + b),
+            (Self::Profit(a), Self::Loss(b)) => {
+                if a > b {
+                    Self::Profit(a - b)
+                } else {
+                    Self::Loss(b - a)
+                }
+            }
+            (Self::Loss(a), Self::Profit(b)) => {
+                if a > b {
+                    Self::Loss(a - b)
+                } else {
+                    Self::Profit(b - a)
+                }
+            }
+        }
+    }
+}
+
 /// Number of seconds in 6 hours
 pub const RATE_INTERVAL: Time = 21600000u32;
 
