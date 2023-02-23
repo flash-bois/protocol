@@ -2,7 +2,7 @@ use crate::{
     decimal::{BalanceChange, Quantity, Time},
     services::{ServiceType, ServiceUpdate},
     structs::{Receipt, Side},
-    user::UserStatement,
+    user::{Position, UserStatement},
 };
 
 use super::Vault;
@@ -18,9 +18,9 @@ impl Vault {
         self.refresh(now)?;
 
         let collateral = user_statement.permitted_debt();
-        let (trade, oracle, quote_oracle) = self.trade_and_oracles()?;
+        let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
-        let _receipt = match side {
+        let receipt = match side {
             Side::Long => {
                 let receipt = trade.open_long(quantity, collateral, oracle, now)?;
                 let base_available = trade.available().base;
@@ -37,18 +37,23 @@ impl Vault {
             }
         };
 
-        // TODO: add receipt to user_statement
+        let position = Position::Trading {
+            vault_index: self.id,
+            receipt,
+        };
+
+        user_statement.add_position(position)?;
 
         Ok(())
     }
 
     pub fn close_position(
         &mut self,
-        // user_statement: &mut UserStatement,
+        user_statement: &mut UserStatement,
         receipt: Receipt, // TODO: take receipt from user_statement
         now: Time,
     ) -> Result<BalanceChange, ()> {
-        let (trade, oracle, quote_oracle) = self.trade_and_oracles()?;
+        let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
         let change = match receipt.side {
             Side::Long => {

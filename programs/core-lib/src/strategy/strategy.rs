@@ -1,4 +1,4 @@
-use crate::decimal::{Balances, Fraction, Price, Quantity, Shares, Value};
+use crate::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::services::{ServiceType, ServiceUpdate, Services};
 
 /// Strategy is where liquidity providers can deposit their tokens
@@ -192,7 +192,7 @@ impl Strategy {
         Ok(shares)
     }
 
-    /// Add locked tokens to a specific substrategy
+    /// Add locked tokens to a specific sub strategy
     pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), ()> {
         *self.locked_in(sub) += quantity;
         self.accrued_fee += quantity;
@@ -201,7 +201,7 @@ impl Strategy {
         Ok(())
     }
 
-    /// Lock tokens in a specific substrategy
+    /// Lock tokens in a specific sub strategy
     pub fn lock_base(
         &mut self,
         quantity: Quantity,

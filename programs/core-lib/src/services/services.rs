@@ -29,4 +29,8 @@ impl Services {
     pub fn trade_mut(&mut self) -> Result<&mut Trade, ()> {
         self.trade.as_mut().ok_or(())
     }
+
+    pub fn trade(&self) -> Result<&Trade, ()> {
+        self.trade.as_ref().ok_or(())
+    }
 }

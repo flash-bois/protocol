@@ -3,7 +3,7 @@ mod statement;
 mod utils;
 
 use crate::{
-    decimal::{FundingRate, Price, Quantity, Shares, Value},
+    decimal::{Quantity, Shares, Value},
     vault::Vault,
 };
 

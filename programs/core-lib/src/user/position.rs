@@ -2,14 +2,8 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::services::ServiceUpdate;
-
-#[derive(Debug, Clone)]
-#[repr(u8)]
-pub enum Side {
-    Long,
-    Short,
-}
+use crate::{services::ServiceUpdate, structs::Receipt};
+use checked_decimal_macro::Decimal;
 
 #[derive(Debug, Default, Clone)]
 pub enum Position {
@@ -29,11 +23,7 @@ pub enum Position {
     },
     Trading {
         vault_index: u8,
-        side: Side,
-        quantity: Quantity,
-        quote_quantity: Option<Quantity>,
-        open_price: Price,
-        entry_funding: FundingRate,
+        receipt: Receipt,
     },
 }
 
@@ -111,7 +101,7 @@ impl Position {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
-            Position::Trading { quantity, .. } => quantity,
+            Position::Trading { receipt, .. } => &mut receipt.size,
             Position::Empty => unreachable!(),
         }
     }
@@ -194,8 +184,32 @@ impl Position {
         }
     }
 
-    pub fn position_profit(&self, vaults: &[Vault]) -> TradeResult {
-        TradeResult::None
+    pub fn pos_loss_n_profit(&self, vaults: &[Vault]) -> (Value, CollateralValues) {
+        match *self {
+            Position::Trading {
+                vault_index,
+                receipt,
+                ..
+            } => {
+                let vault = &vaults[vault_index as usize];
+                let (trade, oracle, quote_oracle) = vault.trade_and_oracles().unwrap();
+                let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
+
+                match profit_or_loss {
+                    TradeResult::None => unreachable!(),
+                    TradeResult::Profitable(val) => (
+                        Value::new(0),
+                        CollateralValues {
+                            exact: val,
+                            with_collateral_ratio: val * trade.collateral_ratio(),
+                            unhealthy: val * trade.liquidation_threshold(),
+                        },
+                    ),
+                    TradeResult::Loss(val) => (val, CollateralValues::default()),
+                }
+            }
+            _ => unreachable!("should be called on trade, oopsie"),
+        }
     }
 }
 
