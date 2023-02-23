@@ -199,7 +199,7 @@ impl Trade {
         self.open_value.base -= open_value;
         self.locked.base -= locked;
 
-        Ok((change, size))
+        Ok((change, locked))
     }
 
     pub fn close_short(
@@ -243,7 +243,7 @@ impl Trade {
         let open_fee = size * self.open_fee;
         let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
-        Ok((change, size))
+        Ok((change, locked))
     }
 
     fn utilization(&self) -> Both<Fraction> {
