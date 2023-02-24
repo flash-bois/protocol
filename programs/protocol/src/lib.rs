@@ -56,7 +56,21 @@ pub fn nothing() {}
 //     }
 // }
 
-// use crate::structs::State;
+// use anchor_lang::prelude::*;
+// declare_id!("9DvKMoN2Wx1jFNszJU9aGDSsvBNJ5A3UfNp1Mvv9CVDi");
+
+// // #[zero_copy]
+// #[account(zero_copy)]
+// #[repr(C)]
+// #[derive(Debug, Default)]
+// pub struct State {
+//     pub padding: [u8; 8],
+//     pub bump: u8,
+//     pub admin: Pubkey,
+//     pub vaults_acc: Pubkey,
+// }
+
+// // use crate::structs::State;
 // use js_sys::Uint8Array;
 // use wasm_bindgen::prelude::*;
 

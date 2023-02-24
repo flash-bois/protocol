@@ -27,7 +27,7 @@ pub fn handler(ctx: Context<CreateStatement>) -> Result<()> {
 
     msg!("key: {}", ctx.accounts.payer.key.to_string());
 
-    statement.owner = *ctx.accounts.payer.key;
+    // statement.owner = *ctx.accounts.payer.key;
 
     // **statement = Statement {
     //     owner: *ctx.accounts.payer.key,

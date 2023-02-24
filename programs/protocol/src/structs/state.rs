@@ -7,9 +7,9 @@ mod zero {
     #[repr(packed)]
     #[derive(Debug, Default)]
     pub struct State {
+        pub bump: u8,
         pub admin: Pubkey,
         pub vaults_acc: Pubkey,
-        pub bump: u8,
     }
 }
 
@@ -19,9 +19,9 @@ mod non_zero {
     #[repr(packed)]
     #[derive(Debug, Default)]
     pub struct State {
+        pub bump: u8,
         pub admin: [u8; 32],
         pub vaults_acc: [u8; 32],
-        pub bump: u8,
     }
 }
 
