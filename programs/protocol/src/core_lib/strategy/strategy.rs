@@ -7,7 +7,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Strategy {
         /// Quantity of tokens used in lending (borrowed)
@@ -37,7 +37,7 @@ mod zero {
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
     use super::*;
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq)]
     pub struct Strategy {
         /// Quantity of tokens used in lending (borrowed)

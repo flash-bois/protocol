@@ -2,7 +2,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { Program, } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
-import { StateAccount } from '../../pkg/protocol'
+import { StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 
 const STATE_SEED = "state"
@@ -40,9 +40,9 @@ describe('state with default vaults', () => {
     const create_vaults_account_ix = SystemProgram.createAccount({
       fromPubkey: admin.publicKey,
       newAccountPubkey: vaults.publicKey,
-      space: vaults_size,
+      space: VaultsAccount.size(),
       lamports: await provider.connection.getMinimumBalanceForRentExemption(
-        vaults_size
+        VaultsAccount.size()
       ),
       programId: program.programId
     })
@@ -82,11 +82,26 @@ describe('state with default vaults', () => {
     let account_info = (await connection.getAccountInfo(state_address))?.data
     console.log(account_info?.toString('hex'))
 
-console.log(bump)
+    console.log(bump)
     
     if(account_info) {
      const state =  StateAccount.load(account_info)
       console.log(state.get_bump())
+    }
+
+
+    console.log('vaults')
+
+    let vault_account_info = (await connection.getAccountInfo(vaults.publicKey))?.data
+    console.log(vault_account_info?.toString('hex'))
+
+    
+    if(vault_account_info) {
+      console.log('inside')
+      const state =  VaultsAccount.load(vault_account_info)
+
+      console.log('loaded')
+      console.log(state.vaults_len())
     }
   })
 })

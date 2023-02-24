@@ -8,7 +8,7 @@ mod zero {
 
     #[zero_copy]
     #[derive(Debug, Default)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct CollateralValues {
         /// value of collateral 1:1
         pub exact: Value,
@@ -24,7 +24,7 @@ mod non_zero {
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct CollateralValues {
         /// value of collateral 1:1
         pub exact: Value,

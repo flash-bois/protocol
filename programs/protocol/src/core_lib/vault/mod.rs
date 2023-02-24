@@ -23,7 +23,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Vault {
         pub services: Services,
@@ -38,7 +38,7 @@ mod zero {
 mod non_zero {
     use super::*;
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct Vault {
         pub id: u8,
 

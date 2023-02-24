@@ -3,7 +3,7 @@ import { Program, } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert, use } from 'chai'
 import { Protocol } from '../../target/types/protocol'
-import {StateAccount} from '../../pkg/protocol'
+import {StateAccount, StatementAccount} from '../../pkg/protocol'
 
 const STATEMENT_SEED = "statement"
 
@@ -74,7 +74,7 @@ describe('statement for user', () => {
     console.log(account_info?.toString('hex'))
 
     if(account_info) {
-     const state =  StateAccount.load(account_info)
+     const state =  StatementAccount.load(account_info)
       console.log(state.get_bump())
     }
   })

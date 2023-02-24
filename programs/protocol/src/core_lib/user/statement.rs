@@ -17,7 +17,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(SafeArray, Debug)]
     pub struct Positions {
         pub head: u8,
@@ -26,7 +26,7 @@ mod zero {
 
     #[zero_copy]
     #[derive(Default, Debug)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct UserTemporaryValues {
         pub liabilities: Value,
         pub collateral: CollateralValues,
@@ -35,7 +35,7 @@ mod zero {
 
     #[zero_copy]
     #[derive(Default, Debug)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct UserStatement {
         pub positions: Positions,
         pub values: UserTemporaryValues,
@@ -53,7 +53,7 @@ mod non_zero {
     }
 
     #[derive(Default, Clone, Copy, Debug)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct UserTemporaryValues {
         pub liabilities: Value,
         pub collateral: CollateralValues,
@@ -61,7 +61,7 @@ mod non_zero {
     }
 
     #[derive(Default, Clone, Copy, Debug)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct UserStatement {
         pub positions: Positions,
         pub values: UserTemporaryValues,

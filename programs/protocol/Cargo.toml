@@ -16,13 +16,13 @@ anchor-lang = { version = "0.26.0", optional = true }
 wasm-bindgen = { version = "0.2.63", optional = true }
 bytemuck = { version = "1.13.0", optional = true }
 js-sys = { version = "0.3.61", optional = true }
+console_error_panic_hook = { version = "0.1.6", optional = true }
 cfg-if = "1.0.0"
 
 [features]
-default = ["anchor"]
+default = ["wasm"]
 anchor = ["dep:anchor-lang"]
-# wasm = ["dep:wasm-bindgen", "dep:bytemuck", "dep:js-sys"]
-wasm = ["dep:wasm-bindgen", "dep:bytemuck", "dep:js-sys", "dep:anchor-lang"]
+wasm = ["dep:wasm-bindgen", "dep:bytemuck", "dep:js-sys", "dep:console_error_panic_hook"]
 
 # UNUSED
 # no-entrypoint = []
