@@ -60,7 +60,7 @@ mod non_zero {
     use vec_macro::SafeArray;
     use wasm_bindgen::prelude::*;
 
-    use crate::core_lib::vault::Vault;
+    use crate::{core_lib::vault::Vault, to_buffer};
 
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -123,8 +123,57 @@ mod non_zero {
             self.account.arr.head
         }
 
+        #[wasm_bindgen]
         pub fn size() -> usize {
             std::mem::size_of::<Vaults>()
+        }
+
+        #[wasm_bindgen]
+        pub fn base_token(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .base_token,
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn quote_token(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .quote_token,
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn base_reserve(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .base_reserve,
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn quote_reserve(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .quote_reserve,
+            )
         }
     }
 }

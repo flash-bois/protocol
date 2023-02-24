@@ -38,6 +38,7 @@ pub mod protocol {
 #[cfg(feature = "wasm")]
 mod decoder {
     use bytemuck::{Pod, Zeroable};
+    use js_sys::Uint8Array;
     pub struct ZeroCopyDecoder;
 
     impl ZeroCopyDecoder {
@@ -55,6 +56,12 @@ mod decoder {
             bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
         }
     }
+
+    pub fn to_buffer(v: &[u8]) -> Uint8Array {
+        let b = Uint8Array::new_with_length(32);
+        b.copy_from(v);
+        b
+    }
 }
 #[cfg(feature = "wasm")]
-pub use decoder::ZeroCopyDecoder;
+pub use decoder::*;
