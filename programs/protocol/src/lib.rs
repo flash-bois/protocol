@@ -20,13 +20,18 @@ use anchor_lang::prelude::*;
 #[program]
 pub mod protocol {
     use super::*;
+    use anchor_lang::prelude::*;
 
-    pub fn create_state(ctx: Context<CreateState>) -> anchor_lang::Result<()> {
+    pub fn create_state(ctx: Context<CreateState>) -> Result<()> {
         instructions::create_state::handler(ctx)
     }
 
-    pub fn create_statement(ctx: Context<CreateStatement>) -> anchor_lang::Result<()> {
+    pub fn create_statement(ctx: Context<CreateStatement>) -> Result<()> {
         instructions::create_statement::handler(ctx)
+    }
+
+    pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
+        ctx.accounts.handler()
     }
 }
 
