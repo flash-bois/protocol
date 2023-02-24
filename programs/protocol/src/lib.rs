@@ -33,64 +33,70 @@ pub mod protocol {
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
-// #[cfg_attr(feature = "wasm", wasm_bindgen)]
-// #[wasm_bindgen]
-pub fn nothing() {}
-// use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "wasm")]
+pub mod decoder {
+    use super::*;
+    use bytemuck::{Pod, Zeroable};
+    pub struct ZeroCopyDecoder;
 
-// pub struct ZeroCopyDecoder;
+    impl ZeroCopyDecoder {
+        pub(crate) fn decode_account_info<'a, R>(d: &'a Vec<u8>) -> &'a R
+        where
+            R: Pod + Zeroable,
+        {
+            bytemuck::from_bytes::<R>(&d[..std::mem::size_of::<R>()])
+        }
 
-// impl ZeroCopyDecoder {
-//     pub(crate) fn decode_account_info<'a, R>(d: &'a Vec<u8>) -> &'a R
-//     where
-//         R: Pod + Zeroable,
-//     {
-//         bytemuck::from_bytes::<R>(&d[..std::mem::size_of::<R>()])
-//     }
+        pub(crate) fn mut_decode_account_info<'a, R>(d: &'a mut Vec<u8>) -> &'a R
+        where
+            R: Pod + Zeroable,
+        {
+            bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
+        }
+    }
+}
 
-//     pub(crate) fn mut_decode_account_info<'a, R>(d: &'a mut Vec<u8>) -> &'a R
-//     where
-//         R: Pod + Zeroable,
-//     {
-//         bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
-//     }
-// }
-
-// use anchor_lang::prelude::*;
+// #[cfg(feature = "wasm")]
 // declare_id!("9DvKMoN2Wx1jFNszJU9aGDSsvBNJ5A3UfNp1Mvv9CVDi");
 
-// // #[zero_copy]
-// #[account(zero_copy)]
-// #[repr(C)]
-// #[derive(Debug, Default)]
-// pub struct State {
-//     pub padding: [u8; 8],
-//     pub bump: u8,
-//     pub admin: Pubkey,
-//     pub vaults_acc: Pubkey,
-// }
+#[cfg(feature = "wasm")]
+mod state {
+    use super::*;
+    use anchor_lang::prelude::*;
+    use js_sys::Uint8Array;
+    use wasm_bindgen::prelude::*;
 
-// // use crate::structs::State;
-// use js_sys::Uint8Array;
-// use wasm_bindgen::prelude::*;
+    #[wasm_bindgen]
+    #[repr(packed)]
+    pub struct StateAccount {
+        account: State,
+    }
 
-// #[wasm_bindgen]
-// #[repr(packed)]
-// pub struct StateAccount {
-//     account: State,
-// }
+    #[repr(C)]
+    #[derive(Debug, Default, Clone, Copy)]
+    pub struct State {
+        pub padding: [u8; 8],
+        pub bump: u8,
+        pub admin: Pubkey,
+        pub vaults_acc: Pubkey,
+    }
+    #[automatically_derived]
+    unsafe impl bytemuck::Pod for State {}
+    #[automatically_derived]
+    unsafe impl bytemuck::Zeroable for State {}
 
-// #[wasm_bindgen]
-// impl StateAccount {
-//     #[wasm_bindgen]
-//     pub fn load(account_info: &Uint8Array) -> Self {
-//         let v = account_info.to_vec();
-//         let account = *ZeroCopyDecoder::decode_account_info::<State>(&v);
-//         Self { account }
-//     }
+    #[wasm_bindgen]
+    impl StateAccount {
+        #[wasm_bindgen]
+        pub fn load(account_info: &Uint8Array) -> Self {
+            let v = account_info.to_vec();
+            let account = *decoder::ZeroCopyDecoder::decode_account_info::<State>(&v);
+            Self { account }
+        }
 
-//     #[wasm_bindgen]
-//     pub fn get_bump(&self) -> u8 {
-//         self.account.bump
-//     }
-// }
+        #[wasm_bindgen]
+        pub fn get_bump(&self) -> u8 {
+            self.account.bump
+        }
+    }
+}

@@ -13,19 +13,19 @@ mod zero {
     }
 }
 
-#[cfg(not(feature = "anchor"))]
-mod non_zero {
+// #[cfg(not(feature = "anchor"))]
+// mod non_zero {
 
-    #[repr(packed)]
-    #[derive(Debug, Default)]
-    pub struct State {
-        pub bump: u8,
-        pub admin: [u8; 32],
-        pub vaults_acc: [u8; 32],
-    }
-}
+//     #[repr(packed)]
+//     #[derive(Debug, Default)]
+//     pub struct State {
+//         pub bump: u8,
+//         pub admin: [u8; 32],
+//         pub vaults_acc: [u8; 32],
+//     }
+// }
 
-#[cfg(not(feature = "anchor"))]
-pub use non_zero::State;
+// #[cfg(not(feature = "anchor"))]
+// pub use non_zero::State;
 #[cfg(feature = "anchor")]
 pub use zero::State;
