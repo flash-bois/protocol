@@ -4,8 +4,13 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert } from 'chai'
 import { StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
-import { createMint, createAssociatedTokenAccount, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { init_accounts } from '../utils/utils'
+import {
+  createMint,
+  createAssociatedTokenAccount,
+  TOKEN_PROGRAM_ID,
+  createAccount
+} from '@solana/spl-token'
+import { createAccounts } from '../utils/utils'
 
 const STATE_SEED = 'state'
 
@@ -25,7 +30,7 @@ describe('Init vault', () => {
     await connection.requestAirdrop(admin.publicKey, 1000000000)
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
-    const { state, vaults } = await init_accounts(connection, program, admin)
+    const { state, vaults } = await createAccounts(connection, program, admin)
 
     const base = await createMint(connection, admin, minter.publicKey, null, 6)
     const quote = await createMint(connection, admin, minter.publicKey, null, 6)

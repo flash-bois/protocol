@@ -24,8 +24,6 @@ describe('state with default vaults', () => {
   )
 
   it('Creates state', async () => {
-    let tx = new Transaction()
-
     const airdrop_signature = await connection.requestAirdrop(admin.publicKey, 1000000000)
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
@@ -43,9 +41,7 @@ describe('state with default vaults', () => {
       programId: program.programId
     })
 
-    tx.add(create_vaults_account_ix)
-
-    const create_state_ix = await program.methods
+    await program.methods
       .createState()
       .accounts({
         admin: admin.publicKey,
@@ -54,26 +50,9 @@ describe('state with default vaults', () => {
         systemProgram: SystemProgram.programId,
         vaults: vaults.publicKey
       })
-      .instruction()
-
-    tx.add(create_state_ix)
-    tx.recentBlockhash = blockhash
-    tx.feePayer = admin.publicKey
-    tx.partialSign(admin, vaults)
-
-    const raw_tx = tx.serialize()
-    const final_signature = await provider.connection.sendRawTransaction(raw_tx, {
-      skipPreflight: true
-    })
-
-    await program.provider.connection.confirmTransaction({
-      blockhash,
-      lastValidBlockHeight,
-      signature: final_signature
-    })
-
-    const vaults_account = await program.account.vaults.fetch(vaults.publicKey)
-    const state_account = await program.account.state.fetch(state_address)
+      .preInstructions([create_vaults_account_ix])
+      .signers([admin, vaults])
+      .rpc({ skipPreflight: true })
 
     let account_info = (await connection.getAccountInfo(state_address))?.data
     assert.notEqual(account_info, undefined)
@@ -83,10 +62,9 @@ describe('state with default vaults', () => {
     }
 
     let vault_account_info = (await connection.getAccountInfo(vaults.publicKey))?.data
-
+    assert.notEqual(vault_account_info, undefined)
     if (vault_account_info) {
       const state = VaultsAccount.load(vault_account_info)
-
       assert.equal(state.vaults_len(), 0)
     }
   })
