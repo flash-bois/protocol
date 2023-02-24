@@ -8,7 +8,7 @@ use crate::{
     structs::{State, VaultKeys, Vaults},
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(Accounts)]
 pub struct InitVault<'info> {
@@ -19,22 +19,26 @@ pub struct InitVault<'info> {
     #[account(mut, constraint = admin.key() == state.load()?.admin)]
     pub admin: Signer<'info>,
 
-    #[account(mut,
-        constraint = reserve_base.mint == base.key(),
-        constraint = reserve_base.owner == state.key(),
+    #[account(init,
+        token::mint = base,
+        token::authority = state.to_account_info(),
+        payer = admin,
     )]
     pub reserve_base: Account<'info, TokenAccount>,
-    #[account(mut,
-        constraint = reserve_quote.mint == quote.key(),
-        constraint = reserve_quote.owner == state.key(),
+    #[account(init,
+        token::mint = quote,
+        token::authority = state.to_account_info(),
+        payer = admin,
     )]
     pub reserve_quote: Account<'info, TokenAccount>,
     pub base: Account<'info, Mint>,
     pub quote: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 impl InitVault<'_> {
-    pub fn handler(self) -> Result<()> {
+    pub fn handler(&mut self) -> anchor_lang::Result<()> {
         msg!("DotWave: Initializing vault");
         let keys = VaultKeys {
             base_token: self.base.key(),
@@ -51,8 +55,8 @@ impl InitVault<'_> {
             quote_oracle: Oracle::default(),
             id: vaults.arr.head,
         };
-        vaults.arr.add(created_vault);
-        vaults.keys.add(keys);
+        vaults.arr.add(created_vault).expect("Failed to add vault");
+        vaults.keys.add(keys).expect("Failed to add vault keys");
 
         Ok(())
     }
