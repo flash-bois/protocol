@@ -5,7 +5,6 @@ mod errors;
 
 #[cfg(feature = "anchor")]
 mod instructions;
-#[cfg(feature = "anchor")]
 mod structs;
 
 #[cfg(feature = "anchor")]
@@ -32,8 +31,25 @@ pub mod protocol {
 }
 
 #[cfg(feature = "wasm")]
-use wasm_bindgen::prelude::*;
+mod decoder {
+    use bytemuck::{Pod, Zeroable};
+    pub struct ZeroCopyDecoder;
 
-// #[cfg_attr(feature = "wasm", wasm_bindgen)]
-// #[wasm_bindgen]
-pub fn nothing() {}
+    impl ZeroCopyDecoder {
+        pub(crate) fn decode_account_info<'a, R>(d: &'a Vec<u8>) -> &'a R
+        where
+            R: Pod + Zeroable,
+        {
+            bytemuck::from_bytes::<R>(&d[..std::mem::size_of::<R>()])
+        }
+
+        pub(crate) fn mut_decode_account_info<'a, R>(d: &'a mut Vec<u8>) -> &'a R
+        where
+            R: Pod + Zeroable,
+        {
+            bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
+        }
+    }
+}
+#[cfg(feature = "wasm")]
+pub use decoder::ZeroCopyDecoder;

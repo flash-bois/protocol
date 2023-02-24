@@ -14,7 +14,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Debug, PartialEq, Eq, Default)]
     pub struct Lend {
         /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
@@ -49,7 +49,7 @@ mod non_zero {
     use super::*;
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct Lend {
         /// liquidity available to borrow by borrower, it's the sum of all strategies containing this service
         /// it should not be modified inside service

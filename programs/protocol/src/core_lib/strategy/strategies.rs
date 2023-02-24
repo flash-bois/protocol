@@ -12,7 +12,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Debug, SafeArray, PartialEq)]
     pub struct Strategies {
         pub head: u8,
@@ -23,7 +23,7 @@ mod zero {
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
     use super::*;
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Clone, Copy, Debug, SafeArray, PartialEq)]
     pub struct Strategies {
         pub head: u8,

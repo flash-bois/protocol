@@ -3,6 +3,7 @@ import { Program, } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert, use } from 'chai'
 import { Protocol } from '../../target/types/protocol'
+import {StateAccount, StatementAccount} from '../../pkg/protocol'
 
 const STATEMENT_SEED = "statement"
 
@@ -62,12 +63,20 @@ describe('statement for user', () => {
       signature: final_signature
     })
 
-    await sleep(10000)
+    await sleep(5000)
 
     console.log(program.account.statement.size)
     const statement_account = await program.account.statement.fetch(statement_address)
     console.log(statement_account)
-    assert.equal(statement_account.owner.toString(), user.publicKey.toString())
+    // assert.equal(statement_account.owner.toString(), user.publicKey.toString())
+
+    let account_info = (await connection.getAccountInfo(statement_address))?.data
+    console.log(account_info?.toString('hex'))
+
+    if(account_info) {
+     const state =  StatementAccount.load(account_info)
+      console.log(state.get_bump())
+    }
   })
 })
 

@@ -22,7 +22,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Default, Debug, PartialEq, Eq)]
     pub struct FeeCurve {
         pub used: u8,
@@ -36,7 +36,7 @@ mod non_zero {
     use super::*;
 
     #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct FeeCurve {
         pub used: usize,
         pub bounds: [Fraction; MAX_FEES],

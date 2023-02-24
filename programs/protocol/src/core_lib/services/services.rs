@@ -6,7 +6,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[repr(packed)]
+    #[repr(C)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Services {
         pub swap: Swap,
@@ -19,7 +19,7 @@ mod non_zero {
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default, PartialEq)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct Services {
         pub swap: Swap,
         pub lend: Lend,

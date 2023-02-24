@@ -1,51 +1,165 @@
-use crate::core_lib::services::lending::Lend;
-use crate::core_lib::services::Services;
-use crate::core_lib::strategy::Strategies;
-use crate::core_lib::structs::{FeeCurve, Oracle};
-use crate::core_lib::Vault;
-use anchor_lang::prelude::*;
-use checked_decimal_macro::num_traits::ToPrimitive;
-use std::ops::Range;
-use std::slice::{Iter, IterMut};
-use vec_macro::SafeArray;
+#[cfg(feature = "anchor")]
+mod zero {
+    use crate::core_lib::Vault;
+    use anchor_lang::prelude::*;
+    use checked_decimal_macro::num_traits::ToPrimitive;
+    use std::ops::Range;
+    use std::slice::{Iter, IterMut};
+    use vec_macro::SafeArray;
 
-#[zero_copy]
-#[repr(packed)]
-#[derive(Debug, Default, PartialEq)]
-pub struct VaultEntry {
-    pub data: Vault,
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct VaultEntry {
+        pub data: Vault,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct VaultKeys {
+        pub base_token: Pubkey,
+        pub quote_token: Pubkey,
+        pub base_reserve: Pubkey,
+        pub quote_reserve: Pubkey,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, SafeArray)]
+    pub struct VaultsArray {
+        pub head: u8,
+        pub elements: [Vault; 10],
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, SafeArray)]
+    pub struct VaultsKeysArray {
+        pub head: u8,
+        pub elements: [VaultKeys; 10],
+    }
+
+    #[account(zero_copy)]
+    #[repr(C)]
+    #[derive(Debug, Default)]
+    pub struct Vaults {
+        pub arr: VaultsArray,
+        pub keys: VaultsKeysArray,
+    }
 }
 
-#[zero_copy]
-#[repr(packed)]
-#[derive(Debug, Default, PartialEq)]
-pub struct VaultKeys {
-    pub base_token: Pubkey,
-    pub quote_token: Pubkey,
-    pub base_reserve: Pubkey,
-    pub quote_reserve: Pubkey,
+#[cfg(feature = "wasm")]
+mod non_zero {
+    use checked_decimal_macro::num_traits::ToPrimitive;
+    use js_sys::Uint8Array;
+    use std::{
+        ops::Range,
+        slice::{Iter, IterMut},
+    };
+    use vec_macro::SafeArray;
+    use wasm_bindgen::prelude::*;
+
+    use crate::core_lib::vault::Vault;
+
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Clone, Copy)]
+    pub struct VaultEntry {
+        pub data: Vault,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Clone, Copy)]
+    pub struct VaultKeys {
+        pub base_token: [u8; 32],
+        pub quote_token: [u8; 32],
+        pub base_reserve: [u8; 32],
+        pub quote_reserve: [u8; 32],
+    }
+
+    #[repr(C)]
+    #[derive(Debug, SafeArray, Clone, Copy)]
+    pub struct VaultsArray {
+        pub head: u8,
+        pub elements: [Vault; 10],
+    }
+
+    #[repr(C)]
+    #[derive(Debug, SafeArray, Clone, Copy)]
+    pub struct VaultsKeysArray {
+        pub head: u8,
+        pub elements: [VaultKeys; 10],
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Default, Clone, Copy)]
+    pub struct Vaults {
+        pub padding: [u8; 8],
+        pub arr: VaultsArray,
+        pub keys: VaultsKeysArray,
+    }
+    unsafe impl bytemuck::Pod for Vaults {}
+    unsafe impl bytemuck::Zeroable for Vaults {}
+
+    #[wasm_bindgen]
+    pub struct VaultsAccount {
+        account: Vaults,
+    }
+
+    #[wasm_bindgen]
+    impl VaultsAccount {
+        #[wasm_bindgen]
+        pub fn load(account_info: &Uint8Array) -> Self {
+            console_error_panic_hook::set_once();
+            // panic!("not a panic");
+
+            let v = account_info.to_vec();
+            let account = *bytemuck::from_bytes::<Vaults>(&v);
+            Self { account }
+        }
+
+        #[wasm_bindgen]
+        pub fn vaults_len(&self) -> u8 {
+            self.account.arr.head
+        }
+
+        pub fn size() -> usize {
+            std::mem::size_of::<Vaults>()
+        }
+    }
 }
 
-#[zero_copy]
-#[repr(packed)]
-#[derive(Debug, SafeArray)]
-pub struct VaultsArray {
-    pub head: u8,
-    pub elements: [Vault; 10],
-}
+#[cfg(feature = "wasm")]
+pub use non_zero::*;
 
-#[zero_copy]
-#[repr(packed)]
-#[derive(Debug, SafeArray)]
-pub struct VaultsKeysArray {
-    pub head: u8,
-    pub elements: [VaultKeys; 10],
-}
+#[cfg(feature = "anchor")]
+pub use zero::*;
 
-#[account(zero_copy)]
-#[repr(packed)]
-#[derive(Debug, Default)]
-pub struct Vaults {
-    pub arr: VaultsArray,
-    pub keys: VaultsKeysArray,
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::size_of;
+
+    #[test]
+    fn size() {
+        println!("{}", size_of::<VaultsArray>());
+        println!("{}", size_of::<VaultsKeysArray>());
+        println!("{}", size_of::<Vaults>());
+    }
 }
+// 16168
+// 1281
+// 17456
+
+// 16168
+// 1281
+// 17464
+
+//packed
+// 13221
+// 1281
+// 14502
+
+// 13431
+// 1281
+// 14720
