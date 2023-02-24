@@ -28,8 +28,8 @@ mod zero {
     pub struct Vault {
         pub services: Services,
         pub strategies: Strategies,
-        pub oracle: Oracle,
-        pub quote_oracle: Oracle,
+        pub oracle: Option<Oracle>,
+        pub quote_oracle: Option<Oracle>,
         pub id: u8,
     }
 }
@@ -40,13 +40,11 @@ mod non_zero {
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
     #[repr(C)]
     pub struct Vault {
-        pub id: u8,
-
-        pub oracle: Oracle,
-        pub quote_oracle: Oracle,
-
         pub services: Services,
         pub strategies: Strategies,
+        pub oracle: Option<Oracle>,
+        pub quote_oracle: Option<Oracle>,
+        pub id: u8,
     }
 }
 
@@ -87,14 +85,20 @@ impl Vault {
         time: Time,
         for_token: Token,
     ) -> Result<(), ()> {
-        // if match for_token {
-        //     Token::Base => self.oracle.is_some(),
-        //     Token::Quote => self.quote_oracle.is_some(),
-        // } {
-        //     return Err(());
-        // }
+        if match for_token {
+            Token::Base => self.oracle.is_some(),
+            Token::Quote => self.quote_oracle.is_some(),
+        } {
+            return Err(());
+        }
 
-        let oracle = Oracle::new(decimal_places, price, confidence, spread_limit, time)?;
+        let oracle = Some(Oracle::new(
+            decimal_places,
+            price,
+            confidence,
+            spread_limit,
+            time,
+        )?);
 
         match for_token {
             Token::Base => self.oracle = oracle,
@@ -104,23 +108,19 @@ impl Vault {
         Ok(())
     }
     pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
-        // self.quote_oracle.as_ref().ok_or(())
-        Ok(&self.quote_oracle)
+        self.quote_oracle.as_ref().ok_or(())
     }
 
     pub fn oracle(&self) -> Result<&Oracle, ()> {
-        // self.oracle.as_ref().ok_or(())
-        Ok(&self.oracle)
+        self.oracle.as_ref().ok_or(())
     }
 
     pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        // self.quote_oracle.as_mut().ok_or(())
-        Ok(&mut self.quote_oracle)
+        self.quote_oracle.as_mut().ok_or(())
     }
 
     pub fn oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        // self.oracle.as_mut().ok_or(())
-        Ok(&mut self.oracle)
+        self.oracle.as_mut().ok_or(())
     }
 
     pub fn enable_lending(
@@ -134,9 +134,9 @@ impl Vault {
             return Err(());
         }
 
-        // if self.oracle.is_none() {
-        //     return Err(());
-        // }
+        if self.oracle.is_none() {
+            return Err(());
+        }
 
         self.services.lend =
             Lend::new(lending_fee, max_utilization, borrow_limit, initial_fee_time);
@@ -150,9 +150,9 @@ impl Vault {
         buying_fee: FeeCurve,
         kept_fee: Fraction,
     ) -> Result<(), ()> {
-        // if self.oracle.is_none() {
-        //     return Err(());
-        // }
+        if self.oracle.is_none() {
+            return Err(());
+        }
         if self.services.swap_mut().is_ok() {
             return Err(());
         }

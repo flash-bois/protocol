@@ -51,8 +51,8 @@ impl InitVault<'_> {
         let created_vault = Vault {
             services: Services::default(),
             strategies: Strategies::default(),
-            oracle: Oracle::default(),
-            quote_oracle: Oracle::default(),
+            oracle: None,
+            quote_oracle: None,
             id: vaults.arr.head,
         };
         vaults.arr.add(created_vault).expect("Failed to add vault");
