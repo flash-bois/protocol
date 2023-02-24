@@ -5,9 +5,9 @@ use anchor_lang::prelude::*;
 #[repr(packed)]
 #[derive(Debug, Default)]
 pub struct Statement {
-    pub statement: UserStatement,
     pub owner: Pubkey,
     pub bump: u8,
+    pub statement: UserStatement,
 }
 
 #[cfg(test)]
