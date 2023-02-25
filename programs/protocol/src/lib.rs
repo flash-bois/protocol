@@ -33,6 +33,16 @@ pub mod protocol {
     pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
         ctx.accounts.handler()
     }
+
+    pub fn enable_oracle(
+        ctx: Context<EnableOracle>,
+        index: u8,
+        decimals: u8,
+        base: bool,
+        skip_init: bool,
+    ) -> Result<()> {
+        ctx.accounts.handler(index, decimals, base, skip_init)
+    }
 }
 
 #[cfg(feature = "wasm")]

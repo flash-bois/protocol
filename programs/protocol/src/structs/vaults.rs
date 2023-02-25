@@ -22,6 +22,8 @@ mod zero {
         pub quote_token: Pubkey,
         pub base_reserve: Pubkey,
         pub quote_reserve: Pubkey,
+        pub base_oracle: Option<Pubkey>,
+        pub quote_oracle: Option<Pubkey>,
     }
 
     #[zero_copy]
@@ -75,6 +77,8 @@ mod non_zero {
         pub quote_token: [u8; 32],
         pub base_reserve: [u8; 32],
         pub quote_reserve: [u8; 32],
+        pub base_oracle: Option<[u8; 32]>,
+        pub quote_oracle: Option<[u8; 32]>,
     }
 
     #[repr(C)]
@@ -174,6 +178,52 @@ mod non_zero {
                     .expect("index out of bounds")
                     .quote_reserve,
             )
+        }
+
+        #[wasm_bindgen]
+        pub fn oracle_base(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .base_oracle
+                    .expect("base oracle not initialized"), // ERROR CODE
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn oracle_quote(&self, index: u8) -> Uint8Array {
+            to_buffer(
+                &self
+                    .account
+                    .keys
+                    .get_checked(index as usize)
+                    .expect("index out of bounds")
+                    .quote_oracle
+                    .expect("quote oracle not initialized"), // ERROR CODE
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn base_oracle_enabled(&self, index: u8) -> bool {
+            self.account
+                .keys
+                .get_checked(index as usize)
+                .expect("index out of bounds")
+                .base_oracle
+                .is_some()
+        }
+
+        #[wasm_bindgen]
+        pub fn quote_oracle_enabled(&self, index: u8) -> bool {
+            self.account
+                .keys
+                .get_checked(index as usize)
+                .expect("index out of bounds")
+                .quote_oracle
+                .is_some()
         }
     }
 }

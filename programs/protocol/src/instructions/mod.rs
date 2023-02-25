@@ -1,9 +1,11 @@
 pub mod admin;
 pub mod create_state;
 pub mod create_statement;
+pub mod enable_oracle;
 pub mod init_vault;
 
 pub use admin::*;
 pub use create_state::*;
 pub use create_statement::*;
+pub use enable_oracle::*;
 pub use init_vault::*;

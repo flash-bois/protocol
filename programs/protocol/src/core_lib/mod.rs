@@ -1,4 +1,4 @@
-mod decimal;
+pub mod decimal;
 pub mod services;
 pub mod strategy;
 pub mod structs;

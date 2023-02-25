@@ -8,6 +8,8 @@ pub enum OraclePriceType {
     Buy,
 }
 
+pub const DEFAULT_MAX_ORACLE_AGE: u32 = 1;
+
 #[cfg(feature = "anchor")]
 mod zero {
     use super::*;
@@ -79,7 +81,7 @@ impl Oracle {
             price: Price::from_integer(0),
             confidence: Price::from_integer(0),
             last_update: 0,
-            max_update_interval: 0,
+            max_update_interval: DEFAULT_MAX_ORACLE_AGE,
             use_spread: 0,
             decimals,
             spread_limit,

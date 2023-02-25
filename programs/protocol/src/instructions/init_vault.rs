@@ -45,6 +45,8 @@ impl InitVault<'_> {
             quote_token: self.quote.key(),
             base_reserve: self.reserve_base.key(),
             quote_reserve: self.reserve_quote.key(),
+            base_oracle: None,
+            quote_oracle: None,
         };
 
         let vaults = &mut self.vaults.load_mut()?;
