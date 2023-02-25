@@ -117,3 +117,16 @@ export async function initAccounts(
     reserveQuote: reserveQuote.publicKey
   }
 }
+
+export async function waitFor(connection: Connection, sig: string) {
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+  await connection.confirmTransaction({
+    signature: sig,
+    blockhash,
+    lastValidBlockHeight
+  })
+}
+
+export async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
