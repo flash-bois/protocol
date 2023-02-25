@@ -129,4 +129,38 @@ describe('Enable Oracle', () => {
       assert.equal(vaultsAccount.get_confidence(0), 10000000n)
     }
   })
+
+  it('force override quote oracle', async () => {
+    await program.methods
+      .forceOverrideOracle(0, false, 200, 1, -2, 42)
+      .accounts({ state, vaults, admin: admin.publicKey })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+      assert.equal(vaultsAccount.get_price_quote(0), 2000000000n)
+      assert.equal(vaultsAccount.get_confidence_quote(0), 10000000n)
+    }
+  })
+
+  it('locally update oracle', async () => {
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+
+      vaultsAccount.update_oracle(0, 3000000000n, 15000000n, -2)
+      assert.equal(vaultsAccount.get_price(0), 3000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 15000000n)
+
+      vaultsAccount.update_oracle(0, 5000000000n, 25000000n, -2)
+      assert.equal(vaultsAccount.get_price(0), 5000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 25000000n)
+    }
+  })
 })
