@@ -1,8 +1,12 @@
 use crate::{
-    core_lib::decimal::{Factories, Price},
+    core_lib::{
+        decimal::{Factories, Fraction, Price, Quantity, Utilization},
+        structs::FeeCurve,
+    },
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
+use checked_decimal_macro::{BetweenDecimals, Decimal};
 
 #[derive(Accounts)]
 pub struct Admin<'info> {
@@ -50,6 +54,51 @@ impl Admin<'_> {
         oracle
             .update(price, confidence, time)
             .expect("Could not update oracle"); // ERROR CODE
+
+        Ok(())
+    }
+
+    pub fn enable_lending(
+        &mut self,
+        index: u8,
+        max_utilization: u32,
+        max_total_borrow: u64,
+    ) -> anchor_lang::Result<()> {
+        msg!("DotWave: Enabling lending");
+
+        let vaults = &mut self.vaults.load_mut()?;
+        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+
+        vault
+            .enable_lending(
+                FeeCurve::default(),
+                Utilization::from_decimal(Fraction::new(max_utilization as u64)),
+                Quantity::new(max_total_borrow),
+                Clock::get()?.unix_timestamp.try_into().unwrap(), // ERROR CODE
+            )
+            .expect("Could not enable lending"); // ERROR CODE
+
+        Ok(())
+    }
+
+    pub fn enable_swapping(
+        &mut self,
+        index: u8,
+        kept_fee: u32,
+        _max_total_sold: u64,
+    ) -> anchor_lang::Result<()> {
+        msg!("DotWave: Enabling swapping");
+
+        let vaults = &mut self.vaults.load_mut()?;
+        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+
+        vault
+            .enable_swapping(
+                FeeCurve::default(),
+                FeeCurve::default(),
+                Fraction::new(kept_fee as u64),
+            )
+            .expect("Could not enable swapping"); // ERROR CODE
 
         Ok(())
     }

@@ -56,6 +56,26 @@ pub mod protocol {
         ctx.accounts
             .force_override_oracle(index, base, price, conf, exp, time)
     }
+
+    pub fn enable_lending(
+        ctx: Context<Admin>,
+        index: u8,
+        max_utilization: u32,
+        max_total_borrow: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .enable_lending(index, max_utilization, max_total_borrow)
+    }
+
+    pub fn enable_swapping(
+        ctx: Context<Admin>,
+        index: u8,
+        kept_fee: u32,
+        max_total_sold: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .enable_swapping(index, kept_fee, max_total_sold)
+    }
 }
 
 #[cfg(feature = "wasm")]
