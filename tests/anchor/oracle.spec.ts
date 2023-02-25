@@ -2,7 +2,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
-import { StateAccount, VaultsAccount } from '../../pkg/protocol'
+import { price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import {
   createMint,
@@ -109,6 +109,24 @@ describe('Enable Oracle', () => {
         Buffer.from(vaultsAccount.oracle_quote(0)).toString('hex'),
         quotePriceFeed.toBuffer().toString('hex')
       )
+    }
+  })
+
+  it('force override oracle', async () => {
+    await program.methods
+      .forceOverrideOracle(0, true, 200, 1, -2, 42)
+      .accounts({ state, vaults, admin: admin.publicKey })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+      assert.equal(price_denominator(), 1000000000n)
+      assert.equal(vaultsAccount.get_price(0), 2000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 10000000n)
     }
   })
 })

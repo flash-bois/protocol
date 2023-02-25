@@ -1,6 +1,7 @@
 use crate::structs::vaults::Vaults;
 use crate::structs::VaultsAccount;
 use crate::wasm_wrapper::utils::to_buffer;
+use checked_decimal_macro::Decimal;
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 

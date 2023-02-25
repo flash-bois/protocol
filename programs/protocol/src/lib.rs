@@ -43,6 +43,19 @@ pub mod protocol {
     ) -> Result<()> {
         ctx.accounts.handler(index, decimals, base, skip_init)
     }
+
+    pub fn force_override_oracle(
+        ctx: Context<Admin>,
+        index: u8,
+        base: bool,
+        price: u32,
+        conf: u32,
+        exp: i8,
+        time: Option<u32>,
+    ) -> Result<()> {
+        ctx.accounts
+            .force_override_oracle(index, base, price, conf, exp, time)
+    }
 }
 
 #[cfg(feature = "wasm")]
