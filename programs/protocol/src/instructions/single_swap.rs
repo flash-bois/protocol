@@ -50,6 +50,7 @@ impl SingleSwap<'_> {
         from_base: bool,
         by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
+        let now = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults
             .arr
@@ -63,13 +64,9 @@ impl SingleSwap<'_> {
         }
 
         let quantity_out = match from_base {
-            true => vault
-                .sell(quantity, Clock::get()?.unix_timestamp as u32)
-                .expect("sell failed"), // ERROR CODE
+            true => vault.sell(quantity, now).expect("sell failed"), // ERROR CODE
 
-            false => vault
-                .buy(quantity, Clock::get()?.unix_timestamp as u32)
-                .expect("buy failed"), // ERROR CODE
+            false => vault.buy(quantity, now).expect("buy failed"), // ERROR CODE
         };
 
         msg!("quantity out: {}", quantity_out);

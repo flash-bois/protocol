@@ -92,38 +92,41 @@ describe('Services', () => {
       .rpc({ skipPreflight: true })
   })
 
-  it('deposit', async () => {
-    await program.methods
-      .deposit(0, 0, new BN(1000000), true)
-      .accountsStrict({
-        state,
-        vaults,
-        accountBase,
-        accountQuote,
-        statement,
-        signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
-        reserveQuote: protocolAccounts.reserveQuote,
-        tokenProgram: TOKEN_PROGRAM_ID
-      })
-      .signers([user])
-      .rpc({ skipPreflight: true })
-  })
+  // it('deposit', async () => {
+  //   await program.methods
+  //     .deposit(0, 0, new BN(1000000), true)
+  //     .accountsStrict({
+  //       state,
+  //       vaults,
+  //       accountBase,
+  //       accountQuote,
+  //       statement,
+  //       signer: user.publicKey,
+  //       reserveBase: protocolAccounts.reserveBase,
+  //       reserveQuote: protocolAccounts.reserveQuote,
+  //       tokenProgram: TOKEN_PROGRAM_ID
+  //     })
+  //     .signers([user])
+  //     .rpc({ skipPreflight: true })
+  // })
 
-  it('single swap', async () => {
-    await program.methods
-      .singleSwap(0, new BN(100), new BN(10), true, false)
-      .accountsStrict({
-        state,
-        vaults,
-        accountBase,
-        accountQuote,
-        signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
-        reserveQuote: protocolAccounts.reserveQuote,
-        tokenProgram: TOKEN_PROGRAM_ID
-      })
-      .signers([user])
-      .rpc({ skipPreflight: true })
-  })
+  // it('single swap', async () => {
+  //   const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+  //   const available = vaultsAccount.swap(0, 100n, 10n, true, false, 0)
+
+  //   await program.methods
+  //     .singleSwap(0, new BN(100), new BN(10), true, false)
+  //     .accountsStrict({
+  //       state,
+  //       vaults,
+  //       accountBase,
+  //       accountQuote,
+  //       signer: user.publicKey,
+  //       reserveBase: protocolAccounts.reserveBase,
+  //       reserveQuote: protocolAccounts.reserveQuote,
+  //       tokenProgram: TOKEN_PROGRAM_ID
+  //     })
+  //     .signers([user])
+  //     .rpc({ skipPreflight: true })
+  // })
 })

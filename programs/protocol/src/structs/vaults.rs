@@ -106,6 +106,7 @@ mod non_zero {
     unsafe impl bytemuck::Zeroable for Vaults {}
 
     #[wasm_bindgen]
+    #[derive(Clone)]
     pub struct VaultsAccount {
         pub(crate) account: Vaults,
     }
