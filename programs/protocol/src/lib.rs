@@ -60,12 +60,11 @@ pub mod protocol {
     pub fn enable_lending(
         ctx: Context<Admin>,
         index: u8,
-        // max_utilization: u32,
-        // max_total_borrow: u64,
+        max_utilization: u32,
+        max_total_borrow: u64,
     ) -> Result<()> {
-        ctx.accounts.enable_lending(
-            index, 0, 0, // , max_utilization, max_total_borrow
-        )?;
+        ctx.accounts
+            .enable_lending(index, max_utilization, max_total_borrow)?;
         Ok(())
     }
 

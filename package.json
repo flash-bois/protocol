@@ -14,7 +14,8 @@
     "test:wasm": "ts-node tests/wasm/*.ts",
     "test:anchor:create_state": "anchor test tests/anchor/create_state.ts",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
-    "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build"
+    "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
+    "test:services": "anchor test --skip-build tests/anchor/services.spec.ts"
   },
   "repository": {
     "type": "git",

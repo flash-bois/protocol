@@ -10,7 +10,14 @@ import {
   TOKEN_PROGRAM_ID,
   createAccount
 } from '@solana/spl-token'
-import { createAccounts, initAccounts, sleep, waitFor } from '../utils/utils'
+import {
+  createAccounts,
+  initAccounts,
+  sleep,
+  waitFor,
+  enableOracles,
+  AdminAccounts
+} from '../utils/utils'
 import { BN } from 'bn.js'
 
 const STATE_SEED = 'state'
@@ -29,6 +36,7 @@ describe('Services', () => {
 
   let state: PublicKey
   let vaults: PublicKey
+  let accounts: AdminAccounts
 
   before(async () => {
     const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
@@ -37,18 +45,19 @@ describe('Services', () => {
     const { state: s, vaults: v } = await initAccounts(connection, program, admin, minter)
     state = s
     vaults = v
+    accounts = {
+      state,
+      vaults,
+      admin: admin.publicKey
+    }
+
+    await enableOracles(program, 0, accounts, admin)
   })
 
   it('enable lend', async () => {
     await program.methods
-      .enableLending(
-        0 //, 800000, new BN(10000_000000)
-      )
-      .accounts({
-        state: state,
-        vaults: vaults,
-        admin: admin.publicKey
-      })
+      .enableLending(0, 800000, new BN(10000_000000))
+      .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
 
@@ -59,6 +68,23 @@ describe('Services', () => {
       assert.equal(vaultsAccount.vaults_len(), 1)
       assert.equal(vaultsAccount.has_lending(0), true)
       assert.equal(vaultsAccount.has_swap(0), false)
+    }
+  })
+
+  it('enable swap', async () => {
+    await program.methods
+      .enableSwapping(0, 100000, new BN(10000_000000))
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+      assert.equal(vaultsAccount.vaults_len(), 1)
+      assert.equal(vaultsAccount.has_lending(0), true)
+      assert.equal(vaultsAccount.has_swap(0), true)
     }
   })
 })

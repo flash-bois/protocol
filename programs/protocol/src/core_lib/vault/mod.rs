@@ -130,7 +130,7 @@ impl Vault {
         borrow_limit: Quantity,
         initial_fee_time: Time,
     ) -> Result<(), ()> {
-        if self.services.lend_mut().is_err() {
+        if self.services.lend_mut().is_ok() {
             return Err(());
         }
 

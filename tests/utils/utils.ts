@@ -154,29 +154,28 @@ export async function enableOracles(
   admin: Signer
 ) {
   const priceFeed = Keypair.generate().publicKey
+  const { state, vaults, admin: adminKey } = accounts
   await program.methods
     .enableOracle(index, 6, true, true)
-    .accounts({
+    .accountsStrict({
       ...accounts,
       priceFeed
     })
-    .preInstructions([
+    .postInstructions([
       await program.methods
-        .enableOracle(index, 6, true, true)
-        .accounts({
+        .enableOracle(index, 6, false, true)
+        .accountsStrict({
           ...accounts,
           priceFeed
         })
-        .instruction()
-    ])
-    .postInstructions([
+        .instruction(),
       await program.methods
         .forceOverrideOracle(0, true, 200, 1, -2, 42)
-        .accounts(accounts)
+        .accountsStrict(accounts)
         .instruction(),
       await program.methods
         .forceOverrideOracle(0, false, 1000, 2, -3, 42)
-        .accounts(accounts)
+        .accountsStrict(accounts)
         .instruction()
     ])
     .signers([admin])
