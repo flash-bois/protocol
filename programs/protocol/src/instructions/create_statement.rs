@@ -18,24 +18,15 @@ pub struct CreateStatement<'info> {
 }
 
 pub fn handler(ctx: Context<CreateStatement>) -> Result<()> {
+    msg!("DotWave: Initializing statement");
+
     let statement = &mut ctx.accounts.statement.load_init()?;
 
-    msg!("Initializing statement");
-
-    let bump = *ctx.bumps.get("statement").unwrap();
-    statement.bump = 4;
-
-    msg!("key: {}", ctx.accounts.payer.key.to_string());
-
-    // statement.owner = *ctx.accounts.payer.key;
-
-    // **statement = Statement {
-    //     owner: *ctx.accounts.payer.key,
-    //     bump,
-    //     // statement: UserStatement::default()
-    // };
-
-    // msg!("{}", std::mem::size_of_val(&stat));
+    **statement = Statement {
+        owner: *ctx.accounts.payer.key,
+        bump: *ctx.bumps.get("statement").unwrap(),
+        statement: UserStatement::default(),
+    };
 
     Ok(())
 }

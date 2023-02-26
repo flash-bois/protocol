@@ -83,8 +83,19 @@ pub mod protocol {
         index: u8,
         lending: bool,
         swapping: bool,
+        base: bool,
     ) -> Result<()> {
         ctx.accounts.handler(index, lending, swapping)
+    }
+
+    pub fn deposit(
+        ctx: Context<Deposit>,
+        vault: u8,
+        strategy: u8,
+        quantity: u64,
+        base: bool,
+    ) -> Result<()> {
+        ctx.accounts.handler(vault, strategy, quantity, base)
     }
 }
 
