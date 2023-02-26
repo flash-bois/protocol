@@ -3,8 +3,7 @@ use quote::quote;
 use syn::{
     braced,
     parse::{Parse, ParseStream},
-    parse_macro_input, Attribute, Expr, Generics, Ident, Lit, Result, Token, Type, TypeArray,
-    Visibility,
+    parse_macro_input, Attribute, Expr, Generics, Ident, Lit, Token, Type, TypeArray, Visibility,
 };
 
 #[allow(dead_code)]
@@ -15,10 +14,12 @@ struct FixedArrayStruct {
     pub ident: Ident,
     pub generics: Generics,
     pub brace_token: syn::token::Brace,
+    pub vis1: Visibility,
     pub head_ident: Ident,
     pub colon_token: Token![:],
     pub head_ty: Type,
     pub punctuation: Token![,],
+    pub vis2: Visibility,
     pub arr_ident: Ident,
     pub colon_token2: Token![:],
     pub array: TypeArray,
@@ -26,7 +27,7 @@ struct FixedArrayStruct {
 }
 
 impl Parse for FixedArrayStruct {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let context;
 
@@ -37,10 +38,12 @@ impl Parse for FixedArrayStruct {
             ident: input.parse()?,
             generics: input.parse()?,
             brace_token: braced!(context in input),
+            vis1: context.parse()?,
             head_ident: context.parse()?,
             colon_token: context.parse()?,
             head_ty: context.parse()?,
             punctuation: context.parse()?,
+            vis2: context.parse()?,
             arr_ident: context.parse()?,
             colon_token2: context.parse()?,
             array: context.parse()?,
@@ -185,7 +188,7 @@ pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn add(&mut self, el: #el_type) -> Result<(), ()> {
+            pub fn add(&mut self, el: #el_type) -> std::result::Result<(), ()> {
                 let head = self.head_usize();
 
                 if !self.index_in_capacity(head) {
