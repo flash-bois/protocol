@@ -13,7 +13,8 @@
     "test:anchor": "anchor test tests/anchor/*.ts",
     "test:wasm": "ts-node tests/wasm/*.ts",
     "test:anchor:create_state": "anchor test tests/anchor/create_state.ts",
-    "wasm": "npm run build:wasm:dev"
+    "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
+    "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build"
   },
   "repository": {
     "type": "git",
