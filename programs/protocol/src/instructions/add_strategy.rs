@@ -24,6 +24,12 @@ impl AddStrategy<'_> {
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
 
+        msg!(
+            "here {} {}",
+            vault.lend_service().is_ok(),
+            vault.swap_service().is_ok()
+        );
+
         vault
             .add_strategy(lending, swapping, false)
             .expect("couldn't add strategy");

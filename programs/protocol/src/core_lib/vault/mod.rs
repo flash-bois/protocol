@@ -61,10 +61,10 @@ impl Vault {
         has_swap: bool,
         has_trade: bool,
     ) -> Result<(), ()> {
-        if has_lend && self.services.lend_mut().is_ok() {
+        if has_lend && self.services.lend_mut().is_err() {
             return Err(());
         }
-        if has_swap && self.services.swap_mut().is_ok() {
+        if has_swap && self.services.swap_mut().is_err() {
             return Err(());
         }
 

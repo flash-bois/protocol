@@ -94,7 +94,6 @@ pub mod wasm_wrapper;
 #[cfg(feature = "wasm")]
 mod decoder {
     use bytemuck::{Pod, Zeroable};
-    use js_sys::Uint8Array;
     pub struct ZeroCopyDecoder;
 
     impl ZeroCopyDecoder {

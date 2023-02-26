@@ -16,7 +16,8 @@ import {
   sleep,
   waitFor,
   enableOracles,
-  AdminAccounts
+  AdminAccounts,
+  tryFetch
 } from '../utils/utils'
 import { BN } from 'bn.js'
 
@@ -78,13 +79,48 @@ describe('Services', () => {
       .signers([admin])
       .rpc({ skipPreflight: true })
 
-    let data = (await connection.getAccountInfo(vaults))?.data
-    assert.notEqual(data, undefined)
-    if (data) {
-      const vaultsAccount = VaultsAccount.load(data)
-      assert.equal(vaultsAccount.vaults_len(), 1)
-      assert.equal(vaultsAccount.has_lending(0), true)
-      assert.equal(vaultsAccount.has_swap(0), true)
-    }
+    const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.vaults_len(), 1)
+    assert.equal(vaultsAccount.has_lending(0), true)
+    assert.equal(vaultsAccount.has_swap(0), true)
+  })
+
+  it('add strategies', async () => {
+    let vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.has_lending(0), true)
+    assert.equal(vaultsAccount.has_swap(0), true)
+
+    await program.methods
+      .addStrategy(0, true, false)
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.does_lend(0, 0), true)
+    assert.equal(vaultsAccount.does_swap(0, 0), false)
+
+    await program.methods
+      .addStrategy(0, false, true)
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+    vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.does_lend(0, 1), false)
+    assert.equal(vaultsAccount.does_swap(0, 1), true)
+
+    await program.methods
+      .addStrategy(0, true, true)
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+    vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.does_lend(0, 2), true)
+    assert.equal(vaultsAccount.does_swap(0, 2), true)
   })
 })

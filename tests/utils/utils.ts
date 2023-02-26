@@ -27,6 +27,10 @@ export interface AdminAccounts {
   admin: PublicKey
 }
 
+export interface Loadable<T> {
+  load(Buffer): T
+}
+
 export const STATE_SEED = 'state'
 
 export async function createAccounts(
@@ -180,4 +184,10 @@ export async function enableOracles(
     ])
     .signers([admin])
     .rpc({ skipPreflight: true })
+}
+
+export async function tryFetch(connection: Connection, address: PublicKey): Promise<Buffer> {
+  let data = (await connection.getAccountInfo(address))?.data
+  if (!data) throw 'could not fetch account info'
+  return data
 }
