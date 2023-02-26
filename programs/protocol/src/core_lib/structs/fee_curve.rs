@@ -38,7 +38,7 @@ mod non_zero {
     #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
     #[repr(C)]
     pub struct FeeCurve {
-        pub used: usize,
+        pub used: u8,
         pub bounds: [Fraction; MAX_FEES],
         pub values: [CurveSegment; MAX_FEES],
     }

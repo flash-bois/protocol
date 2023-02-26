@@ -9,9 +9,6 @@ use wasm_bindgen::prelude::*;
 impl VaultsAccount {
     #[wasm_bindgen]
     pub fn load(account_info: &Uint8Array) -> Self {
-        console_error_panic_hook::set_once();
-        // panic!("not a panic");
-
         let v = account_info.to_vec();
         let account = *bytemuck::from_bytes::<Vaults>(&v);
         Self { account }
@@ -119,5 +116,25 @@ impl VaultsAccount {
             .expect("index out of bounds")
             .quote_oracle
             .is_some()
+    }
+
+    #[wasm_bindgen]
+    pub fn has_lending(&mut self, index: u8) -> bool {
+        self.account
+            .arr
+            .get_mut_checked(index as usize)
+            .expect("index out of bounds")
+            .lend_service()
+            .is_ok()
+    }
+
+    #[wasm_bindgen]
+    pub fn has_swap(&mut self, index: u8) -> bool {
+        self.account
+            .arr
+            .get_mut_checked(index as usize)
+            .expect("index out of bounds")
+            .swap_service()
+            .is_ok()
     }
 }

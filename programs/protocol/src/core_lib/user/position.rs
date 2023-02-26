@@ -142,7 +142,7 @@ impl Position {
             } => {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle().unwrap();
-                let service = vault.services.lend;
+                let service = vault.lend_service_not_mut().unwrap();
 
                 let amount = service
                     .borrow_shares()

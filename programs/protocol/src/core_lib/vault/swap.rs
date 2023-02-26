@@ -15,7 +15,7 @@ impl Vault {
             ..
         } = self;
 
-        let swap = swap;
+        let swap = swap.as_mut().ok_or(())?;
         let oracle = oracle.as_mut().ok_or(())?;
         let quote_oracle = quote_oracle.as_mut().ok_or(())?;
 

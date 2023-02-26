@@ -13,6 +13,7 @@ impl Vault {
             ..
         } = self;
 
+        let lend = lend.as_mut().ok_or(())?;
         let oracle = oracle.as_mut().ok_or(())?;
 
         Ok((lend, oracle))

@@ -138,8 +138,12 @@ impl Vault {
             return Err(());
         }
 
-        self.services.lend =
-            Lend::new(lending_fee, max_utilization, borrow_limit, initial_fee_time);
+        self.services.lend = Some(Lend::new(
+            lending_fee,
+            max_utilization,
+            borrow_limit,
+            initial_fee_time,
+        ));
 
         Ok(())
     }
@@ -157,17 +161,25 @@ impl Vault {
             return Err(());
         }
 
-        self.services.swap = Swap::new(selling_fee, buying_fee, kept_fee);
+        self.services.swap = Some(Swap::new(selling_fee, buying_fee, kept_fee));
 
         Ok(())
     }
 
     pub fn lend_service(&mut self) -> Result<&mut Lend, ()> {
-        Ok(&mut self.services.lend)
+        self.services.lend_mut()
     }
 
     pub fn swap_service(&mut self) -> Result<&mut Swap, ()> {
-        Ok(&mut self.services.swap)
+        self.services.swap_mut()
+    }
+
+    pub fn lend_service_not_mut(&self) -> Result<&Lend, ()> {
+        self.services.lend()
+    }
+
+    pub fn swap_service_not_mut(&self) -> Result<&Swap, ()> {
+        self.services.swap()
     }
 
     fn settle_fees(&mut self, service: ServiceType) -> Result<(), ()> {
@@ -217,7 +229,7 @@ impl Vault {
     pub fn refresh(&mut self, current_time: Time) -> Result<(), ()> {
         // TODO check oracle if it is refreshed
 
-        let service = &mut self.services.lend;
+        let service = self.lend_service().unwrap();
 
         service.accrue_interest_rate(current_time);
         self.settle_fees(ServiceType::Lend)?;
