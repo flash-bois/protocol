@@ -33,7 +33,7 @@ describe('Init vault', () => {
     await connection.requestAirdrop(admin.publicKey, 1000000000)
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
-    const { state: s, vaults: v } = await createAccounts(connection, program, admin)
+    const { state: s, vaults: v } = await createAccounts(program, admin)
     state = s
     vaults = v
 

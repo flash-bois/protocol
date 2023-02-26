@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor'
-import { Program } from '@coral-xyz/anchor'
-import { createMint, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { BN, Program } from '@coral-xyz/anchor'
+import { createAccount, createMint, mintTo, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Connection,
   Keypair,
@@ -11,6 +11,8 @@ import {
 } from '@solana/web3.js'
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
+
+export const STATEMENT_SEED = 'statement'
 
 export interface DotWaveAccounts {
   state: PublicKey
@@ -33,12 +35,71 @@ export interface Loadable<T> {
 
 export const STATE_SEED = 'state'
 
-export async function createAccounts(
+export async function createBasicVault(
+  program: Program<Protocol>,
+  admin: Keypair,
+  minter: Keypair
+): Promise<DotWaveAccounts> {
+  const result = await initAccounts(program, admin, minter)
+
+  const accounts = {
+    state: result.state,
+    vaults: result.vaults,
+    admin: admin.publicKey
+  }
+
+  await enableOracles(program, 0, accounts, admin)
+  await program.methods
+    .enableLending(0, 800000, new BN(10000_000000))
+    .accounts(accounts)
+    .signers([admin])
+    .postInstructions([
+      await program.methods
+        .enableSwapping(0, 100000, new BN(10000_000000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .addStrategy(0, true, false)
+        .accounts(accounts)
+        .signers([admin])
+        .instruction()
+    ])
+    .rpc({ skipPreflight: true })
+
+  return result
+}
+
+export async function mintTokensForUser(
   connection: Connection,
+  minter: Keypair,
+  user: Keypair,
+  base: PublicKey,
+  quote: PublicKey,
+  mintAmount: number | bigint = 1e9
+) {
+  const [accountBase, accountQuote] = await Promise.all([
+    createAccount(connection, user, base, user.publicKey),
+    createAccount(connection, user, quote, user.publicKey)
+  ])
+
+  await Promise.all([
+    mintTo(connection, user, base, accountBase, minter, mintAmount),
+    mintTo(connection, user, quote, accountQuote, minter, mintAmount)
+  ])
+
+  return {
+    accountBase,
+    accountQuote
+  }
+}
+
+export async function createAccounts(
   program: Program<Protocol>,
   admin: Keypair
 ): Promise<{ state: PublicKey; vaults: PublicKey }> {
   const vaults = Keypair.generate()
+
   const [state, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
     program.programId
@@ -58,7 +119,9 @@ export async function createAccounts(
         fromPubkey: admin.publicKey,
         newAccountPubkey: vaults.publicKey,
         space: VaultsAccount.size(),
-        lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
+        lamports: await program.provider.connection.getMinimumBalanceForRentExemption(
+          VaultsAccount.size()
+        ),
         programId: program.programId
       })
     ])
@@ -72,12 +135,12 @@ export async function createAccounts(
 }
 
 export async function initAccounts(
-  connection: Connection,
   program: Program<Protocol>,
   admin: Keypair,
   minter: Keypair
 ): Promise<DotWaveAccounts> {
   const vaults = Keypair.generate()
+  const connection = program.provider.connection
   const [state, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
     program.programId
@@ -182,6 +245,14 @@ export async function enableOracles(
         .accountsStrict(accounts)
         .instruction()
     ])
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+}
+
+export async function createStrategy(program, accounts, admin) {
+  await program.methods
+    .addStrategy(0, false, true)
+    .accounts(accounts)
     .signers([admin])
     .rpc({ skipPreflight: true })
 }

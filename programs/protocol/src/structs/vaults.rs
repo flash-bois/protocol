@@ -119,6 +119,8 @@ pub use zero::*;
 
 #[cfg(test)]
 mod tests {
+    use crate::structs::Statement;
+
     use super::*;
     use std::mem::size_of;
 
@@ -127,5 +129,6 @@ mod tests {
         println!("{}", size_of::<VaultsArray>());
         println!("{}", size_of::<VaultsKeysArray>());
         println!("{}", size_of::<Vaults>());
+        println!("{}", size_of::<Statement>());
     }
 }

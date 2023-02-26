@@ -83,7 +83,6 @@ pub mod protocol {
         index: u8,
         lending: bool,
         swapping: bool,
-        base: bool,
     ) -> Result<()> {
         ctx.accounts.handler(index, lending, swapping)
     }

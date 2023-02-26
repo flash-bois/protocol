@@ -4,8 +4,7 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert, use } from 'chai'
 import { Protocol } from '../../target/types/protocol'
 import { StateAccount, StatementAccount } from '../../pkg/protocol'
-
-const STATEMENT_SEED = 'statement'
+import { STATEMENT_SEED } from '../utils/utils'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -15,7 +14,6 @@ describe('statement for user', () => {
   const connection = program.provider.connection
 
   const user = Keypair.generate()
-
   anchor.setProvider(provider)
 
   const [statement_address, bump] = PublicKey.findProgramAddressSync(
