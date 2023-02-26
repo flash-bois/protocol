@@ -8,7 +8,7 @@ use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
 #[instruction(vault: u8)]
-pub struct Swap<'info> {
+pub struct SingleSwap<'info> {
     #[account(mut, seeds = [b"state".as_ref()], bump=state.load()?.bump)]
     pub state: AccountLoader<'info, State>,
     #[account(mut, constraint = vaults.key() == state.load()?.vaults_acc, constraint = vaults.key() == state.load()?.vaults_acc)]
@@ -41,7 +41,7 @@ pub struct Swap<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-impl Swap<'_> {
+impl SingleSwap<'_> {
     pub fn handler(
         &mut self,
         vault: u8,

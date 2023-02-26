@@ -93,7 +93,7 @@ describe('Services', () => {
   })
 
   it('deposit', async () => {
-    program.methods
+    await program.methods
       .deposit(0, 0, new BN(1000000), true)
       .accountsStrict({
         state,
@@ -110,5 +110,20 @@ describe('Services', () => {
       .rpc({ skipPreflight: true })
   })
 
-  it('swap', async () => {})
+  it('single swap', async () => {
+    await program.methods
+      .singleSwap(0, new BN(100), new BN(10), true, false)
+      .accountsStrict({
+        state,
+        vaults,
+        accountBase,
+        accountQuote,
+        signer: user.publicKey,
+        reserveBase: protocolAccounts.reserveBase,
+        reserveQuote: protocolAccounts.reserveQuote,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .signers([user])
+      .rpc({ skipPreflight: true })
+  })
 })

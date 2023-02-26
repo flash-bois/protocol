@@ -96,6 +96,18 @@ pub mod protocol {
     ) -> Result<()> {
         ctx.accounts.handler(vault, strategy, quantity, base)
     }
+
+    pub fn single_swap(
+        ctx: Context<SingleSwap>,
+        vault: u8,
+        amount: u64,
+        min_expected: u64,
+        from_base: bool,
+        by_amount_out: bool,
+    ) -> Result<()> {
+        ctx.accounts
+            .handler(vault, amount, min_expected, from_base, by_amount_out)
+    }
 }
 
 #[cfg(feature = "wasm")]
