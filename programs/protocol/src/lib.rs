@@ -60,11 +60,13 @@ pub mod protocol {
     pub fn enable_lending(
         ctx: Context<Admin>,
         index: u8,
-        max_utilization: u32,
-        max_total_borrow: u64,
+        // max_utilization: u32,
+        // max_total_borrow: u64,
     ) -> Result<()> {
-        ctx.accounts
-            .enable_lending(index, max_utilization, max_total_borrow)
+        ctx.accounts.enable_lending(
+            index, 0, 0, // , max_utilization, max_total_borrow
+        )?;
+        Ok(())
     }
 
     pub fn enable_swapping(
@@ -75,6 +77,15 @@ pub mod protocol {
     ) -> Result<()> {
         ctx.accounts
             .enable_swapping(index, kept_fee, max_total_sold)
+    }
+
+    pub fn add_strategy(
+        ctx: Context<AddStrategy>,
+        index: u8,
+        lending: bool,
+        swapping: bool,
+    ) -> Result<()> {
+        ctx.accounts.handler(index, lending, swapping)
     }
 }
 
