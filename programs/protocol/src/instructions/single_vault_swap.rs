@@ -8,13 +8,11 @@ use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
 #[instruction(vault: u8)]
-pub struct Deposit<'info> {
+pub struct Swap<'info> {
     #[account(mut, seeds = [b"state".as_ref()], bump=state.load()?.bump)]
     pub state: AccountLoader<'info, State>,
     #[account(mut, constraint = vaults.key() == state.load()?.vaults_acc, constraint = vaults.key() == state.load()?.vaults_acc)]
     pub vaults: AccountLoader<'info, Vaults>,
-    #[account(mut, constraint = statement.load()?.owner == signer.key())]
-    pub statement: AccountLoader<'info, Statement>,
     #[account(mut)]
     pub signer: Signer<'info>,
 
@@ -43,13 +41,14 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-impl Deposit<'_> {
+impl Swap<'_> {
     pub fn handler(
         &mut self,
         vault: u8,
-        strategy: u8,
-        quantity: u64,
-        base: bool,
+        amount: u64,
+        min_expected: u64,
+        from_base: bool,
+        by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults
@@ -57,16 +56,27 @@ impl Deposit<'_> {
             .get_mut(vault as usize)
             .expect("invalid vault index");
 
-        let user_statement = &mut self.statement.load_mut()?.statement;
-        vault
-            .deposit(
-                user_statement,
-                if base { Token::Base } else { Token::Quote },
-                Quantity::new(quantity),
-                strategy,
-                Clock::get()?.unix_timestamp as u32,
-            )
-            .expect("deposit failed"); // ERROR CODE
+        let quantity = Quantity::new(amount);
+
+        if by_amount_out {
+            unimplemented!("swaps by amount out are not yet implemented")
+        }
+
+        let quantity_out = match from_base {
+            true => vault
+                .sell(quantity, Clock::get()?.unix_timestamp as u32)
+                .expect("sell failed"), // ERROR CODE
+
+            false => vault
+                .buy(quantity, Clock::get()?.unix_timestamp as u32)
+                .expect("buy failed"), // ERROR CODE
+        };
+
+        msg!("quantity out: {}", quantity_out);
+
+        if quantity_out < Quantity::new(min_expected) {
+            panic!("quantity out is less than min expected") // ERROR CODE
+        }
 
         // TODO: token transfers
 

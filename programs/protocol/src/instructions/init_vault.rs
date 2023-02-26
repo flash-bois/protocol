@@ -1,10 +1,5 @@
 use crate::{
-    core_lib::{
-        services::Services,
-        strategy::Strategies,
-        structs::Oracle,
-        vault::{self, Vault},
-    },
+    core_lib::{services::Services, strategy::Strategies, vault::Vault},
     structs::{State, VaultKeys, Vaults},
 };
 use anchor_lang::prelude::*;

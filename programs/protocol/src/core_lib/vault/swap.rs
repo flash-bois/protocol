@@ -22,7 +22,7 @@ impl Vault {
         Ok((swap, oracle, quote_oracle))
     }
 
-    fn sell(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
+    pub fn sell(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
         let (swap, oracle, quote_oracle) = self.swap_and_oracles()?;
 
         let quote_quantity = swap.sell(quantity, oracle, quote_oracle)?;
@@ -37,7 +37,7 @@ impl Vault {
         Ok(quote_quantity)
     }
 
-    fn buy(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
+    pub fn buy(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
         let (swap, oracle, quote_oracle) = self.swap_and_oracles()?;
 
         let base_quantity = swap.buy(quantity, oracle, quote_oracle)?;

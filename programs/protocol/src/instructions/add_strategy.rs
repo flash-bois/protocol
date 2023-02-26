@@ -1,12 +1,5 @@
-use crate::{
-    core_lib::{
-        decimal::{Factories, Fraction, Price, Quantity, Utilization},
-        structs::FeeCurve,
-    },
-    structs::{State, Vaults},
-};
+use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
-use checked_decimal_macro::{BetweenDecimals, Decimal};
 
 #[derive(Accounts)]
 pub struct AddStrategy<'info> {

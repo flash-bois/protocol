@@ -1,4 +1,4 @@
-use crate::{core_lib::user::UserStatement, structs::Statement};
+use crate::structs::Statement;
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]

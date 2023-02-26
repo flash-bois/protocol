@@ -8,7 +8,7 @@ mod instructions;
 mod structs;
 
 #[cfg(feature = "anchor")]
-use instructions::*;
+pub use instructions::*;
 
 #[cfg(feature = "anchor")]
 declare_id!("9DvKMoN2Wx1jFNszJU9aGDSsvBNJ5A3UfNp1Mvv9CVDi");
