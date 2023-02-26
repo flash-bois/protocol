@@ -30,8 +30,8 @@ describe('Enable Oracle', () => {
   let vaults: PublicKey
 
   before(async () => {
-    await connection.requestAirdrop(admin.publicKey, 1000000000)
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+    const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
+    await waitFor(connection, sig)
 
     const { state: s, vaults: v } = await initAccounts(connection, program, admin, minter)
     state = s
@@ -114,7 +114,7 @@ describe('Enable Oracle', () => {
 
   it('force override oracle', async () => {
     await program.methods
-      .forceOverrideOracle(0, true, 200, 1, -2, 42)
+      .forceOverrideOracle(0, true, 200, 1, -2, null)
       .accounts({ state, vaults, admin: admin.publicKey })
       .signers([admin])
       .rpc({ skipPreflight: true })

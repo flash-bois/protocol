@@ -1,7 +1,14 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
 import { createMint, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Connection, Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Signer,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY
+} from '@solana/web3.js'
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 
@@ -12,6 +19,12 @@ export interface DotWaveAccounts {
   quote: PublicKey
   reserveBase: PublicKey
   reserveQuote: PublicKey
+}
+
+export interface AdminAccounts {
+  state: PublicKey
+  vaults: PublicKey
+  admin: PublicKey
 }
 
 export const STATE_SEED = 'state'
@@ -92,7 +105,7 @@ export async function initAccounts(
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 
-  await program.methods
+  const sig = await program.methods
     .initVault()
     .accounts({
       state,
@@ -120,13 +133,52 @@ export async function initAccounts(
 
 export async function waitFor(connection: Connection, sig: string) {
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-  await connection.confirmTransaction({
-    signature: sig,
-    blockhash,
-    lastValidBlockHeight
-  })
+  await connection.confirmTransaction(
+    {
+      signature: sig,
+      blockhash,
+      lastValidBlockHeight
+    },
+    'singleGossip'
+  )
 }
 
 export async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export async function enableOracles(
+  program: Program<Protocol>,
+  index: number,
+  accounts: AdminAccounts,
+  admin: Signer
+) {
+  const priceFeed = Keypair.generate().publicKey
+  await program.methods
+    .enableOracle(index, 6, true, true)
+    .accounts({
+      ...accounts,
+      priceFeed
+    })
+    .preInstructions([
+      await program.methods
+        .enableOracle(index, 6, true, true)
+        .accounts({
+          ...accounts,
+          priceFeed
+        })
+        .instruction()
+    ])
+    .postInstructions([
+      await program.methods
+        .forceOverrideOracle(0, true, 200, 1, -2, 42)
+        .accounts(accounts)
+        .instruction(),
+      await program.methods
+        .forceOverrideOracle(0, false, 1000, 2, -3, 42)
+        .accounts(accounts)
+        .instruction()
+    ])
+    .signers([admin])
+    .rpc({ skipPreflight: true })
 }
