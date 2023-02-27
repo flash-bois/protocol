@@ -38,7 +38,6 @@ impl VaultsAccount {
             return Err(JsValue::from(LibErrors::NoMinAmountOut));
         }
 
-        // TODO: token transfers
         Ok(quantity_out.get() as i64)
     }
 

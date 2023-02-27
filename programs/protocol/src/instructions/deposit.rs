@@ -4,7 +4,7 @@ use crate::{
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount};
+use anchor_spl::token::{self, transfer, TokenAccount, Transfer};
 use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
@@ -59,7 +59,7 @@ impl Deposit<'_> {
             .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let user_statement = &mut self.statement.load_mut()?.statement;
-        vault.deposit(
+        let other_quantity = vault.deposit(
             user_statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
@@ -67,7 +67,32 @@ impl Deposit<'_> {
             Clock::get()?.unix_timestamp as u32,
         )?;
 
-        // TODO: token transfers
+        let (base_amount, quote_amount) = if base {
+            (quantity, other_quantity.get())
+        } else {
+            (other_quantity.get(), quantity)
+        };
+
+        let take_base_ctx = CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.account_base.to_account_info(),
+                to: self.reserve_base.to_account_info(),
+                authority: self.signer.to_account_info(),
+            },
+        );
+
+        let take_quote_ctx = CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.account_quote.to_account_info(),
+                to: self.reserve_quote.to_account_info(),
+                authority: self.signer.to_account_info(),
+            },
+        );
+
+        transfer(take_base_ctx, base_amount)?;
+        transfer(take_quote_ctx, quote_amount)?;
 
         Ok(())
     }

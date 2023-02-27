@@ -4,7 +4,7 @@ use crate::{
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount};
+use anchor_spl::token::{self, transfer, TokenAccount, Transfer};
 use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
@@ -42,7 +42,7 @@ pub struct SingleSwap<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-impl SingleSwap<'_> {
+impl<'info> SingleSwap<'info> {
     pub fn handler(
         &mut self,
         vault: u8,
@@ -75,8 +75,58 @@ impl SingleSwap<'_> {
             return Err(LibErrors::NoMinAmountOut.into());
         }
 
+        let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
+        let signer = &[&seeds[..]];
+
+        transfer(self.take_base(), amount)?;
+        transfer(self.take_quote().with_signer(signer), quantity_out.get())?;
+
         // TODO: token transfers
 
         Ok(())
+    }
+
+    fn take_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.account_base.to_account_info(),
+                to: self.reserve_base.to_account_info(),
+                authority: self.signer.to_account_info(),
+            },
+        )
+    }
+
+    fn take_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.account_quote.to_account_info(),
+                to: self.reserve_quote.to_account_info(),
+                authority: self.signer.to_account_info(),
+            },
+        )
+    }
+
+    fn send_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.reserve_base.to_account_info(),
+                to: self.account_base.to_account_info(),
+                authority: self.state.to_account_info(),
+            },
+        )
+    }
+
+    fn send_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.reserve_quote.to_account_info(),
+                to: self.account_quote.to_account_info(),
+                authority: self.state.to_account_info(),
+            },
+        )
     }
 }
