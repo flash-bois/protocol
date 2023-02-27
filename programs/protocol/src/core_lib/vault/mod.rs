@@ -229,10 +229,12 @@ impl Vault {
     pub fn refresh(&mut self, current_time: Time) -> Result<(), ()> {
         // TODO check oracle if it is refreshed
 
-        let service = self.lend_service().unwrap();
-
-        service.accrue_interest_rate(current_time);
-        self.settle_fees(ServiceType::Lend)?;
+        if let Ok(lend) = self.lend_service() {
+            if lend.locked().base > Quantity::new(0) {
+                lend.accrue_interest_rate(current_time);
+                self.settle_fees(ServiceType::Lend)?;
+            }
+        }
 
         // if self.services.swap.is_some() {
         //     self.settle_fees(ServiceType::Swap)?
