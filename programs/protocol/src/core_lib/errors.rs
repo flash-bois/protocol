@@ -59,6 +59,8 @@ mod anchor_one {
         NoMinAmountOut,
         #[msg("Provided index is out of bounds")]
         IndexOutOfBounds,
+        #[msg("Service is not valid")]
+        InvalidService,
     }
 }
 

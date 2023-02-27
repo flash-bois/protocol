@@ -340,9 +340,9 @@ impl Strategy {
     ) -> Result<(), LibErrors> {
         self.available.quote -= quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.remove_available_quote(quantity);
-        }
+        // if let Ok(lend) = services.lend_mut() {
+        //     lend.remove_available_quote(quantity);
+        // }
         if let Ok(swap) = services.swap_mut() {
             swap.remove_liquidity_quote(quantity);
         }
@@ -376,9 +376,9 @@ impl Strategy {
     ) -> Result<(), LibErrors> {
         self.available.quote += quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.add_available_quote(quantity);
-        }
+        // if let Ok(lend) = services.lend_mut() {
+        //     lend.add_available_quote(quantity);
+        // }
         if let Ok(swap) = services.swap_mut() {
             swap.add_liquidity_quote(quantity);
         }

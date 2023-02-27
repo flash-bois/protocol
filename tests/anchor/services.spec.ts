@@ -43,7 +43,7 @@ describe('Services', () => {
     const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
     await waitFor(connection, sig)
 
-    const { state: s, vaults: v } = await initAccounts(connection, program, admin, minter)
+    const { state: s, vaults: v } = await initAccounts(program, admin, minter)
     state = s
     vaults = v
     accounts = {
@@ -84,6 +84,14 @@ describe('Services', () => {
     assert.equal(vaultsAccount.vaults_len(), 1)
     assert.equal(vaultsAccount.has_lending(0), true)
     assert.equal(vaultsAccount.has_swap(0), true)
+  })
+
+  it('set swap fee', async () => {
+    await program.methods
+      .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
   })
 
   it('add strategies', async () => {

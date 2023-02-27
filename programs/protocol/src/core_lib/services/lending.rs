@@ -285,6 +285,10 @@ impl Lend {
         self.unclaimed_fee += fee_whole;
         self.total_fee += fee_whole;
     }
+
+    pub fn fee_curve(&mut self) -> &mut FeeCurve {
+        &mut self.fee
+    }
 }
 
 pub trait Borrowable {

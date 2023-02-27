@@ -123,4 +123,40 @@ impl Admin<'_> {
 
         Ok(())
     }
+
+    pub fn modify_fee_curve(
+        &self,
+        vault: u8,
+        service: u8,
+        base: bool,
+        bound: u64,
+        a: u64,
+        b: u64,
+        c: u64,
+    ) -> Result<()> {
+        msg!("DotWave: Modify fee curve");
+
+        let vaults = &mut self.vaults.load_mut()?;
+        let vault = vaults
+            .arr
+            .get_mut(vault as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?;
+
+        let curve = match (service, base) {
+            (1, true) => vault.lend_service()?.fee_curve(),
+            (2, true) => vault.swap_service()?.fee_curve_sell(),
+            (2, false) => vault.swap_service()?.fee_curve_buy(),
+            _ => return Err(LibErrors::InvalidService.into()),
+        };
+
+        let bound = Fraction::new(bound);
+
+        match (a, b, c) {
+            (0, 0, c) => curve.add_constant_fee(Fraction::new(c), bound),
+            (0, b, c) => curve.add_linear_fee(Fraction::new(c), Fraction::new(b), bound),
+            _ => unimplemented!("fee not yet implemented"),
+        };
+
+        Ok(())
+    }
 }
