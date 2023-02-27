@@ -126,11 +126,14 @@ mod anchor_none {
         NoMinAmountOut,
         #[error("Provided index is out of bounds")]
         IndexOutOfBounds,
+        #[error("There is no defined strategy on provided index")]
+        NoStrategyOnIndex,
     }
 
     impl From<LibErrors> for JsValue {
         fn from(value: LibErrors) -> Self {
-            JsValue::from(value.to_string())
+            let val = format!("{}:{}", value.to_string(), (value as u32).to_string());
+            JsValue::from(val)
         }
     }
 }

@@ -137,7 +137,7 @@ impl Vault {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core_lib::Vault, structs::Statement};
+    use crate::core_lib::Vault;
 
     #[test]
     fn test_deposit() {

@@ -43,7 +43,7 @@ describe('Services', () => {
     const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
     await waitFor(connection, sig)
 
-    const { state: s, vaults: v } = await initAccounts(connection, program, admin, minter)
+    const { state: s, vaults: v } = await initAccounts(program, admin, minter)
     state = s
     vaults = v
     accounts = {

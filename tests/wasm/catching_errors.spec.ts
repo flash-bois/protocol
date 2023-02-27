@@ -8,7 +8,8 @@ describe('catching errors in try catch', async () => {
     try {
       ret_error();
     } catch (error) {
-      assert.equal(error, "Provided index is out of bounds")
+      console.log(error)
+      assert.equal(error, "Provided index is out of bounds:26")
     }
   })
 })

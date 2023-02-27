@@ -1,14 +1,18 @@
-use crate::core_lib::decimal::{Decimal, Price, Quantity};
-use crate::core_lib::errors::LibErrors;
-use crate::core_lib::services::ServiceUpdate;
-use crate::structs::VaultsAccount;
+use crate::{
+    core_lib::{
+        decimal::{Decimal, Quantity},
+        errors::LibErrors,
+        services::ServiceUpdate,
+    },
+    structs::VaultsAccount,
+};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 impl VaultsAccount {
     #[wasm_bindgen]
     pub fn swap(
-        &self,
+        &mut self,
         vault: u8,
         amount: u64,
         min_expected: u64,
@@ -16,12 +20,7 @@ impl VaultsAccount {
         by_amount_out: bool,
         now: u32,
     ) -> Result<i64, JsValue> {
-        let mut vault = self
-            .account
-            .arr
-            .get(vault as usize)
-            .expect("invalid vault index")
-            .clone();
+        let mut vault = self.vault_checked_mut(vault)?.clone();
 
         let quantity = Quantity::new(amount);
 
@@ -30,12 +29,12 @@ impl VaultsAccount {
         }
 
         let quantity_out = match from_base {
-            true => vault.sell(quantity).map_err(|err| JsValue::from(err))?,
-            false => vault.buy(quantity).map_err(|err| JsValue::from(err))?,
+            true => vault.sell(quantity)?,
+            false => vault.buy(quantity)?,
         };
 
         if quantity_out < Quantity::new(min_expected) {
-            return Err(JsValue::from(LibErrors::NoMinAmountOut));
+            return Err(LibErrors::NoMinAmountOut.into());
         }
 
         // TODO: token transfers
@@ -43,18 +42,15 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn liquidity(&self, vault: u8, base: bool) -> u64 {
-        let vault = self
-            .account
-            .arr
-            .get(vault as usize)
-            .expect("invalid vault index");
+    pub fn liquidity(&self, vault: u8, base: bool) -> Result<u64, JsValue> {
+        let vault = self.vault_checked(vault)?;
 
-        let available = vault.swap_service_not_mut().unwrap().available();
-        match base {
+        let available = vault.swap_service_not_mut()?.available();
+
+        Ok(match base {
             true => available.base,
             false => available.quote,
         }
-        .get()
+        .get())
     }
 }
