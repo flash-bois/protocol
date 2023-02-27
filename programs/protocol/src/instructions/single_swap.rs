@@ -1,6 +1,7 @@
 use crate::{
-    core_lib::{decimal::Quantity, Token},
-    structs::{State, Statement, Vaults},
+    core_lib::decimal::Quantity,
+    core_lib::errors::LibErrors,
+    structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount};
@@ -50,12 +51,12 @@ impl SingleSwap<'_> {
         from_base: bool,
         by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
-        let now = Clock::get()?.unix_timestamp as u32;
+        //let now = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults
             .arr
             .get_mut(vault as usize)
-            .expect("invalid vault index");
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let quantity = Quantity::new(amount);
 
@@ -64,15 +65,14 @@ impl SingleSwap<'_> {
         }
 
         let quantity_out = match from_base {
-            true => vault.sell(quantity, now).expect("sell failed"), // ERROR CODE
-
-            false => vault.buy(quantity, now).expect("buy failed"), // ERROR CODE
+            true => vault.sell(quantity)?,
+            false => vault.buy(quantity)?,
         };
 
         msg!("quantity out: {}", quantity_out);
 
         if quantity_out < Quantity::new(min_expected) {
-            panic!("quantity out is less than min expected") // ERROR CODE
+            return Err(LibErrors::NoMinAmountOut.into());
         }
 
         // TODO: token transfers

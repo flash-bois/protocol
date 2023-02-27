@@ -1,6 +1,7 @@
 use checked_decimal_macro::{BetweenDecimals, Factories};
 
 use crate::core_lib::decimal::{Balances, Fraction, Quantity};
+use crate::core_lib::errors::LibErrors;
 use crate::core_lib::structs::{FeeCurve, Oracle};
 
 use super::ServiceUpdate;
@@ -147,12 +148,13 @@ impl Swap {
         base_quantity: Quantity,
         base_oracle: &Oracle,
         quote_oracle: &Oracle,
-    ) -> Result<Quantity, ()> {
+    ) -> Result<Quantity, LibErrors> {
         let proportion_before = self.get_proportion(base_oracle, quote_oracle);
         let swap_value = base_oracle.calculate_value(base_quantity);
         let quote_quantity = quote_oracle.calculate_quantity(swap_value);
+
         if quote_quantity > self.available.quote {
-            return Err(());
+            return Err(LibErrors::NotEnoughQuoteQuantity);
         }
 
         self.balances.base += base_quantity;
@@ -176,13 +178,14 @@ impl Swap {
         quote_quantity: Quantity,
         base_oracle: &Oracle,
         quote_oracle: &Oracle,
-    ) -> Result<Quantity, ()> {
+    ) -> Result<Quantity, LibErrors> {
         let proportion_before =
             Fraction::from_integer(1) - self.get_proportion(base_oracle, quote_oracle);
         let swap_value = quote_oracle.calculate_value(quote_quantity);
         let base_quantity = base_oracle.calculate_quantity(swap_value);
+
         if base_quantity > self.available.base {
-            return Err(());
+            return Err(LibErrors::NotEnoughBaseQuantity);
         }
 
         self.balances.quote += quote_quantity;

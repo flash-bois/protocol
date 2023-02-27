@@ -1,3 +1,4 @@
+use crate::core_lib::errors::LibErrors;
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
 
@@ -14,8 +15,12 @@ pub struct AddStrategy<'info> {
 impl AddStrategy<'_> {
     pub fn handler(&mut self, index: u8, lending: bool, swapping: bool) -> anchor_lang::Result<()> {
         msg!("DotWave: Adding Strategy");
+
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+        let vault = vaults
+            .arr
+            .get_mut(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         msg!(
             "here {} {}",
@@ -23,9 +28,7 @@ impl AddStrategy<'_> {
             vault.swap_service().is_ok()
         );
 
-        vault
-            .add_strategy(lending, swapping, false)
-            .expect("couldn't add strategy");
+        vault.add_strategy(lending, swapping, false)?;
 
         Ok(())
     }

@@ -1,4 +1,4 @@
-use crate::structs::Statement;
+use crate::{core_lib::errors::LibErrors, structs::Statement};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -23,7 +23,7 @@ pub fn handler(ctx: Context<CreateStatement>) -> Result<()> {
     let statement = &mut ctx.accounts.statement.load_init()?;
 
     statement.owner = *ctx.accounts.payer.key;
-    statement.bump = *ctx.bumps.get("statement").unwrap();
+    statement.bump = *ctx.bumps.get("statement").ok_or(LibErrors::BumpNotFound)?;
 
     Ok(())
 }

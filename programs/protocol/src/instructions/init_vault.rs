@@ -1,4 +1,5 @@
 use crate::{
+    core_lib::errors::LibErrors,
     core_lib::{services::Services, strategy::Strategies, vault::Vault},
     structs::{State, VaultKeys, Vaults},
 };
@@ -35,6 +36,7 @@ pub struct InitVault<'info> {
 impl InitVault<'_> {
     pub fn handler(&mut self) -> anchor_lang::Result<()> {
         msg!("DotWave: Initializing vault");
+
         let keys = VaultKeys {
             base_token: self.base.key(),
             quote_token: self.quote.key(),
@@ -52,8 +54,12 @@ impl InitVault<'_> {
             quote_oracle: None,
             id: vaults.arr.head,
         };
-        vaults.arr.add(created_vault).expect("Failed to add vault");
-        vaults.keys.add(keys).expect("Failed to add vault keys");
+
+        vaults
+            .arr
+            .add(created_vault)
+            .map_err(|_| LibErrors::AddVault)?;
+        vaults.keys.add(keys).map_err(|_| LibErrors::AddKeys)?;
 
         Ok(())
     }

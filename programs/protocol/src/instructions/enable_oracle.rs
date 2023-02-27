@@ -1,4 +1,5 @@
 use crate::core_lib::decimal::{DecimalPlaces, Price};
+use crate::core_lib::errors::LibErrors;
 use crate::core_lib::Token;
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
@@ -30,27 +31,29 @@ impl EnableOracle<'_> {
         );
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found");
+        let vault = vaults
+            .arr
+            .get_mut(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let decimal_places = match decimals {
             6 => DecimalPlaces::Six,
             9 => DecimalPlaces::Nine,
-            // _ => return Err(ErrorCode::InvalidDecimalPlaces.into()),
-            _ => panic!("Invalid decimal places"), // ERROR CODE
+            _ => return Err(LibErrors::InvalidDecimalPlaces.into()),
         };
 
         if skip_init {
-            vault
-                .enable_oracle(
-                    decimal_places,
-                    Price::from_integer(0),
-                    Price::from_integer(0),
-                    Price::from_scale(2, 2),
-                    Clock::get()?.unix_timestamp.try_into().unwrap(),
-                    if base { Token::Base } else { Token::Quote },
-                )
-                // .or_else(ErrorCode::VaultError)?; // ERROR CODE
-                .expect("could not enable oracle");
+            vault.enable_oracle(
+                decimal_places,
+                Price::from_integer(0),
+                Price::from_integer(0),
+                Price::from_scale(2, 2),
+                Clock::get()?
+                    .unix_timestamp
+                    .try_into()
+                    .map_err(|_| LibErrors::ParseError)?,
+                if base { Token::Base } else { Token::Quote },
+            )?
         } else {
             // TODO parse price on init
             unimplemented!();
@@ -64,7 +67,7 @@ impl EnableOracle<'_> {
         let keys = vaults
             .keys
             .get_mut(index as usize)
-            .expect("Vault not found");
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         if base {
             keys.base_oracle = Some(self.price_feed.key());

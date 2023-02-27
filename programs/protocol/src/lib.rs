@@ -1,9 +1,6 @@
 mod core_lib;
 
 #[cfg(feature = "anchor")]
-mod errors;
-
-#[cfg(feature = "anchor")]
 mod instructions;
 mod structs;
 
@@ -20,7 +17,6 @@ use anchor_lang::prelude::*;
 #[program]
 pub mod protocol {
     use super::*;
-    use anchor_lang::prelude::*;
 
     pub fn create_state(ctx: Context<CreateState>) -> Result<()> {
         instructions::create_state::handler(ctx)

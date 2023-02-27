@@ -1,4 +1,5 @@
 use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
+use crate::core_lib::errors::LibErrors;
 use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
 
 #[cfg(feature = "anchor")]
@@ -128,16 +129,16 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    fn lent_checked(&self) -> Result<Quantity, ()> {
-        self.lent.as_ref().ok_or(()).copied()
+    fn lent_checked(&self) -> Result<Quantity, LibErrors> {
+        self.lent.as_ref().ok_or(LibErrors::StrategyNoLend).copied()
     }
 
-    fn sold_checked(&self) -> Result<&Balances, ()> {
-        self.sold.as_ref().ok_or(())
+    fn sold_checked(&self) -> Result<&Balances, LibErrors> {
+        self.sold.as_ref().ok_or(LibErrors::StrategyNoSwap)
     }
 
-    fn traded_checked(&self) -> Result<&Balances, ()> {
-        self.traded.as_ref().ok_or(())
+    fn traded_checked(&self) -> Result<&Balances, LibErrors> {
+        self.traded.as_ref().ok_or(LibErrors::StrategyNoTrade)
     }
 
     fn _sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
@@ -148,7 +149,7 @@ impl Strategy {
         self.traded.as_mut().ok_or(())
     }
 
-    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, ()> {
+    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, LibErrors> {
         let quantity_locked = match service {
             ServiceType::Lend => self.lent_checked()?,
             ServiceType::Swap => self.sold_checked()?.base,
@@ -218,7 +219,7 @@ impl Strategy {
         input_quantity: Quantity,
         balance: Quantity,
         services: &mut Services,
-    ) -> Result<Shares, ()> {
+    ) -> Result<Shares, LibErrors> {
         if let Ok(lend) = services.lend_mut() {
             lend.add_available_base(quantity);
         }
@@ -238,7 +239,7 @@ impl Strategy {
     }
 
     /// Add locked tokens to a specific substrategy
-    pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), ()> {
+    pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), LibErrors> {
         *self.locked_in(sub) += quantity;
         self.accrued_fee += quantity;
         self.locked.base += quantity;
@@ -252,7 +253,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in(sub) += quantity;
         self.locked.base += quantity;
         self.available.base -= quantity;
@@ -286,7 +287,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in(sub) -= quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -318,7 +319,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.base -= quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -336,7 +337,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.quote -= quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -354,7 +355,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.base += quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -372,7 +373,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.quote += quantity;
 
         if let Ok(lend) = services.lend_mut() {
