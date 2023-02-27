@@ -133,3 +133,19 @@ impl Vault {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{core_lib::Vault, structs::Statement};
+
+    #[test]
+    fn test_deposit() {
+        let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
+        let user_statement = &mut UserStatement::default();
+
+        vault
+            .deposit(user_statement, Token::Base, Quantity::new(100), 0, 1000)
+            .expect("deposit failed");
+    }
+}

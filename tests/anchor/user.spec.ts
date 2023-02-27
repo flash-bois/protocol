@@ -92,23 +92,23 @@ describe('Services', () => {
       .rpc({ skipPreflight: true })
   })
 
-  // it('deposit', async () => {
-  //   await program.methods
-  //     .deposit(0, 0, new BN(1000000), true)
-  //     .accountsStrict({
-  //       state,
-  //       vaults,
-  //       accountBase,
-  //       accountQuote,
-  //       statement,
-  //       signer: user.publicKey,
-  //       reserveBase: protocolAccounts.reserveBase,
-  //       reserveQuote: protocolAccounts.reserveQuote,
-  //       tokenProgram: TOKEN_PROGRAM_ID
-  //     })
-  //     .signers([user])
-  //     .rpc({ skipPreflight: true })
-  // })
+  it('deposit', async () => {
+    await program.methods
+      .deposit(0, 0, new BN(1000000), true)
+      .accountsStrict({
+        state,
+        vaults,
+        accountBase,
+        accountQuote,
+        statement,
+        signer: user.publicKey,
+        reserveBase: protocolAccounts.reserveBase,
+        reserveQuote: protocolAccounts.reserveQuote,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .signers([user])
+      .rpc({ skipPreflight: true })
+  })
 
   // it('single swap', async () => {
   //   const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
