@@ -66,7 +66,7 @@ impl Vault {
         amount: Quantity,
         strategy_index: u8,
         current_time: Time,
-    ) -> Result<(), LibErrors> {
+    ) -> Result<Quantity, LibErrors> {
         self.refresh(current_time)?;
         let base_oracle = self.oracle()?;
         let quote_oracle = self.quote_oracle()?;
@@ -130,7 +130,11 @@ impl Vault {
             }
         }
 
-        Ok(())
+        if deposit_token == Token::Base {
+            Ok(quote_quantity)
+        } else {
+            Ok(base_quantity)
+        }
     }
 }
 

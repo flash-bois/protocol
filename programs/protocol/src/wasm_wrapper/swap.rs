@@ -37,7 +37,6 @@ impl VaultsAccount {
             return Err(LibErrors::NoMinAmountOut.into());
         }
 
-        // TODO: token transfers
         Ok(quantity_out.get() as i64)
     }
 

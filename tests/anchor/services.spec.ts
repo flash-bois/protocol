@@ -86,6 +86,14 @@ describe('Services', () => {
     assert.equal(vaultsAccount.has_swap(0), true)
   })
 
+  it('set swap fee', async () => {
+    await program.methods
+      .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+  })
+
   it('add strategies', async () => {
     let vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
 

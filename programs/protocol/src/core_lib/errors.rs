@@ -61,6 +61,8 @@ mod anchor_one {
         IndexOutOfBounds,
         #[msg("There is no defined strategy on provided index")]
         NoStrategyOnIndex,
+        #[msg("Service is not valid")]
+        InvalidService,
     }
 }
 
@@ -130,6 +132,8 @@ mod anchor_none {
         IndexOutOfBounds,
         #[error("There is no defined strategy on provided index")]
         NoStrategyOnIndex,
+        #[error("Service is not valid")]
+        InvalidService,
     }
 
     impl From<LibErrors> for JsValue {

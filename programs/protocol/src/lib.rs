@@ -104,6 +104,20 @@ pub mod protocol {
         ctx.accounts
             .handler(vault, amount, min_expected, from_base, by_amount_out)
     }
+
+    pub fn modify_fee_curve(
+        ctx: Context<Admin>,
+        vault: u8,
+        service: u8,
+        base: bool,
+        bound: u64,
+        a: u64,
+        b: u64,
+        c: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .modify_fee_curve(vault, service, base, bound, a, b, c)
+    }
 }
 
 #[cfg(feature = "wasm")]
