@@ -1,6 +1,6 @@
 use crate::core_lib::decimal::{DecimalPlaces, Price};
+use crate::core_lib::errors::LibErrors;
 use crate::core_lib::Token;
-use crate::errors::NoLibErrors;
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
 use checked_decimal_macro::Factories;
@@ -34,12 +34,12 @@ impl EnableOracle<'_> {
         let vault = vaults
             .arr
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let decimal_places = match decimals {
             6 => DecimalPlaces::Six,
             9 => DecimalPlaces::Nine,
-            _ => return Err(NoLibErrors::InvalidDecimalPlaces.into()),
+            _ => return Err(LibErrors::InvalidDecimalPlaces.into()),
         };
 
         if skip_init {
@@ -51,7 +51,7 @@ impl EnableOracle<'_> {
                 Clock::get()?
                     .unix_timestamp
                     .try_into()
-                    .map_err(|_| NoLibErrors::ParseError)?,
+                    .map_err(|_| LibErrors::ParseError)?,
                 if base { Token::Base } else { Token::Quote },
             )?
         } else {
@@ -67,7 +67,7 @@ impl EnableOracle<'_> {
         let keys = vaults
             .keys
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         if base {
             keys.base_oracle = Some(self.price_feed.key());

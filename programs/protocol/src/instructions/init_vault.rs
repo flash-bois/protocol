@@ -1,6 +1,6 @@
 use crate::{
+    core_lib::errors::LibErrors,
     core_lib::{services::Services, strategy::Strategies, vault::Vault},
-    errors::NoLibErrors,
     structs::{State, VaultKeys, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -58,8 +58,8 @@ impl InitVault<'_> {
         vaults
             .arr
             .add(created_vault)
-            .map_err(|_| NoLibErrors::AddVault)?;
-        vaults.keys.add(keys).map_err(|_| NoLibErrors::AddKeys)?;
+            .map_err(|_| LibErrors::AddVault)?;
+        vaults.keys.add(keys).map_err(|_| LibErrors::AddKeys)?;
 
         Ok(())
     }

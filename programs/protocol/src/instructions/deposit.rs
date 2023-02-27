@@ -1,6 +1,6 @@
 use crate::{
+    core_lib::errors::LibErrors,
     core_lib::{decimal::Quantity, Token},
-    errors::NoLibErrors,
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -56,7 +56,7 @@ impl Deposit<'_> {
         let vault = vaults
             .arr
             .get_mut(vault as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let user_statement = &mut self.statement.load_mut()?.statement;
         vault.deposit(

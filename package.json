@@ -4,19 +4,20 @@
   "main": "index.ts",
   "author": "fashbois",
   "scripts": {
-    "start-sdk": "ts-node sdk/src/index.ts",
     "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
     "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "test:sdk": "ts-mocha -t 100000 tests/wasm/*",
-    "test:anchor": "anchor test tests/anchor/*.ts",
-    "test:wasm": "ts-node tests/wasm/*.ts",
-    "test:anchor:create_state": "anchor test tests/anchor/create_state.ts",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
     "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
+    "test:anchor": "anchor test --skip-build tests/anchor/*.ts",
+    "test:wasm": "anchor test --skip-build tests/wasm/*.ts",
     "test:services": "anchor test --skip-build tests/anchor/services.spec.ts",
-    "test:user": "anchor test --skip-build tests/anchor/user.spec.ts"
+    "test:user": "anchor test --skip-build tests/anchor/user.spec.ts",
+    "test:state": "anchor test --skip-build tests/anchor/create_state.spec.ts",
+    "test:vault": "anchor test --skip-build tests/anchor/init_vault.spec.ts",
+    "test:oracle": "anchor test --skip-build tests/anchor/oracle.spec.ts",
+    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts"
   },
   "repository": {
     "type": "git",

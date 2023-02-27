@@ -1,4 +1,5 @@
 use crate::core_lib::decimal::{Decimal, Price, Quantity};
+use crate::core_lib::errors::LibErrors;
 use crate::core_lib::services::ServiceUpdate;
 use crate::structs::VaultsAccount;
 use wasm_bindgen::prelude::*;
@@ -14,7 +15,7 @@ impl VaultsAccount {
         from_base: bool,
         by_amount_out: bool,
         now: u32,
-    ) -> i64 {
+    ) -> Result<i64, JsValue> {
         let mut vault = self
             .account
             .arr
@@ -29,17 +30,16 @@ impl VaultsAccount {
         }
 
         let quantity_out = match from_base {
-            true => vault.sell(quantity, now).expect("sell failed"), // ERROR CODE
-
-            false => vault.buy(quantity, now).expect("buy failed"), // ERROR CODE
+            true => vault.sell(quantity).map_err(|err| JsValue::from(err))?,
+            false => vault.buy(quantity).map_err(|err| JsValue::from(err))?,
         };
 
         if quantity_out < Quantity::new(min_expected) {
-            panic!("quantity out is less than min expected") // ERROR CODE
+            return Err(JsValue::from(LibErrors::NoMinAmountOut));
         }
 
         // TODO: token transfers
-        quantity_out.get() as i64
+        Ok(quantity_out.get() as i64)
     }
 
     #[wasm_bindgen]

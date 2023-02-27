@@ -1,9 +1,9 @@
 use crate::{
     core_lib::{
         decimal::{Factories, Fraction, Price, Quantity, Utilization},
+        errors::LibErrors,
         structs::FeeCurve,
     },
-    errors::NoLibErrors,
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -35,7 +35,7 @@ impl Admin<'_> {
         let vault = vaults
             .arr
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         let oracle = match base {
             true => vault.oracle_mut(),
@@ -46,26 +46,26 @@ impl Admin<'_> {
             Clock::get()?
                 .unix_timestamp
                 .try_into()
-                .map_err(|_| NoLibErrors::ParseError)?,
+                .map_err(|_| LibErrors::ParseError)?,
         );
 
         let (price, confidence) = if exp < 0 {
             (
                 Price::from_scale(
                     price,
-                    exp.abs().try_into().map_err(|_| NoLibErrors::ParseError)?,
+                    exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
                 ),
                 Price::from_scale(
                     conf,
-                    exp.abs().try_into().map_err(|_| NoLibErrors::ParseError)?,
+                    exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
                 ),
             )
         } else {
             (
                 Price::from_integer(price)
-                    / Price::from_scale(1, exp.try_into().map_err(|_| NoLibErrors::ParseError)?),
+                    / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
                 Price::from_integer(conf)
-                    / Price::from_scale(1, exp.try_into().map_err(|_| NoLibErrors::ParseError)?),
+                    / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
             )
         };
 
@@ -86,7 +86,7 @@ impl Admin<'_> {
         let vault = vaults
             .arr
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         vault.enable_lending(
             FeeCurve::default(),
@@ -95,7 +95,7 @@ impl Admin<'_> {
             Clock::get()?
                 .unix_timestamp
                 .try_into()
-                .map_err(|_| NoLibErrors::ParseError)?,
+                .map_err(|_| LibErrors::ParseError)?,
         )?;
 
         Ok(())
@@ -113,7 +113,7 @@ impl Admin<'_> {
         let vault = vaults
             .arr
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         vault.enable_swapping(
             FeeCurve::default(),

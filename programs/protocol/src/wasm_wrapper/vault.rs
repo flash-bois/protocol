@@ -1,3 +1,4 @@
+use crate::core_lib::errors::LibErrors;
 use crate::structs::vaults::Vaults;
 use crate::structs::VaultsAccount;
 use crate::wasm_wrapper::utils::to_buffer;
@@ -25,15 +26,15 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_token(&self, index: u8) -> Uint8Array {
-        to_buffer(
+    pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(
             &self
                 .account
                 .keys
                 .get_checked(index as usize)
-                .expect("index out of bounds")
+                .ok_or(JsValue::from(LibErrors::IndexOutOfBounds))?
                 .base_token,
-        )
+        ))
     }
 
     #[wasm_bindgen]

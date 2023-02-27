@@ -1,4 +1,4 @@
-use crate::errors::NoLibErrors;
+use crate::core_lib::errors::LibErrors;
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
 
@@ -20,7 +20,7 @@ impl AddStrategy<'_> {
         let vault = vaults
             .arr
             .get_mut(index as usize)
-            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+            .ok_or(LibErrors::NoVaultOnIndex)?;
 
         msg!(
             "here {} {}",
