@@ -4,7 +4,7 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert } from 'chai'
 import { StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
-import { STATE_SEED } from '../utils/utils'
+import { STATE_SEED } from '../../microSdk'
 
 describe('state with default vaults', () => {
   const provider = anchor.AnchorProvider.env()
