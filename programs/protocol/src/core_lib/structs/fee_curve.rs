@@ -1,6 +1,7 @@
 use crate::core_lib::{decimal::*, errors::LibErrors};
 
 const MAX_FEES: usize = 5;
+pub const HOUR_DURATION: u32 = 60 * 60;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -156,7 +157,7 @@ impl FeeCurve {
 
     pub fn compounded_fee(&self, utilization: Fraction, time: Time) -> Precise {
         if let CurveSegment::Constant { c } = self.get_value(utilization) {
-            let fee = Precise::from_decimal(c);
+            let fee = Precise::from_decimal(c).div_up(Quantity::new(HOUR_DURATION as u64));
             (Precise::from_integer(1) + fee).big_pow_up(time) - Precise::from_integer(1)
         } else {
             panic!("compounded_fee: invalid function");
@@ -211,18 +212,19 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_static() {
+    fn test_calculate_compounded() {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(5, 1));
         fee.add_constant_fee(Fraction::from_scale(2, 2), Fraction::from_integer(1));
 
         assert_eq!(
-            fee.compounded_fee(Fraction::from_scale(2, 1), 1),
-            Precise::from_scale(1, 2)
+            fee.compounded_fee(Fraction::from_scale(2, 1), HOUR_DURATION),
+            Precise::new(10050153055719590731686) // 1005015305571959072853
         );
+
         assert_eq!(
-            fee.compounded_fee(Fraction::from_scale(6, 1), 2),
-            Precise::from_scale(404, 4)
+            fee.compounded_fee(Fraction::from_scale(6, 1), 60),
+            Precise::new(333387968831054398543) // 33338796883105439847515487389689
         );
     }
 
