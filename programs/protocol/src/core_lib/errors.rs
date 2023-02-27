@@ -59,6 +59,8 @@ mod anchor_one {
         NoMinAmountOut,
         #[msg("Provided index is out of bounds")]
         IndexOutOfBounds,
+        #[msg("There is no defined strategy on provided index")]
+        NoStrategyOnIndex,
     }
 }
 
