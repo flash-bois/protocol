@@ -1,5 +1,6 @@
 use crate::{
     core_lib::{decimal::Quantity, Token},
+    errors::NoLibErrors,
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -55,18 +56,16 @@ impl Deposit<'_> {
         let vault = vaults
             .arr
             .get_mut(vault as usize)
-            .expect("invalid vault index");
+            .ok_or(NoLibErrors::NoVaultOnIndex)?;
 
         let user_statement = &mut self.statement.load_mut()?.statement;
-        vault
-            .deposit(
-                user_statement,
-                if base { Token::Base } else { Token::Quote },
-                Quantity::new(quantity),
-                strategy,
-                Clock::get()?.unix_timestamp as u32,
-            )
-            .expect("deposit failed"); // ERROR CODE
+        vault.deposit(
+            user_statement,
+            if base { Token::Base } else { Token::Quote },
+            Quantity::new(quantity),
+            strategy,
+            Clock::get()?.unix_timestamp as u32,
+        )?;
 
         // TODO: token transfers
 

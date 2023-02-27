@@ -1,4 +1,7 @@
-use crate::structs::{State, Vaults};
+use crate::{
+    errors::NoLibErrors,
+    structs::{State, Vaults},
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -21,7 +24,7 @@ pub fn handler(ctx: Context<CreateState>) -> Result<()> {
     **state = State {
         admin: ctx.accounts.admin.key(),
         vaults_acc: ctx.accounts.vaults.key(),
-        bump: *ctx.bumps.get("state").unwrap(),
+        bump: *ctx.bumps.get("state").ok_or(NoLibErrors::BumpNotFound)?,
     };
 
     ctx.accounts.vaults.load_init()?;

@@ -3,6 +3,7 @@ use crate::{
         decimal::{Factories, Fraction, Price, Quantity, Utilization},
         structs::FeeCurve,
     },
+    errors::NoLibErrors,
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -31,29 +32,44 @@ impl Admin<'_> {
         msg!("DotWave: Force override oracle");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+        let vault = vaults
+            .arr
+            .get_mut(index as usize)
+            .ok_or(NoLibErrors::NoVaultOnIndex)?;
+
         let oracle = match base {
             true => vault.oracle_mut(),
             false => vault.quote_oracle_mut(),
-        }
-        .expect("Oracle not found"); // ERROR CODE
+        }?;
 
-        let time = time.unwrap_or(Clock::get()?.unix_timestamp.try_into().unwrap());
+        let time = time.unwrap_or(
+            Clock::get()?
+                .unix_timestamp
+                .try_into()
+                .map_err(|_| NoLibErrors::ParseError)?,
+        );
+
         let (price, confidence) = if exp < 0 {
             (
-                Price::from_scale(price, exp.abs().try_into().unwrap()),
-                Price::from_scale(conf, exp.abs().try_into().unwrap()),
+                Price::from_scale(
+                    price,
+                    exp.abs().try_into().map_err(|_| NoLibErrors::ParseError)?,
+                ),
+                Price::from_scale(
+                    conf,
+                    exp.abs().try_into().map_err(|_| NoLibErrors::ParseError)?,
+                ),
             )
         } else {
             (
-                Price::from_integer(price) / Price::from_scale(1, exp.try_into().unwrap()),
-                Price::from_integer(conf) / Price::from_scale(1, exp.try_into().unwrap()),
+                Price::from_integer(price)
+                    / Price::from_scale(1, exp.try_into().map_err(|_| NoLibErrors::ParseError)?),
+                Price::from_integer(conf)
+                    / Price::from_scale(1, exp.try_into().map_err(|_| NoLibErrors::ParseError)?),
             )
         };
 
-        oracle
-            .update(price, confidence, time)
-            .expect("Could not update oracle"); // ERROR CODE
+        oracle.update(price, confidence, time)?;
 
         Ok(())
     }
@@ -67,16 +83,20 @@ impl Admin<'_> {
         msg!("DotWave: Enabling lending");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+        let vault = vaults
+            .arr
+            .get_mut(index as usize)
+            .ok_or(NoLibErrors::NoVaultOnIndex)?;
 
-        vault
-            .enable_lending(
-                FeeCurve::default(),
-                Utilization::from_decimal(Fraction::new(max_utilization as u64)),
-                Quantity::new(max_total_borrow),
-                Clock::get()?.unix_timestamp.try_into().unwrap(), // ERROR CODE
-            )
-            .expect("Could not enable lending"); // ERROR CODE
+        vault.enable_lending(
+            FeeCurve::default(),
+            Utilization::from_decimal(Fraction::new(max_utilization as u64)),
+            Quantity::new(max_total_borrow),
+            Clock::get()?
+                .unix_timestamp
+                .try_into()
+                .map_err(|_| NoLibErrors::ParseError)?,
+        )?;
 
         Ok(())
     }
@@ -90,15 +110,16 @@ impl Admin<'_> {
         msg!("DotWave: Enabling swapping");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.arr.get_mut(index as usize).expect("Vault not found"); // ERROR CODE
+        let vault = vaults
+            .arr
+            .get_mut(index as usize)
+            .ok_or(NoLibErrors::NoVaultOnIndex)?;
 
-        vault
-            .enable_swapping(
-                FeeCurve::default(),
-                FeeCurve::default(),
-                Fraction::new(kept_fee as u64),
-            )
-            .expect("Could not enable swapping"); // ERROR CODE
+        vault.enable_swapping(
+            FeeCurve::default(),
+            FeeCurve::default(),
+            Fraction::new(kept_fee as u64),
+        )?;
 
         Ok(())
     }

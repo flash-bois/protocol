@@ -1,5 +1,6 @@
 use crate::{
     core_lib::decimal::Quantity,
+    errors::NoLibErrors,
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -55,7 +56,7 @@ impl SingleSwap<'_> {
         let vault = vaults
             .arr
             .get_mut(vault as usize)
-            .expect("invalid vault index");
+            .ok_or(NoLibErrors::NoVaultOnIndex)?;
 
         let quantity = Quantity::new(amount);
 
@@ -64,15 +65,14 @@ impl SingleSwap<'_> {
         }
 
         let quantity_out = match from_base {
-            true => vault.sell(quantity).expect("sell failed"), // ERROR CODE
-
-            false => vault.buy(quantity).expect("buy failed"), // ERROR CODE
+            true => vault.sell(quantity)?,
+            false => vault.buy(quantity)?,
         };
 
         msg!("quantity out: {}", quantity_out);
 
         if quantity_out < Quantity::new(min_expected) {
-            panic!("quantity out is less than min expected") // ERROR CODE
+            return Err(NoLibErrors::NoMinAmountOut.into());
         }
 
         // TODO: token transfers
