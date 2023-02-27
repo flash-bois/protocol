@@ -1,4 +1,4 @@
-use crate::core_lib::decimal::*;
+use crate::core_lib::{decimal::*, errors::LibErrors};
 
 const MAX_FEES: usize = 5;
 
@@ -57,7 +57,11 @@ impl FeeCurve {
             .unwrap_or(0)
     }
 
-    fn find_indexes(&self, smaller: Fraction, greater: Fraction) -> Result<(usize, usize), ()> {
+    fn find_indexes(
+        &self,
+        smaller: Fraction,
+        greater: Fraction,
+    ) -> Result<(usize, usize), LibErrors> {
         let index = (0..self.used as usize)
             .find(|&i| smaller <= self.bounds[i])
             .unwrap_or(0);
@@ -66,7 +70,7 @@ impl FeeCurve {
             index,
             (index..self.used as usize)
                 .find(|&i| greater <= self.bounds[i])
-                .ok_or(())?,
+                .ok_or(LibErrors::ToBeDefined)?,
         ))
     }
 
@@ -85,7 +89,7 @@ impl FeeCurve {
         }
     }
 
-    pub fn get_mean(&self, before: Fraction, after: Fraction) -> Result<Fraction, ()> {
+    pub fn get_mean(&self, before: Fraction, after: Fraction) -> Result<Fraction, LibErrors> {
         let (smaller, greater) = if before < after {
             (before, after)
         } else {
@@ -180,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn test() -> Result<(), ()> {
+    fn test() -> Result<(), LibErrors> {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
         fee.add_constant_fee(Fraction::new(2), Fraction::new(2));
@@ -225,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_mean() -> Result<(), ()> {
+    fn test_get_mean() -> Result<(), LibErrors> {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(5, 1));
         fee.add_constant_fee(Fraction::from_scale(2, 2), Fraction::from_integer(1));

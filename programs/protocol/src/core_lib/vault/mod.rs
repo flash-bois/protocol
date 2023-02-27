@@ -54,18 +54,20 @@ pub use zero::Vault;
 #[cfg(not(feature = "anchor"))]
 pub use non_zero::Vault;
 
+use super::errors::LibErrors;
+
 impl Vault {
     pub fn add_strategy(
         &mut self,
         has_lend: bool,
         has_swap: bool,
         has_trade: bool,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         if has_lend && self.services.lend_mut().is_err() {
-            return Err(());
+            return Err(LibErrors::LendServiceNone);
         }
         if has_swap && self.services.swap_mut().is_err() {
-            return Err(());
+            return Err(LibErrors::SwapServiceNone);
         }
 
         // if has_trade && self.services.trade.is_none() {
@@ -74,6 +76,7 @@ impl Vault {
 
         self.strategies
             .add(Strategy::new(has_lend, has_swap, has_trade))
+            .map_err(|_| LibErrors::CannotAddStrategy)
     }
 
     pub fn enable_oracle(
@@ -84,12 +87,12 @@ impl Vault {
         spread_limit: Price,
         time: Time,
         for_token: Token,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         if match for_token {
             Token::Base => self.oracle.is_some(),
             Token::Quote => self.quote_oracle.is_some(),
         } {
-            return Err(());
+            return Err(LibErrors::OracleAlreadyEnabled);
         }
 
         let oracle = Some(Oracle::new(
@@ -107,20 +110,24 @@ impl Vault {
 
         Ok(())
     }
-    pub fn quote_oracle(&self) -> Result<&Oracle, ()> {
-        self.quote_oracle.as_ref().ok_or(())
+    pub fn quote_oracle(&self) -> Result<&Oracle, LibErrors> {
+        self.quote_oracle
+            .as_ref()
+            .ok_or(LibErrors::QuoteOracleMissing)
     }
 
-    pub fn oracle(&self) -> Result<&Oracle, ()> {
-        self.oracle.as_ref().ok_or(())
+    pub fn oracle(&self) -> Result<&Oracle, LibErrors> {
+        self.oracle.as_ref().ok_or(LibErrors::OracleMissing)
     }
 
-    pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        self.quote_oracle.as_mut().ok_or(())
+    pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, LibErrors> {
+        self.quote_oracle
+            .as_mut()
+            .ok_or(LibErrors::QuoteOracleMissing)
     }
 
-    pub fn oracle_mut(&mut self) -> Result<&mut Oracle, ()> {
-        self.oracle.as_mut().ok_or(())
+    pub fn oracle_mut(&mut self) -> Result<&mut Oracle, LibErrors> {
+        self.oracle.as_mut().ok_or(LibErrors::OracleMissing)
     }
 
     pub fn enable_lending(
@@ -129,13 +136,13 @@ impl Vault {
         max_utilization: Utilization,
         borrow_limit: Quantity,
         initial_fee_time: Time,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         if self.services.lend_mut().is_ok() {
-            return Err(());
+            return Err(LibErrors::LendServiceNone);
         }
 
         if self.oracle.is_none() {
-            return Err(());
+            return Err(LibErrors::OracleMissing);
         }
 
         self.services.lend = Some(Lend::new(
@@ -153,12 +160,13 @@ impl Vault {
         selling_fee: FeeCurve,
         buying_fee: FeeCurve,
         kept_fee: Fraction,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         if self.oracle.is_none() {
-            return Err(());
+            return Err(LibErrors::OracleMissing);
         }
+
         if self.services.swap_mut().is_ok() {
-            return Err(());
+            return Err(LibErrors::SwapServiceNone);
         }
 
         self.services.swap = Some(Swap::new(selling_fee, buying_fee, kept_fee));
@@ -166,23 +174,23 @@ impl Vault {
         Ok(())
     }
 
-    pub fn lend_service(&mut self) -> Result<&mut Lend, ()> {
+    pub fn lend_service(&mut self) -> Result<&mut Lend, LibErrors> {
         self.services.lend_mut()
     }
 
-    pub fn swap_service(&mut self) -> Result<&mut Swap, ()> {
+    pub fn swap_service(&mut self) -> Result<&mut Swap, LibErrors> {
         self.services.swap_mut()
     }
 
-    pub fn lend_service_not_mut(&self) -> Result<&Lend, ()> {
+    pub fn lend_service_not_mut(&self) -> Result<&Lend, LibErrors> {
         self.services.lend()
     }
 
-    pub fn swap_service_not_mut(&self) -> Result<&Swap, ()> {
+    pub fn swap_service_not_mut(&self) -> Result<&Swap, LibErrors> {
         self.services.swap()
     }
 
-    fn settle_fees(&mut self, service: ServiceType) -> Result<(), ()> {
+    fn settle_fees(&mut self, service: ServiceType) -> Result<(), LibErrors> {
         let (service_updatable, service_accrued_fees): (&mut dyn ServiceUpdate, Quantity) =
             match service {
                 ServiceType::Lend => {
@@ -204,7 +212,10 @@ impl Vault {
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
-            let strategy = self.strategies.get_mut_checked(i).ok_or(())?;
+            let strategy = self
+                .strategies
+                .get_mut_checked(i)
+                .ok_or(LibErrors::StrategyMissing)?;
             if strategy.uses(service) {
                 last_index = i;
 
@@ -219,17 +230,20 @@ impl Vault {
         }
 
         if distributed_so_far < service_accrued_fees {
-            let strategy = self.strategies.get_mut_checked(last_index).unwrap();
+            let strategy = self
+                .strategies
+                .get_mut_checked(last_index)
+                .ok_or(LibErrors::StrategyMissing)?;
             strategy.accrue_fee(service_accrued_fees - distributed_so_far, service)?;
         }
 
         Ok(())
     }
 
-    pub fn refresh(&mut self, current_time: Time) -> Result<(), ()> {
+    pub fn refresh(&mut self, current_time: Time) -> Result<(), LibErrors> {
         // TODO check oracle if it is refreshed
 
-        let service = self.lend_service().unwrap();
+        let service = self.lend_service()?;
 
         service.accrue_interest_rate(current_time);
         self.settle_fees(ServiceType::Lend)?;
@@ -244,7 +258,7 @@ impl Vault {
 
 #[cfg(test)]
 impl Vault {
-    pub fn new_vault_for_tests() -> Result<Self, ()> {
+    pub fn new_vault_for_tests() -> Result<Self, LibErrors> {
         let mut vault = Self::default();
         vault.enable_oracle(
             DecimalPlaces::Six,

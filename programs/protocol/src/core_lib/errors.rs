@@ -1,0 +1,20 @@
+#[derive(Debug, PartialEq)]
+pub enum LibErrors {
+    ToBeDefined,
+    UserAllowedBorrowExceeded,
+    LendServiceNone,
+    SwapServiceNone,
+    OracleNone,
+    OracleMissing,
+    OracleAlreadyEnabled,
+    ConfidenceHigherThanPrice,
+    QuoteOracleMissing,
+    StrategyNoLend,
+    StrategyNoSwap,
+    StrategyNoTrade,
+    CannotBorrow,
+    StrategyMissing,
+    CannotAddStrategy,
+    CannotAddPosition,
+    RepayLowerThanFee,
+}

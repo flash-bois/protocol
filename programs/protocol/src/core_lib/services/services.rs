@@ -1,3 +1,5 @@
+use crate::core_lib::errors::LibErrors;
+
 use super::{lending::Lend, swapping::Swap};
 
 #[cfg(feature = "anchor")]
@@ -44,19 +46,19 @@ pub enum ServiceType {
 }
 
 impl Services {
-    pub fn swap_mut(&mut self) -> Result<&mut Swap, ()> {
-        self.swap.as_mut().ok_or(())
+    pub fn swap_mut(&mut self) -> Result<&mut Swap, LibErrors> {
+        self.swap.as_mut().ok_or(LibErrors::SwapServiceNone)
     }
 
-    pub fn lend_mut(&mut self) -> Result<&mut Lend, ()> {
-        self.lend.as_mut().ok_or(())
+    pub fn lend_mut(&mut self) -> Result<&mut Lend, LibErrors> {
+        self.lend.as_mut().ok_or(LibErrors::LendServiceNone)
     }
 
-    pub fn swap(&self) -> Result<&Swap, ()> {
-        self.swap.as_ref().ok_or(())
+    pub fn swap(&self) -> Result<&Swap, LibErrors> {
+        self.swap.as_ref().ok_or(LibErrors::SwapServiceNone)
     }
 
-    pub fn lend(&self) -> Result<&Lend, ()> {
-        self.lend.as_ref().ok_or(())
+    pub fn lend(&self) -> Result<&Lend, LibErrors> {
+        self.lend.as_ref().ok_or(LibErrors::LendServiceNone)
     }
 }

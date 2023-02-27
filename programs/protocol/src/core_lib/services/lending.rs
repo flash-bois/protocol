@@ -2,6 +2,7 @@ use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories};
 
 use crate::core_lib::{
     decimal::{Balances, Fraction, Precise, Quantity, Shares, Time, Utilization, Value},
+    errors::LibErrors,
     structs::FeeCurve,
     structs::Oracle,
 };
@@ -191,13 +192,13 @@ impl Lend {
         oracle: &Oracle,
         user_desired_borrow: Quantity,
         user_allowed_borrow: Value,
-    ) -> Result<Quantity, ()> {
+    ) -> Result<Quantity, LibErrors> {
         let borrow_fee_quantity = self.calculate_borrow_fee(user_desired_borrow);
         let borrow_quantity = user_desired_borrow + borrow_fee_quantity;
         let borrow_value = oracle.calculate_value(borrow_quantity);
 
         if borrow_value > user_allowed_borrow {
-            return Err(());
+            return Err(LibErrors::UserAllowedBorrowExceeded);
         }
 
         Ok(borrow_quantity)
@@ -287,13 +288,13 @@ impl Lend {
 }
 
 pub trait Borrowable {
-    fn borrow(&mut self, quantity: Quantity) -> Result<Shares, ()>;
+    fn borrow(&mut self, quantity: Quantity) -> Result<Shares, LibErrors>;
     fn repay(
         &mut self,
         repay_quantity: Quantity,
         borrowed: Quantity,
         borrowed_shares: Shares,
-    ) -> Result<(Quantity, Shares), ()>;
+    ) -> Result<(Quantity, Shares), LibErrors>;
 }
 
 impl Borrowable for Lend {
@@ -317,7 +318,7 @@ impl Borrowable for Lend {
         repay_quantity: Quantity,
         borrowed: Quantity,
         borrowed_shares: Shares,
-    ) -> Result<(Quantity, Shares), ()> {
+    ) -> Result<(Quantity, Shares), LibErrors> {
         let owed_quantity = self
             .borrow_shares
             .calculate_owed(borrowed_shares, self.borrowed);
@@ -335,7 +336,7 @@ impl Borrowable for Lend {
 
             Ok((repay_quantity, shares_to_burn))
         } else {
-            Err(())
+            Err(LibErrors::RepayLowerThanFee)
         }
     }
 
@@ -350,9 +351,9 @@ impl Borrowable for Lend {
     ///
     /// * `Shares` is amount of shares user is in debt to the system
     ///
-    fn borrow(&mut self, quantity: Quantity) -> Result<Shares, ()> {
+    fn borrow(&mut self, quantity: Quantity) -> Result<Shares, LibErrors> {
         if !self.can_borrow(quantity) {
-            return Err(());
+            return Err(LibErrors::CannotBorrow);
         }
 
         let additional_shares = self.borrow_shares.get_change_up(quantity, self.borrowed);

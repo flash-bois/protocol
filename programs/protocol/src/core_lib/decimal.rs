@@ -1,7 +1,4 @@
-use std::{
-    default,
-    ops::{Add, AddAssign, Sub, SubAssign},
-};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 pub use checked_decimal_macro::*;
 

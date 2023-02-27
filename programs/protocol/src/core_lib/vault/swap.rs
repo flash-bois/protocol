@@ -1,5 +1,6 @@
 use crate::core_lib::{
-    decimal::{Quantity, Time},
+    decimal::Quantity,
+    errors::LibErrors,
     services::{swapping::Swap, ServiceType, ServiceUpdate, Services},
     structs::Oracle,
 };
@@ -7,7 +8,7 @@ use crate::core_lib::{
 use super::Vault;
 
 impl Vault {
-    fn swap_and_oracles(&mut self) -> Result<(&mut Swap, &mut Oracle, &mut Oracle), ()> {
+    fn swap_and_oracles(&mut self) -> Result<(&mut Swap, &mut Oracle, &mut Oracle), LibErrors> {
         let Self {
             services: Services { swap, .. },
             oracle,
@@ -15,14 +16,14 @@ impl Vault {
             ..
         } = self;
 
-        let swap = swap.as_mut().ok_or(())?;
-        let oracle = oracle.as_mut().ok_or(())?;
-        let quote_oracle = quote_oracle.as_mut().ok_or(())?;
+        let swap = swap.as_mut().ok_or(LibErrors::SwapServiceNone)?;
+        let oracle = oracle.as_mut().ok_or(LibErrors::OracleMissing)?;
+        let quote_oracle = quote_oracle.as_mut().ok_or(LibErrors::QuoteOracleMissing)?;
 
         Ok((swap, oracle, quote_oracle))
     }
 
-    pub fn sell(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
+    pub fn sell(&mut self, quantity: Quantity) -> Result<Quantity, LibErrors> {
         let (swap, oracle, quote_oracle) = self.swap_and_oracles()?;
 
         let quote_quantity = swap.sell(quantity, oracle, quote_oracle)?;
@@ -37,7 +38,7 @@ impl Vault {
         Ok(quote_quantity)
     }
 
-    pub fn buy(&mut self, quantity: Quantity, now: Time) -> Result<Quantity, ()> {
+    pub fn buy(&mut self, quantity: Quantity) -> Result<Quantity, LibErrors> {
         let (swap, oracle, quote_oracle) = self.swap_and_oracles()?;
 
         let base_quantity = swap.buy(quantity, oracle, quote_oracle)?;
@@ -55,15 +56,13 @@ impl Vault {
 
 #[cfg(test)]
 mod tests {
-    use checked_decimal_macro::Factories;
-
     use crate::core_lib::decimal::Fraction;
-    use crate::core_lib::vault::deposit::Token;
+    use checked_decimal_macro::Factories;
 
     use super::*;
 
     #[test]
-    fn test_swap() -> Result<(), ()> {
+    fn test_swap() -> Result<(), LibErrors> {
         let mut vault = Vault::new_vault_for_tests()?;
         vault
             .swap_service()?

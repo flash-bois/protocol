@@ -29,12 +29,16 @@ impl Vault {
         }
     }
 
-    pub fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, ()> {
-        self.strategies.get_mut_checked(index as usize).ok_or(())
+    pub fn strategy_mut(&mut self, index: u8) -> Result<&mut Strategy, LibErrors> {
+        self.strategies
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::StrategyMissing)
     }
 
-    pub fn strategy(&self, index: u8) -> Result<&Strategy, ()> {
-        self.strategies.get_checked(index as usize).ok_or(())
+    pub fn strategy(&self, index: u8) -> Result<&Strategy, LibErrors> {
+        self.strategies
+            .get_checked(index as usize)
+            .ok_or(LibErrors::StrategyMissing)
     }
 
     fn get_opposite_quantity(
@@ -62,7 +66,7 @@ impl Vault {
         amount: Quantity,
         strategy_index: u8,
         current_time: Time,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.refresh(current_time)?;
         let base_oracle = self.oracle()?;
         let quote_oracle = self.quote_oracle()?;
@@ -96,7 +100,7 @@ impl Vault {
         let mut_strategy = self
             .strategies
             .get_mut_checked(strategy_index as usize)
-            .ok_or(())?;
+            .ok_or(LibErrors::StrategyMissing)?;
 
         let shares = mut_strategy.deposit(
             base_quantity,
@@ -120,11 +124,11 @@ impl Vault {
                 position.increase_shares(shares);
             }
             None => {
-                user_statement.add_position(temp_position)?;
+                user_statement
+                    .add_position(temp_position)
+                    .map_err(|_| LibErrors::CannotAddPosition)?;
             }
         }
-
-        // TODO add it to user struct
 
         Ok(())
     }

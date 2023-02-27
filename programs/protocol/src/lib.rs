@@ -20,7 +20,6 @@ use anchor_lang::prelude::*;
 #[program]
 pub mod protocol {
     use super::*;
-    use anchor_lang::prelude::*;
 
     pub fn create_state(ctx: Context<CreateState>) -> Result<()> {
         instructions::create_state::handler(ctx)

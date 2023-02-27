@@ -1,6 +1,6 @@
 use crate::{
-    core_lib::{decimal::Quantity, Token},
-    structs::{State, Statement, Vaults},
+    core_lib::decimal::Quantity,
+    structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount};
@@ -50,7 +50,7 @@ impl SingleSwap<'_> {
         from_base: bool,
         by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
-        let now = Clock::get()?.unix_timestamp as u32;
+        //let now = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults
             .arr
@@ -64,9 +64,9 @@ impl SingleSwap<'_> {
         }
 
         let quantity_out = match from_base {
-            true => vault.sell(quantity, now).expect("sell failed"), // ERROR CODE
+            true => vault.sell(quantity).expect("sell failed"), // ERROR CODE
 
-            false => vault.buy(quantity, now).expect("buy failed"), // ERROR CODE
+            false => vault.buy(quantity).expect("buy failed"), // ERROR CODE
         };
 
         msg!("quantity out: {}", quantity_out);
