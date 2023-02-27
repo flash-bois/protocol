@@ -1,4 +1,3 @@
-use crate::core_lib::errors::LibErrors;
 use crate::structs::{State, Vaults};
 use anchor_lang::prelude::*;
 
@@ -17,10 +16,7 @@ impl AddStrategy<'_> {
         msg!("DotWave: Adding Strategy");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         msg!(
             "here {} {}",

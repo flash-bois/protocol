@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 impl VaultsAccount {
     fn strategy(&self, vault: u8, strategy: u8) -> Result<&Strategy, JsValue> {
         Ok(self
+            .account
             .vault_checked(vault)?
             .strategies
             .get_strategy(strategy)?)

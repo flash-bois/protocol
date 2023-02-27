@@ -10,19 +10,19 @@ use wasm_bindgen::prelude::*;
 
 impl VaultsAccount {
     pub fn oracle(&self, index: u8) -> Result<&Oracle, JsValue> {
-        Ok(self.vault_checked(index)?.oracle()?)
+        Ok(self.account.vault_checked(index)?.oracle()?)
     }
 
     pub fn quote_oracle(&self, index: u8) -> Result<&Oracle, JsValue> {
-        Ok(self.vault_checked(index)?.quote_oracle()?)
+        Ok(self.account.vault_checked(index)?.quote_oracle()?)
     }
 
     pub fn oracle_mut(&mut self, index: u8) -> Result<&mut Oracle, JsValue> {
-        Ok(self.vault_checked_mut(index)?.oracle_mut()?)
+        Ok(self.account.vault_checked_mut(index)?.oracle_mut()?)
     }
 
     pub fn quote_oracle_mut(&mut self, index: u8) -> Result<&mut Oracle, JsValue> {
-        Ok(self.vault_checked_mut(index)?.quote_oracle_mut()?)
+        Ok(self.account.vault_checked_mut(index)?.quote_oracle_mut()?)
     }
 }
 

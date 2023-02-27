@@ -32,10 +32,7 @@ impl Admin<'_> {
         msg!("DotWave: Force override oracle");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         let oracle = match base {
             true => vault.oracle_mut(),
@@ -83,10 +80,7 @@ impl Admin<'_> {
         msg!("DotWave: Enabling lending");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         vault.enable_lending(
             FeeCurve::default(),
@@ -110,10 +104,7 @@ impl Admin<'_> {
         msg!("DotWave: Enabling swapping");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         vault.enable_swapping(
             FeeCurve::default(),
@@ -137,10 +128,7 @@ impl Admin<'_> {
         msg!("DotWave: Modify fee curve");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(vault as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(vault)?;
 
         let curve = match (service, base) {
             (1, true) => vault.lend_service()?.fee_curve(),

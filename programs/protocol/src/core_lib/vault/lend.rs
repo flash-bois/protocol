@@ -25,7 +25,7 @@ impl Vault {
         user_statement: &mut UserStatement,
         amount: Quantity,
         current_time: Time,
-    ) -> Result<(), LibErrors> {
+    ) -> Result<Quantity, LibErrors> {
         self.refresh(current_time)?; // should be called in the outer function and after that user_statement.refresh
 
         let (lend, oracle) = self.lend_and_oracle()?;
@@ -57,7 +57,7 @@ impl Vault {
             }
         }
 
-        Ok(())
+        Ok(borrow_quantity)
     }
 
     pub fn repay(

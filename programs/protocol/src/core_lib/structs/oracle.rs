@@ -95,8 +95,8 @@ impl Oracle {
 
     /// Updates the price and confidence of the oracle.
     pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
-        if confidence > price {
-            return Err(LibErrors::ConfidenceHigherThanPrice);
+        if confidence > self.spread_limit {
+            return Err(LibErrors::ConfidenceTooHigh);
         }
         self.price = price;
         self.confidence = confidence;
@@ -104,13 +104,13 @@ impl Oracle {
         Ok(())
     }
 
-    /// Checks if the oracle has been updated in the last `max_update_interval` seconds.
-    pub fn check_if_updated(&self, now: Time) -> Result<(), ()> {
-        if now - self.last_update <= self.max_update_interval {
-            return Ok(());
-        }
-        Err(())
-    }
+    // /// Checks if the oracle has been updated in the last `max_update_interval` seconds.
+    // pub fn check_if_updated(&self, now: Time) -> Result<(), LibErrors> {
+    //     if now - self.last_update <= self.max_update_interval {
+    //         return Ok(());
+    //     }
+    //     Err(())
+    // }
 
     /// Returns the price of the oracle. Depending on OraclePriceType, it can return the spot price,
     /// the sell price or the buy price.

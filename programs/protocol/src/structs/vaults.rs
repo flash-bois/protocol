@@ -1,6 +1,8 @@
+use crate::core_lib::{errors::LibErrors, Vault};
+
 #[cfg(feature = "anchor")]
 mod zero {
-    use crate::core_lib::Vault;
+    use super::*;
     use anchor_lang::prelude::*;
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::ops::Range;
@@ -54,7 +56,6 @@ mod zero {
 #[cfg(feature = "wasm")]
 mod non_zero {
     use checked_decimal_macro::num_traits::ToPrimitive;
-    use js_sys::Uint8Array;
     use std::{
         ops::Range,
         slice::{Iter, IterMut},
@@ -112,24 +113,45 @@ mod non_zero {
     }
 }
 
+use anchor_lang::prelude::AccountInfo;
 #[cfg(feature = "wasm")]
 pub use non_zero::*;
 
 #[cfg(feature = "anchor")]
 pub use zero::*;
 
-#[cfg(test)]
-mod tests {
-    use crate::structs::Statement;
+impl Vaults {
+    pub fn vault_checked(&self, index: u8) -> Result<&Vault, LibErrors> {
+        Ok(self
+            .arr
+            .get_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
 
-    use super::*;
-    use std::mem::size_of;
+    pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, LibErrors> {
+        Ok(self
+            .keys
+            .get_checked(index as usize)
+            .ok_or(LibErrors::IndexOutOfBounds)?)
+    }
 
-    #[test]
-    fn size() {
-        println!("{}", size_of::<VaultsArray>());
-        println!("{}", size_of::<VaultsKeysArray>());
-        println!("{}", size_of::<Vaults>());
-        println!("{}", size_of::<Statement>());
+    pub fn keys_checked_mut(&mut self, index: u8) -> Result<&mut VaultKeys, LibErrors> {
+        Ok(self
+            .keys
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::IndexOutOfBounds)?)
+    }
+
+    pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, LibErrors> {
+        Ok(self
+            .arr
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
+
+    #[cfg(feature = "anchor")]
+    pub fn refresh_all(&mut self, accounts: &[AccountInfo]) -> Result<(), LibErrors> {
+        if let Some(ref mut iter) = self.arr.iter_mut() {}
+        Ok(())
     }
 }

@@ -25,8 +25,8 @@ mod anchor_one {
         QuoteOracleNone,
         #[msg("Given oracle was enabled before")]
         OracleAlreadyEnabled,
-        #[msg("Price confidence is higher than price")]
-        ConfidenceHigherThanPrice,
+        #[msg("Price confidence is higher than spread limit")]
+        ConfidenceTooHigh,
         #[msg("Strategy does not provide to lend")]
         StrategyNoLend,
         #[msg("Strategy does not provide to swap")]
@@ -63,6 +63,10 @@ mod anchor_one {
         NoStrategyOnIndex,
         #[msg("Service is not valid")]
         InvalidService,
+        #[msg("Parse price account error")]
+        PythAccountParse,
+        #[msg("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
+        PythPriceGet,
     }
 }
 
@@ -96,8 +100,8 @@ mod anchor_none {
         QuoteOracleNone,
         #[error("Given oracle was enabled before")]
         OracleAlreadyEnabled,
-        #[error("Price confidence is higher than price")]
-        ConfidenceHigherThanPrice,
+        #[error("Price confidence is higher than spread limit")]
+        ConfidenceTooHigh,
         #[error("Strategy does not provide to lend")]
         StrategyNoLend,
         #[error("Strategy does not provide to swap")]
@@ -134,6 +138,10 @@ mod anchor_none {
         NoStrategyOnIndex,
         #[error("Service is not valid")]
         InvalidService,
+        #[error("Parse price account error")]
+        PythAccountParse,
+        #[error("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
+        PythPriceGet,
     }
 
     impl From<LibErrors> for JsValue {

@@ -53,11 +53,7 @@ impl<'info> SingleSwap<'info> {
     ) -> anchor_lang::Result<()> {
         //let now = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(vault as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
-
+        let vault = vaults.vault_checked_mut(vault)?;
         let quantity = Quantity::new(amount);
 
         if by_amount_out {
@@ -86,8 +82,6 @@ impl<'info> SingleSwap<'info> {
 
         transfer(take, amount)?;
         transfer(send.with_signer(signer), quantity_out.get())?;
-
-        // TODO: token transfers
 
         Ok(())
     }
