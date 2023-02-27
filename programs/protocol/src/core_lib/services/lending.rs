@@ -130,10 +130,6 @@ impl ServiceUpdate for Lend {
     }
 
     fn accrue_fee(&mut self) -> Balances {
-        if self.locked().base == Quantity::new(0) {
-            return Balances::default();
-        }
-
         let accrued_fee = self.unclaimed_fee;
         self.unclaimed_fee = Quantity::new(0);
         self.borrowed += accrued_fee;
