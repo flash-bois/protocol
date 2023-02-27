@@ -78,8 +78,14 @@ impl<'info> SingleSwap<'info> {
         let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
         let signer = &[&seeds[..]];
 
-        transfer(self.take_base(), amount)?;
-        transfer(self.take_quote().with_signer(signer), quantity_out.get())?;
+        let (take, send) = if from_base {
+            (self.take_base(), self.send_quote())
+        } else {
+            (self.take_quote(), self.send_base())
+        };
+
+        transfer(take, amount)?;
+        transfer(send.with_signer(signer), quantity_out.get())?;
 
         // TODO: token transfers
 

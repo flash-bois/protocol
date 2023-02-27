@@ -8,7 +8,11 @@ import {
   createMint,
   createAssociatedTokenAccount,
   TOKEN_PROGRAM_ID,
-  createAccount
+  createAccount,
+  mintTo,
+  getAssociatedTokenAddressSync,
+  getAccount,
+  getOrCreateAssociatedTokenAccount
 } from '@solana/spl-token'
 import {
   createAccounts,
@@ -52,8 +56,8 @@ describe('Services', () => {
   )
 
   before(async () => {
-    const sigAdmin = await connection.requestAirdrop(admin.publicKey, 1000000000)
-    const sigUser = await connection.requestAirdrop(user.publicKey, 1000000000)
+    const sigAdmin = await connection.requestAirdrop(admin.publicKey, 1e9)
+    const sigUser = await connection.requestAirdrop(user.publicKey, 1e9)
     await waitFor(connection, sigAdmin)
     await waitFor(connection, sigUser)
 
@@ -68,15 +72,23 @@ describe('Services', () => {
       admin: admin.publicKey
     }
 
-    const { accountBase: b, accountQuote: q } = await mintTokensForUser(
+    accountBase = await createAssociatedTokenAccount(
       connection,
-      minter,
       user,
       protocolAccounts.base,
-      protocolAccounts.quote
+      user.publicKey
     )
-    accountBase = b
-    accountQuote = q
+    accountQuote = await createAssociatedTokenAccount(
+      connection,
+      user,
+      protocolAccounts.quote,
+      user.publicKey
+    )
+
+    await Promise.all([
+      mintTo(connection, user, protocolAccounts.base, accountBase, minter, 1e6),
+      mintTo(connection, user, protocolAccounts.quote, accountQuote, minter, 1e6)
+    ])
   })
 
   it('create statement', async () => {
@@ -93,8 +105,11 @@ describe('Services', () => {
   })
 
   it('deposit', async () => {
+    assert.equal((await getAccount(connection, accountBase)).amount, 1000000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 1000000n)
+
     await program.methods
-      .deposit(0, 0, new BN(1000000), true)
+      .deposit(0, 0, new BN(200000), true)
       .accountsStrict({
         state,
         vaults,
@@ -108,17 +123,23 @@ describe('Services', () => {
       })
       .signers([user])
       .rpc({ skipPreflight: true })
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
   })
 
   it('single swap', async () => {
+    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
+
     await program.methods
-      .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
+      .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(10000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
 
     await program.methods
-      .singleSwap(0, new BN(100), new BN(10), true, false)
+      .singleSwap(0, new BN(100000), new BN(10), true, false)
       .accountsStrict({
         state,
         vaults,
@@ -131,5 +152,8 @@ describe('Services', () => {
       })
       .signers([user])
       .rpc({ skipPreflight: true })
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 700000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 800000n - 2000n)
   })
 })
