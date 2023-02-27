@@ -1,21 +1,34 @@
 use super::*;
 use crate::core_lib::{
+    errors::LibErrors,
     services::lending::Borrowable,
     user::{Position, UserStatement},
 };
 use checked_decimal_macro::Decimal;
 
 impl Vault {
+    fn lend_and_oracle(&mut self) -> Result<(&mut Lend, &Oracle), LibErrors> {
+        let Self {
+            services: Services { lend, .. },
+            oracle,
+            ..
+        } = self;
+
+        let lend = lend.as_mut().ok_or(LibErrors::LendServiceNone)?;
+        let oracle = oracle.as_mut().ok_or(LibErrors::OracleNone)?;
+
+        Ok((lend, oracle))
+    }
+
     pub fn borrow(
         &mut self,
         user_statement: &mut UserStatement,
         amount: Quantity,
         current_time: Time,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.refresh(current_time)?; // should be called in the outer function and after that user_statement.refresh
 
-        let oracle = &self.oracle;
-        let lend = &mut self.services.lend;
+        let (lend, oracle) = self.lend_and_oracle()?;
         let total_available = lend.available().base;
 
         let user_allowed_borrow = user_statement.permitted_debt();
@@ -38,7 +51,9 @@ impl Vault {
                 position.increase_shares(shares);
             }
             None => {
-                user_statement.add_position(position_temp)?;
+                user_statement
+                    .add_position(position_temp)
+                    .map_err(|_| LibErrors::CannotAddPosition)?;
             }
         }
 
@@ -52,7 +67,7 @@ impl Vault {
         borrowed_quantity: Quantity,
         borrowed_shares: Shares,
         current_time: Time,
-    ) -> Result<Shares, ()> {
+    ) -> Result<Shares, LibErrors> {
         self.refresh(current_time)?;
 
         let lend = self.lend_service()?;

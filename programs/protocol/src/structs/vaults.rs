@@ -22,6 +22,8 @@ mod zero {
         pub quote_token: Pubkey,
         pub base_reserve: Pubkey,
         pub quote_reserve: Pubkey,
+        pub base_oracle: Option<Pubkey>,
+        pub quote_oracle: Option<Pubkey>,
     }
 
     #[zero_copy]
@@ -75,6 +77,8 @@ mod non_zero {
         pub quote_token: [u8; 32],
         pub base_reserve: [u8; 32],
         pub quote_reserve: [u8; 32],
+        pub base_oracle: Option<[u8; 32]>,
+        pub quote_oracle: Option<[u8; 32]>,
     }
 
     #[repr(C)]
@@ -102,30 +106,9 @@ mod non_zero {
     unsafe impl bytemuck::Zeroable for Vaults {}
 
     #[wasm_bindgen]
+    #[derive(Clone)]
     pub struct VaultsAccount {
-        account: Vaults,
-    }
-
-    #[wasm_bindgen]
-    impl VaultsAccount {
-        #[wasm_bindgen]
-        pub fn load(account_info: &Uint8Array) -> Self {
-            console_error_panic_hook::set_once();
-            // panic!("not a panic");
-
-            let v = account_info.to_vec();
-            let account = *bytemuck::from_bytes::<Vaults>(&v);
-            Self { account }
-        }
-
-        #[wasm_bindgen]
-        pub fn vaults_len(&self) -> u8 {
-            self.account.arr.head
-        }
-
-        pub fn size() -> usize {
-            std::mem::size_of::<Vaults>()
-        }
+        pub(crate) account: Vaults,
     }
 }
 
@@ -137,6 +120,8 @@ pub use zero::*;
 
 #[cfg(test)]
 mod tests {
+    use crate::structs::Statement;
+
     use super::*;
     use std::mem::size_of;
 
@@ -145,21 +130,6 @@ mod tests {
         println!("{}", size_of::<VaultsArray>());
         println!("{}", size_of::<VaultsKeysArray>());
         println!("{}", size_of::<Vaults>());
+        println!("{}", size_of::<Statement>());
     }
 }
-// 16168
-// 1281
-// 17456
-
-// 16168
-// 1281
-// 17464
-
-//packed
-// 13221
-// 1281
-// 14502
-
-// 13431
-// 1281
-// 14720

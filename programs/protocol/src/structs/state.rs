@@ -1,6 +1,5 @@
 #[cfg(feature = "anchor")]
 mod zero {
-    use super::*;
     use anchor_lang::prelude::*;
 
     #[account(zero_copy)]

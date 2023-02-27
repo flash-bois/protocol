@@ -1,4 +1,7 @@
-use crate::core_lib::decimal::{DecimalPlaces, Price, Quantity, Time, Value};
+use crate::core_lib::{
+    decimal::{DecimalPlaces, Price, Quantity, Time, Value},
+    errors::LibErrors,
+};
 use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 
 #[repr(u8)]
@@ -7,6 +10,8 @@ pub enum OraclePriceType {
     Sell,
     Buy,
 }
+
+pub const DEFAULT_MAX_ORACLE_AGE: u32 = 1;
 
 #[cfg(feature = "anchor")]
 mod zero {
@@ -74,12 +79,12 @@ impl Oracle {
         confidence: Price,
         spread_limit: Price,
         time: Time,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, LibErrors> {
         let mut oracle = Self {
             price: Price::from_integer(0),
             confidence: Price::from_integer(0),
             last_update: 0,
-            max_update_interval: 0,
+            max_update_interval: DEFAULT_MAX_ORACLE_AGE,
             use_spread: 0,
             decimals,
             spread_limit,
@@ -89,9 +94,9 @@ impl Oracle {
     }
 
     /// Updates the price and confidence of the oracle.
-    pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), ()> {
+    pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
         if confidence > price {
-            return Err(());
+            return Err(LibErrors::ConfidenceHigherThanPrice);
         }
         self.price = price;
         self.confidence = confidence;

@@ -1,3 +1,5 @@
+use crate::core_lib::errors::LibErrors;
+
 use super::{lending::Lend, swapping::Swap};
 
 #[cfg(feature = "anchor")]
@@ -9,8 +11,8 @@ mod zero {
     #[repr(C)]
     #[derive(Debug, Default, PartialEq)]
     pub struct Services {
-        pub swap: Swap,
-        pub lend: Lend,
+        pub swap: Option<Swap>,
+        pub lend: Option<Lend>,
     }
 }
 
@@ -21,8 +23,8 @@ mod non_zero {
     #[derive(Clone, Copy, Debug, Default, PartialEq)]
     #[repr(C)]
     pub struct Services {
-        pub swap: Swap,
-        pub lend: Lend,
+        pub swap: Option<Swap>,
+        pub lend: Option<Lend>,
     }
 }
 
@@ -44,11 +46,19 @@ pub enum ServiceType {
 }
 
 impl Services {
-    pub fn swap_mut(&mut self) -> Result<&mut Swap, ()> {
-        Ok(&mut self.swap)
+    pub fn swap_mut(&mut self) -> Result<&mut Swap, LibErrors> {
+        self.swap.as_mut().ok_or(LibErrors::SwapServiceNone)
     }
 
-    pub fn lend_mut(&mut self) -> Result<&mut Lend, ()> {
-        Ok(&mut self.lend)
+    pub fn lend_mut(&mut self) -> Result<&mut Lend, LibErrors> {
+        self.lend.as_mut().ok_or(LibErrors::LendServiceNone)
+    }
+
+    pub fn swap(&self) -> Result<&Swap, LibErrors> {
+        self.swap.as_ref().ok_or(LibErrors::SwapServiceNone)
+    }
+
+    pub fn lend(&self) -> Result<&Lend, LibErrors> {
+        self.lend.as_ref().ok_or(LibErrors::LendServiceNone)
     }
 }
