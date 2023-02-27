@@ -1,9 +1,10 @@
 use crate::{
-    core_lib::{errors::LibErrors, Vault},
+    core_lib::{decimal::Fraction, errors::LibErrors, Vault},
     structs::{VaultKeys, Vaults, VaultsAccount},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
 };
+use checked_decimal_macro::{BetweenDecimals, Decimal};
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
@@ -110,5 +111,22 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn has_swap(&mut self, index: u8) -> Result<bool, JsValue> {
         Ok(self.vault_checked_mut(index)?.swap_service().is_ok())
+    }
+
+    #[wasm_bindgen]
+    pub fn lending_apy(&mut self, index: u8) -> Result<u64, JsValue> {
+        Ok(
+            if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
+                let utilization = lend.current_utilization();
+                let fee_curve = lend.fee_curve();
+                Fraction::from_decimal(
+                    fee_curve
+                        .compounded_fee(Fraction::from_decimal(utilization), 60 * 60 * 24 * 365),
+                )
+                .get()
+            } else {
+                0
+            },
+        )
     }
 }
