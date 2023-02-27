@@ -62,9 +62,7 @@ impl FeeCurve {
         smaller: Fraction,
         greater: Fraction,
     ) -> Result<(usize, usize), LibErrors> {
-        let index = (0..self.used as usize)
-            .find(|&i| smaller <= self.bounds[i])
-            .unwrap_or(0);
+        let index = self.find_index(smaller);
 
         Ok((
             index,

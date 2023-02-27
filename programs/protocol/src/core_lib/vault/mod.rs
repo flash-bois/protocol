@@ -111,23 +111,19 @@ impl Vault {
         Ok(())
     }
     pub fn quote_oracle(&self) -> Result<&Oracle, LibErrors> {
-        self.quote_oracle
-            .as_ref()
-            .ok_or(LibErrors::QuoteOracleMissing)
+        self.quote_oracle.as_ref().ok_or(LibErrors::QuoteOracleNone)
     }
 
     pub fn oracle(&self) -> Result<&Oracle, LibErrors> {
-        self.oracle.as_ref().ok_or(LibErrors::OracleMissing)
+        self.oracle.as_ref().ok_or(LibErrors::OracleNone)
     }
 
     pub fn quote_oracle_mut(&mut self) -> Result<&mut Oracle, LibErrors> {
-        self.quote_oracle
-            .as_mut()
-            .ok_or(LibErrors::QuoteOracleMissing)
+        self.quote_oracle.as_mut().ok_or(LibErrors::QuoteOracleNone)
     }
 
     pub fn oracle_mut(&mut self) -> Result<&mut Oracle, LibErrors> {
-        self.oracle.as_mut().ok_or(LibErrors::OracleMissing)
+        self.oracle.as_mut().ok_or(LibErrors::OracleNone)
     }
 
     pub fn enable_lending(
@@ -142,7 +138,7 @@ impl Vault {
         }
 
         if self.oracle.is_none() {
-            return Err(LibErrors::OracleMissing);
+            return Err(LibErrors::OracleNone);
         }
 
         self.services.lend = Some(Lend::new(
@@ -162,8 +158,10 @@ impl Vault {
         kept_fee: Fraction,
     ) -> Result<(), LibErrors> {
         if self.oracle.is_none() {
-            return Err(LibErrors::OracleMissing);
+            return Err(LibErrors::OracleNone);
         }
+
+        // check for quote oracle? TODO:
 
         if self.services.swap_mut().is_ok() {
             return Err(LibErrors::SwapServiceNone);

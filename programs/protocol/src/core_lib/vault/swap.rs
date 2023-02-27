@@ -17,8 +17,8 @@ impl Vault {
         } = self;
 
         let swap = swap.as_mut().ok_or(LibErrors::SwapServiceNone)?;
-        let oracle = oracle.as_mut().ok_or(LibErrors::OracleMissing)?;
-        let quote_oracle = quote_oracle.as_mut().ok_or(LibErrors::QuoteOracleMissing)?;
+        let oracle = oracle.as_mut().ok_or(LibErrors::OracleNone)?;
+        let quote_oracle = quote_oracle.as_mut().ok_or(LibErrors::QuoteOracleNone)?;
 
         Ok((swap, oracle, quote_oracle))
     }

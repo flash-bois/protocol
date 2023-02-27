@@ -152,8 +152,9 @@ impl Swap {
         let proportion_before = self.get_proportion(base_oracle, quote_oracle);
         let swap_value = base_oracle.calculate_value(base_quantity);
         let quote_quantity = quote_oracle.calculate_quantity(swap_value);
+
         if quote_quantity > self.available.quote {
-            return Err(LibErrors::ToBeDefined);
+            return Err(LibErrors::NotEnoughQuoteQuantity);
         }
 
         self.balances.base += base_quantity;
@@ -182,8 +183,9 @@ impl Swap {
             Fraction::from_integer(1) - self.get_proportion(base_oracle, quote_oracle);
         let swap_value = quote_oracle.calculate_value(quote_quantity);
         let base_quantity = base_oracle.calculate_quantity(swap_value);
+
         if base_quantity > self.available.base {
-            return Err(LibErrors::ToBeDefined);
+            return Err(LibErrors::NotEnoughBaseQuantity);
         }
 
         self.balances.quote += quote_quantity;
