@@ -2,6 +2,7 @@ use crate::{
     core_lib::{errors::LibErrors, Vault},
     structs::{VaultKeys, Vaults, VaultsAccount},
     wasm_wrapper::utils::to_buffer,
+    ZeroCopyDecoder,
 };
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
@@ -37,7 +38,7 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn load(account_info: &Uint8Array) -> Self {
         let v = account_info.to_vec();
-        let account = *bytemuck::from_bytes::<Vaults>(&v);
+        let account = *ZeroCopyDecoder::decode_account_info::<Vaults>(&v);
         Self { account }
     }
 
