@@ -15,7 +15,6 @@ impl VaultsAccount {
         &mut self,
         vault: u8,
         amount: u64,
-        min_expected: u64,
         from_base: bool,
         by_amount_out: bool,
         now: u32,
@@ -32,10 +31,6 @@ impl VaultsAccount {
             true => vault.sell(quantity)?,
             false => vault.buy(quantity)?,
         };
-
-        if quantity_out < Quantity::new(min_expected) {
-            return Err(LibErrors::NoMinAmountOut.into());
-        }
 
         Ok(quantity_out.get() as i64)
     }
