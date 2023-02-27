@@ -133,6 +133,8 @@ mod decoder {
         where
             R: Pod + Zeroable,
         {
+            let size = std::mem::size_of::<R>();
+            assert!(size == d.len(), "bad buffer len");
             bytemuck::from_bytes::<R>(&d[..std::mem::size_of::<R>()])
         }
 
@@ -140,6 +142,8 @@ mod decoder {
         where
             R: Pod + Zeroable,
         {
+            let size = std::mem::size_of::<R>();
+            assert!(size == d.len(), "bad buffer len");
             bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
         }
     }

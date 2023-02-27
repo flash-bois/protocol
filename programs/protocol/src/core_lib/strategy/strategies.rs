@@ -1,3 +1,5 @@
+use crate::core_lib::errors::LibErrors;
+
 use super::Strategy;
 use checked_decimal_macro::num_traits::ToPrimitive;
 use std::{
@@ -36,6 +38,20 @@ pub use zero::Strategies;
 
 #[cfg(not(feature = "anchor"))]
 pub use non_zero::Strategies;
+
+impl Strategies {
+    pub fn get_strategy_mut(&mut self, id: u8) -> Result<&mut Strategy, LibErrors> {
+        Ok(self
+            .get_mut_checked(id as usize)
+            .ok_or(LibErrors::NoStrategyOnIndex)?)
+    }
+
+    pub fn get_strategy(&self, id: u8) -> Result<&Strategy, LibErrors> {
+        Ok(self
+            .get_checked(id as usize)
+            .ok_or(LibErrors::NoStrategyOnIndex)?)
+    }
+}
 
 #[cfg(test)]
 mod tt {

@@ -59,6 +59,8 @@ mod anchor_one {
         NoMinAmountOut,
         #[msg("Provided index is out of bounds")]
         IndexOutOfBounds,
+        #[msg("There is no defined strategy on provided index")]
+        NoStrategyOnIndex,
         #[msg("Service is not valid")]
         InvalidService,
     }
@@ -128,11 +130,16 @@ mod anchor_none {
         NoMinAmountOut,
         #[error("Provided index is out of bounds")]
         IndexOutOfBounds,
+        #[error("There is no defined strategy on provided index")]
+        NoStrategyOnIndex,
+        #[error("Service is not valid")]
+        InvalidService,
     }
 
     impl From<LibErrors> for JsValue {
         fn from(value: LibErrors) -> Self {
-            JsValue::from(value.to_string())
+            let val = format!("{}:{}", value.to_string(), (value as u32).to_string());
+            JsValue::from(val)
         }
     }
 }

@@ -1,17 +1,44 @@
-use crate::core_lib::errors::LibErrors;
-use crate::structs::vaults::Vaults;
-use crate::structs::VaultsAccount;
-use crate::wasm_wrapper::utils::to_buffer;
-use checked_decimal_macro::Decimal;
+use crate::{
+    core_lib::{errors::LibErrors, Vault},
+    structs::{VaultKeys, Vaults, VaultsAccount},
+    wasm_wrapper::utils::to_buffer,
+    ZeroCopyDecoder,
+};
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
+
+impl VaultsAccount {
+    pub fn vault_checked(&self, index: u8) -> Result<&Vault, JsValue> {
+        Ok(self
+            .account
+            .arr
+            .get_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
+
+    pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, JsValue> {
+        Ok(self
+            .account
+            .keys
+            .get_checked(index as usize)
+            .ok_or(LibErrors::IndexOutOfBounds)?)
+    }
+
+    pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, JsValue> {
+        Ok(self
+            .account
+            .arr
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
+}
 
 #[wasm_bindgen]
 impl VaultsAccount {
     #[wasm_bindgen]
     pub fn load(account_info: &Uint8Array) -> Self {
         let v = account_info.to_vec();
-        let account = *bytemuck::from_bytes::<Vaults>(&v);
+        let account = *ZeroCopyDecoder::decode_account_info::<Vaults>(&v);
         Self { account }
     }
 
@@ -27,115 +54,61 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(&self.keys_checked(index)?.base_token))
+    }
+
+    #[wasm_bindgen]
+    pub fn quote_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(&self.keys_checked(index)?.quote_token))
+    }
+
+    #[wasm_bindgen]
+    pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(&self.keys_checked(index)?.base_reserve))
+    }
+
+    #[wasm_bindgen]
+    pub fn quote_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(&self.keys_checked(index)?.quote_reserve))
+    }
+
+    #[wasm_bindgen]
+    pub fn oracle_base(&self, index: u8) -> Result<Uint8Array, JsValue> {
         Ok(to_buffer(
             &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .ok_or(JsValue::from(LibErrors::IndexOutOfBounds))?
-                .base_token,
+                .keys_checked(index)?
+                .base_oracle
+                .ok_or(LibErrors::OracleNone)?,
         ))
     }
 
     #[wasm_bindgen]
-    pub fn quote_token(&self, index: u8) -> Uint8Array {
-        to_buffer(
+    pub fn oracle_quote(&self, index: u8) -> Result<Uint8Array, JsValue> {
+        Ok(to_buffer(
             &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .expect("index out of bounds")
-                .quote_token,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn base_reserve(&self, index: u8) -> Uint8Array {
-        to_buffer(
-            &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .expect("index out of bounds")
-                .base_reserve,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn quote_reserve(&self, index: u8) -> Uint8Array {
-        to_buffer(
-            &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .expect("index out of bounds")
-                .quote_reserve,
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn oracle_base(&self, index: u8) -> Uint8Array {
-        to_buffer(
-            &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .expect("index out of bounds")
-                .base_oracle
-                .expect("base oracle not initialized"), // ERROR CODE
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn oracle_quote(&self, index: u8) -> Uint8Array {
-        to_buffer(
-            &self
-                .account
-                .keys
-                .get_checked(index as usize)
-                .expect("index out of bounds")
+                .keys_checked(index)?
                 .quote_oracle
-                .expect("quote oracle not initialized"), // ERROR CODE
-        )
+                .ok_or(LibErrors::QuoteOracleNone)?,
+        ))
     }
 
     #[wasm_bindgen]
-    pub fn base_oracle_enabled(&self, index: u8) -> bool {
-        self.account
-            .arr
-            .get_checked(index as usize)
-            .expect("index out of bounds")
-            .oracle
-            .is_some()
+    pub fn base_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+        Ok(self.vault_checked(index)?.oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn quote_oracle_enabled(&self, index: u8) -> bool {
-        self.account
-            .arr
-            .get_checked(index as usize)
-            .expect("index out of bounds")
-            .quote_oracle
-            .is_some()
+    pub fn quote_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+        Ok(self.vault_checked(index)?.quote_oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn has_lending(&mut self, index: u8) -> bool {
-        self.account
-            .arr
-            .get_mut_checked(index as usize)
-            .expect("index out of bounds")
-            .lend_service()
-            .is_ok()
+    pub fn has_lending(&mut self, index: u8) -> Result<bool, JsValue> {
+        Ok(self.vault_checked_mut(index)?.lend_service().is_ok())
     }
 
     #[wasm_bindgen]
-    pub fn has_swap(&mut self, index: u8) -> bool {
-        self.account
-            .arr
-            .get_mut_checked(index as usize)
-            .expect("index out of bounds")
-            .swap_service()
-            .is_ok()
+    pub fn has_swap(&mut self, index: u8) -> Result<bool, JsValue> {
+        Ok(self.vault_checked_mut(index)?.swap_service().is_ok())
     }
 }
