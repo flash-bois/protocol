@@ -1,7 +1,20 @@
 use super::vault::VaultsAccount;
-use crate::core_lib::strategy::Strategy;
+use crate::core_lib::{decimal::Utilization, strategy::Strategy};
 use checked_decimal_macro::Decimal;
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub struct StrategyInfo {
+    pub lend: bool,
+    pub swap: bool,
+    pub trade: bool,
+    pub balance_base: u64,
+    pub balance_quote: u64,
+    pub locked_base: u64,
+    pub locked_quote: u64,
+    pub utilization_base: u64,
+    pub utilization_quote: u64,
+}
 
 #[wasm_bindgen]
 impl VaultsAccount {
@@ -10,6 +23,31 @@ impl VaultsAccount {
             .vault_checked(vault)?
             .strategies
             .get_strategy(strategy)?)
+    }
+
+    pub fn strategy_info(&self, vault: u8, strategy: u8) -> Result<StrategyInfo, JsValue> {
+        let strategy = self.strategy(vault, strategy)?;
+
+        Ok(StrategyInfo {
+            lend: strategy.is_lending_enabled(),
+            swap: strategy.is_swapping_enabled(),
+            trade: strategy.is_trading_enabled(),
+            balance_base: strategy.balance().get(),
+            balance_quote: strategy.balance_quote().get(),
+            locked_base: strategy.locked().get(),
+            locked_quote: strategy.locked_quote().get(),
+            utilization_base: Utilization::get_utilization(strategy.locked(), strategy.balance())
+                .get()
+                .try_into()
+                .unwrap(),
+            utilization_quote: Utilization::get_utilization(
+                strategy.locked_quote(),
+                strategy.balance_quote(),
+            )
+            .get()
+            .try_into()
+            .unwrap(),
+        })
     }
 
     #[wasm_bindgen]
