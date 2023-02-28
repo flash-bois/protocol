@@ -33,29 +33,33 @@ pub struct Borrow<'info> {
 }
 
 impl<'info> Borrow<'info> {
-    pub fn handler(ctx: Context<Borrow>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
+    pub fn handler(
+        ctx: Context<'_, '_, '_, 'info, Borrow<'info>>,
+        vault: u8,
+        amount: u64,
+    ) -> anchor_lang::Result<()> {
         msg!("DotWave: Borrow");
 
-        let vaults = &mut ctx.accounts.vaults.load_mut()?;
-        let user_statement = &mut ctx.accounts.statement.load_mut()?;
-        let amount = Quantity::new(amount);
+        // let vaults = &mut ctx.accounts.vaults.load_mut()?;
+        // let user_statement = &mut ctx.accounts.statement.load_mut()?;
+        // let amount = Quantity::new(amount);
 
-        vaults.refresh_all(ctx.remaining_accounts)?;
-        user_statement.statement.refresh(&vaults.arr.elements);
+        // //vaults.refresh_all(ctx.remaining_accounts)?;
+        // user_statement.statement.refresh(&vaults.arr.elements);
 
-        let vault = vaults.vault_checked_mut(vault)?;
-        let borrow_amount = vault.borrow(&mut user_statement.statement, amount)?;
+        // let vault = vaults.vault_checked_mut(vault)?;
+        // let borrow_amount = vault.borrow(&mut user_statement.statement, amount)?;
 
-        let seeds = &[
-            b"state".as_ref(),
-            &[ctx.accounts.state.load().unwrap().bump],
-        ];
-        let signer = &[&seeds[..]];
+        // let seeds = &[
+        //     b"state".as_ref(),
+        //     &[ctx.accounts.state.load().unwrap().bump],
+        // ];
+        // let signer = &[&seeds[..]];
 
-        transfer(
-            ctx.accounts.send_base().with_signer(signer),
-            borrow_amount.get(),
-        )?;
+        // transfer(
+        //     ctx.accounts.send_base().with_signer(signer),
+        //     borrow_amount.get(),
+        // )?;
 
         Ok(())
     }

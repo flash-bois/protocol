@@ -17,7 +17,8 @@
     "test:state": "anchor test --skip-build tests/anchor/create_state.spec.ts",
     "test:vault": "anchor test --skip-build tests/anchor/init_vault.spec.ts",
     "test:oracle": "anchor test --skip-build tests/anchor/oracle.spec.ts",
-    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts"
+    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts",
+    "test:borrow": "anchor test --skip-build tests/anchor/borrow.spec.ts"
   },
   "repository": {
     "type": "git",
