@@ -73,7 +73,7 @@ mod non_zero {
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
     pub struct VaultKeys {
-        pub base_token: [u8; 32],
+        pub base_token: [u8; 32], // buffer
         pub quote_token: [u8; 32],
         pub base_reserve: [u8; 32],
         pub quote_reserve: [u8; 32],

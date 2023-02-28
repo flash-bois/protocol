@@ -5,7 +5,7 @@ use crate::{
     ZeroCopyDecoder,
 };
 use checked_decimal_macro::{BetweenDecimals, Decimal};
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
 impl VaultsAccount {
@@ -34,6 +34,12 @@ impl VaultsAccount {
     }
 }
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct BaseKeyWithId {
+    pub key: Uint8Array,
+    pub index: u8,
+}
+
 #[wasm_bindgen]
 impl VaultsAccount {
     #[wasm_bindgen]
@@ -51,6 +57,22 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn size() -> usize {
         std::mem::size_of::<Vaults>()
+    }
+
+    #[wasm_bindgen]
+    pub fn base_token_with_id(&self) -> Result<Array, JsValue> {
+        let arr = Array::new();
+
+        for index in self.account.arr.indexes() {
+            let base_key = to_buffer(&self.keys_checked(index as u8)?.base_token);
+
+            arr.push(&JsValue::from(BaseKeyWithId {
+                key: base_key,
+                index: index as u8,
+            }));
+        }
+
+        Ok(arr)
     }
 
     #[wasm_bindgen]
