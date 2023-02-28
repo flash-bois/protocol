@@ -5,9 +5,9 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct StrategyInfo {
-    pub lend: bool,
-    pub swap: bool,
-    pub trade: bool,
+    pub has_lend: bool,
+    pub has_swap: bool,
+    pub has_trade: bool,
     pub balance_base: u64,
     pub balance_quote: u64,
     pub locked_base: u64,
@@ -29,9 +29,9 @@ impl VaultsAccount {
         let strategy = self.strategy(vault, strategy)?;
 
         Ok(StrategyInfo {
-            lend: strategy.is_lending_enabled(),
-            swap: strategy.is_swapping_enabled(),
-            trade: strategy.is_trading_enabled(),
+            has_lend: strategy.is_lending_enabled(),
+            has_swap: strategy.is_swapping_enabled(),
+            has_trade: strategy.is_trading_enabled(),
             balance_base: strategy.balance().get(),
             balance_quote: strategy.balance_quote().get(),
             locked_base: strategy.locked().get(),
@@ -51,8 +51,8 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn strategies(&self, vault: u8) -> Result<u8, JsValue> {
-        Ok(self.vault_checked(vault)?.strategies.head - 1)
+    pub fn count_strategies(&self, vault: u8) -> Result<u8, JsValue> {
+        Ok(self.vault_checked(vault)?.strategies.head)
     }
 
     #[wasm_bindgen]
