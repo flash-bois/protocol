@@ -75,6 +75,8 @@ mod anchor_one {
         TimeGet,
         #[msg("pubkey should be defined")]
         PubkeyMissing,
+        #[msg("Given position was not found")]
+        PositionNotFound,
     }
 }
 
@@ -156,6 +158,8 @@ mod anchor_none {
         TimeGet,
         #[error("pubkey should be defined")]
         PubkeyMissing,
+        #[error("Given position was not found")]
+        PositionNotFound,
     }
 
     impl From<LibErrors> for JsValue {

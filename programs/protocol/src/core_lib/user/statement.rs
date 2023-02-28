@@ -299,13 +299,13 @@ mod position_management {
         user_statement.refresh(&mut vaults);
 
         vaults[0]
-            .borrow(&mut user_statement, Quantity::new(5000000), 0)
+            .borrow(&mut user_statement, Quantity::new(5000000))
             .unwrap();
 
         user_statement.refresh(&mut vaults);
 
         vaults[1]
-            .borrow(&mut user_statement, Quantity::new(4000000), 0)
+            .borrow(&mut user_statement, Quantity::new(4000000))
             .unwrap();
 
         assert!(

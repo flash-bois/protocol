@@ -36,7 +36,6 @@ impl<'info> Borrow<'info> {
     pub fn handler(ctx: Context<Borrow>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
         msg!("DotWave: Borrow");
 
-        let now = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let user_statement = &mut ctx.accounts.statement.load_mut()?;
         let amount = Quantity::new(amount);
@@ -45,8 +44,7 @@ impl<'info> Borrow<'info> {
         user_statement.statement.refresh(&vaults.arr.elements);
 
         let vault = vaults.vault_checked_mut(vault)?;
-
-        let borrow_amount = vault.borrow(&mut user_statement.statement, amount, now)?;
+        let borrow_amount = vault.borrow(&mut user_statement.statement, amount)?;
 
         let seeds = &[
             b"state".as_ref(),
