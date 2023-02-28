@@ -27,27 +27,27 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.account.keys_checked(index)?.base_token))
     }
 
     #[wasm_bindgen]
-    pub fn quote_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn quote_token(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.account.keys_checked(index)?.quote_token))
     }
 
     #[wasm_bindgen]
-    pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.account.keys_checked(index)?.base_reserve))
     }
 
     #[wasm_bindgen]
-    pub fn quote_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn quote_reserve(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.account.keys_checked(index)?.quote_reserve))
     }
 
     #[wasm_bindgen]
-    pub fn oracle_base(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn oracle_base(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(
             &self
                 .account
@@ -58,7 +58,7 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn oracle_quote(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn oracle_quote(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(
             &self
                 .account
@@ -69,17 +69,17 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+    pub fn base_oracle_enabled(&self, index: u8) -> Result<bool, JsError> {
         Ok(self.account.vault_checked(index)?.oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn quote_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+    pub fn quote_oracle_enabled(&self, index: u8) -> Result<bool, JsError> {
         Ok(self.account.vault_checked(index)?.quote_oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn has_lending(&mut self, index: u8) -> Result<bool, JsValue> {
+    pub fn has_lending(&mut self, index: u8) -> Result<bool, JsError> {
         Ok(self
             .account
             .vault_checked_mut(index)?
@@ -88,7 +88,7 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn has_swap(&mut self, index: u8) -> Result<bool, JsValue> {
+    pub fn has_swap(&mut self, index: u8) -> Result<bool, JsError> {
         Ok(self
             .account
             .vault_checked_mut(index)?

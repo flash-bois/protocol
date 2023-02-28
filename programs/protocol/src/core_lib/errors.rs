@@ -86,7 +86,6 @@ pub use anchor_one::*;
 #[cfg(not(feature = "anchor"))]
 mod anchor_none {
     use thiserror::Error;
-    use wasm_bindgen::JsValue;
 
     #[derive(Debug, Error, PartialEq)]
     pub enum LibErrors {
@@ -160,13 +159,6 @@ mod anchor_none {
         PubkeyMissing,
         #[error("Given position was not found")]
         PositionNotFound,
-    }
-
-    impl From<LibErrors> for JsValue {
-        fn from(value: LibErrors) -> Self {
-            let val = format!("{}:{}", value.to_string(), (value as u32).to_string());
-            JsValue::from(val)
-        }
     }
 }
 
