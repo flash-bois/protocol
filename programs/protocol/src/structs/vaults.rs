@@ -93,6 +93,8 @@ mod zero {
                 let current_timestamp =
                     Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
 
+                vault.refresh(current_timestamp as u32)?;
+
                 if let Some(ref mut base_oracle) = vault.oracle {
                     let key = vault_keys
                         .base_oracle
