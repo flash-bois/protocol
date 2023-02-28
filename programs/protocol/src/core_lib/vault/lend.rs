@@ -67,7 +67,7 @@ impl Vault {
         borrowed_quantity: Quantity,
         borrowed_shares: Shares,
         current_time: Time,
-    ) -> Result<Shares, LibErrors> {
+    ) -> Result<Quantity, LibErrors> {
         self.refresh(current_time)?;
 
         let lend = self.lend_service()?;
@@ -96,6 +96,6 @@ impl Vault {
             None => panic!("fatal"),
         };
 
-        Ok(burned_shares)
+        Ok(unlock_quantity)
     }
 }
