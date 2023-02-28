@@ -223,7 +223,7 @@ impl Vaults {
     }
 
     pub fn vault_with_keys(&mut self, index: u8) -> Result<(&mut Vault, &VaultKeys), LibErrors> {
-        let Self { arr, keys } = self;
+        let Self { arr, keys, .. } = self;
 
         Ok((
             arr.get_mut_checked(index as usize)
