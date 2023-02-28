@@ -1,6 +1,8 @@
+use std::ops::{Deref, DerefMut};
+
 use crate::{
     core_lib::{decimal::Fraction, errors::LibErrors, Vault},
-    structs::{VaultKeys, Vaults, VaultsAccount},
+    structs::{VaultKeys, Vaults},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
 };
@@ -8,10 +10,27 @@ use checked_decimal_macro::{BetweenDecimals, Decimal};
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
+#[wasm_bindgen]
+pub struct VaultsAccount {
+    account: Vaults,
+}
+
+impl Deref for VaultsAccount {
+    type Target = Vaults;
+    fn deref(&self) -> &Self::Target {
+        &self.account
+    }
+}
+
+impl DerefMut for VaultsAccount {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.account
+    }
+}
+
 impl VaultsAccount {
     pub fn vault_checked(&self, index: u8) -> Result<&Vault, JsValue> {
         Ok(self
-            .account
             .arr
             .get_checked(index as usize)
             .ok_or(LibErrors::NoVaultOnIndex)?)
@@ -19,7 +38,6 @@ impl VaultsAccount {
 
     pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, JsValue> {
         Ok(self
-            .account
             .keys
             .get_checked(index as usize)
             .ok_or(LibErrors::IndexOutOfBounds)?)
@@ -27,7 +45,6 @@ impl VaultsAccount {
 
     pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, JsValue> {
         Ok(self
-            .account
             .arr
             .get_mut_checked(index as usize)
             .ok_or(LibErrors::NoVaultOnIndex)?)
@@ -63,7 +80,7 @@ impl VaultsAccount {
     pub fn base_token_with_id(&self) -> Result<Array, JsValue> {
         let arr = Array::new();
 
-        for index in self.account.arr.indexes() {
+        for index in self.arr.indexes() {
             let base_key = to_buffer(&self.keys_checked(index as u8)?.base_token);
 
             arr.push(&JsValue::from(BaseKeyWithId {

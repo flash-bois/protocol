@@ -15,10 +15,6 @@ mod zero {
 #[cfg(feature = "wasm")]
 mod non_zero {
 
-    use crate::ZeroCopyDecoder;
-    use js_sys::Uint8Array;
-    use wasm_bindgen::prelude::*;
-
     #[repr(C)]
     #[derive(Debug, Default, Clone, Copy)]
     pub struct State {
@@ -31,26 +27,6 @@ mod non_zero {
     unsafe impl bytemuck::Pod for State {}
     #[automatically_derived]
     unsafe impl bytemuck::Zeroable for State {}
-
-    #[wasm_bindgen]
-    pub struct StateAccount {
-        account: State,
-    }
-
-    #[wasm_bindgen]
-    impl StateAccount {
-        #[wasm_bindgen]
-        pub fn load(account_info: &Uint8Array) -> Self {
-            let v = account_info.to_vec();
-            let account = *ZeroCopyDecoder::decode_account_info::<State>(&v);
-            Self { account }
-        }
-
-        #[wasm_bindgen]
-        pub fn get_bump(&self) -> u8 {
-            self.account.bump
-        }
-    }
 }
 
 #[cfg(not(feature = "anchor"))]

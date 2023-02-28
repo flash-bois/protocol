@@ -1,7 +1,5 @@
-use crate::{
-    core_lib::strategy::{self, Strategy},
-    structs::VaultsAccount,
-};
+use super::vault::VaultsAccount;
+use crate::core_lib::strategy::Strategy;
 use checked_decimal_macro::Decimal;
 use wasm_bindgen::prelude::*;
 
@@ -12,6 +10,11 @@ impl VaultsAccount {
             .vault_checked(vault)?
             .strategies
             .get_strategy(strategy)?)
+    }
+
+    #[wasm_bindgen]
+    pub fn strategies(&self, vault: u8) -> Result<u8, JsValue> {
+        Ok(self.vault_checked(vault)?.strategies.head - 1)
     }
 
     #[wasm_bindgen]

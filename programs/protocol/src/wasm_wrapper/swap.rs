@@ -1,10 +1,7 @@
-use crate::{
-    core_lib::{
-        decimal::{Decimal, Quantity},
-        errors::LibErrors,
-        services::ServiceUpdate,
-    },
-    structs::VaultsAccount,
+use super::vault::VaultsAccount;
+use crate::core_lib::{
+    decimal::{Decimal, Quantity},
+    services::ServiceUpdate,
 };
 use wasm_bindgen::prelude::*;
 

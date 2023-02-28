@@ -1,9 +1,7 @@
-use crate::{
-    core_lib::{
-        decimal::{Decimal, Price},
-        structs::Oracle,
-    },
-    structs::VaultsAccount,
+use super::vault::VaultsAccount;
+use crate::core_lib::{
+    decimal::{Decimal, Price},
+    structs::Oracle,
 };
 
 use wasm_bindgen::prelude::*;
