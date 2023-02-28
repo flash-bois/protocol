@@ -27,7 +27,6 @@ impl Vault {
     ) -> Result<Quantity, LibErrors> {
         let (lend, oracle) = self.lend_and_oracle()?;
         let total_available = lend.available().base;
-
         let user_allowed_borrow = user_statement.permitted_debt();
 
         let borrow_quantity =

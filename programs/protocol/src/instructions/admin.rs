@@ -76,6 +76,7 @@ impl Admin<'_> {
         index: u8,
         max_utilization: u32,
         max_total_borrow: u64,
+        initial_fee_time: u32,
     ) -> anchor_lang::Result<()> {
         msg!("DotWave: Enabling lending");
 
@@ -86,10 +87,7 @@ impl Admin<'_> {
             FeeCurve::default(),
             Utilization::from_decimal(Fraction::new(max_utilization as u64)),
             Quantity::new(max_total_borrow),
-            Clock::get()?
-                .unix_timestamp
-                .try_into()
-                .map_err(|_| LibErrors::ParseError)?,
+            initial_fee_time,
         )?;
 
         Ok(())

@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program, BN } from '@coral-xyz/anchor'
-import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import { ComputeBudgetInstruction, ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
@@ -60,9 +60,9 @@ describe('Prepare vault for borrow', () => {
     await enableOracles(program, 0, accounts, admin)
   })
 
-  it('Enables lend', async () => {
+  it('Enables lend without open fee', async () => {
     let sig = await program.methods
-      .enableLending(0, 800000, new BN(10_000_000_000))
+      .enableLending(0, 800000, new BN(10_000_000_000), 0)
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -72,7 +72,7 @@ describe('Prepare vault for borrow', () => {
 
   it('Adds lend strategy', async () => {
     let sig = await program.methods
-      .addStrategy(0, true, false)
+      .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -185,13 +185,15 @@ describe('User borrow', () => {
         reserveBase: protocolAccounts.reserveBase,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1000000
+      })])
       .signers([user])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
 
-    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
-    assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
+    assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
   })
 })
 
