@@ -1,8 +1,13 @@
-use crate::core_lib::{errors::LibErrors, Vault};
+use crate::core_lib::errors::LibErrors;
+use crate::core_lib::Vault;
 
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::core_lib::structs::Oracle;
+    use crate::pyth::{get_oracle_update_data, OracleUpdate};
+
     use super::*;
+
     use anchor_lang::prelude::*;
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::ops::Range;
@@ -51,8 +56,75 @@ mod zero {
         pub arr: VaultsArray,
         pub keys: VaultsKeysArray,
     }
-}
 
+    impl Vaults {
+        fn find_key_and_update_oracle(
+            oracle: &mut Oracle,
+            accounts: &[AccountInfo],
+            key: &Pubkey,
+            current_timestamp: i64,
+        ) -> std::result::Result<(), LibErrors> {
+            let acc = accounts
+                .iter()
+                .find(|acc| *acc.key == *key)
+                .ok_or(LibErrors::OracleAccountNotFound)?;
+
+            let OracleUpdate { price, confidence } =
+                get_oracle_update_data(acc, current_timestamp)?;
+
+            oracle.update(
+                price,
+                confidence,
+                current_timestamp
+                    .try_into()
+                    .map_err(|_| LibErrors::ParseError)?,
+            )
+        }
+
+        pub fn refresh_all(
+            &mut self,
+            accounts: &[AccountInfo],
+        ) -> std::result::Result<(), LibErrors> {
+            let indexes = self.arr.indexes();
+
+            for index in indexes {
+                let (vault, vault_keys) = self.vault_with_keys(index as u8)?;
+
+                let current_timestamp =
+                    Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
+
+                if let Some(ref mut base_oracle) = vault.oracle {
+                    let key = vault_keys
+                        .base_oracle
+                        .as_ref()
+                        .ok_or(LibErrors::PubkeyMissing)?;
+
+                    Self::find_key_and_update_oracle(
+                        base_oracle,
+                        accounts,
+                        key,
+                        current_timestamp,
+                    )?;
+                }
+
+                if let Some(ref mut quote_oracle) = vault.quote_oracle {
+                    let key = vault_keys
+                        .quote_oracle
+                        .as_ref()
+                        .ok_or(LibErrors::PubkeyMissing)?;
+
+                    Self::find_key_and_update_oracle(
+                        quote_oracle,
+                        accounts,
+                        key,
+                        current_timestamp,
+                    )?;
+                }
+            }
+            Ok(())
+        }
+    }
+}
 #[cfg(feature = "wasm")]
 mod non_zero {
     use checked_decimal_macro::num_traits::ToPrimitive;
@@ -113,7 +185,6 @@ mod non_zero {
     }
 }
 
-use anchor_lang::prelude::AccountInfo;
 #[cfg(feature = "wasm")]
 pub use non_zero::*;
 
@@ -149,9 +220,14 @@ impl Vaults {
             .ok_or(LibErrors::NoVaultOnIndex)?)
     }
 
-    #[cfg(feature = "anchor")]
-    pub fn refresh_all(&mut self, accounts: &[AccountInfo]) -> Result<(), LibErrors> {
-        if let Some(ref mut iter) = self.arr.iter_mut() {}
-        Ok(())
+    pub fn vault_with_keys(&mut self, index: u8) -> Result<(&mut Vault, &VaultKeys), LibErrors> {
+        let Self { arr, keys } = self;
+
+        Ok((
+            arr.get_mut_checked(index as usize)
+                .ok_or(LibErrors::NoVaultOnIndex)?,
+            keys.get_checked(index as usize)
+                .ok_or(LibErrors::IndexOutOfBounds)?,
+        ))
     }
 }

@@ -67,6 +67,14 @@ mod anchor_one {
         PythAccountParse,
         #[msg("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
         PythPriceGet,
+        #[msg("Cannot find desired oracle account in remaining account infos")]
+        OracleAccountNotFound,
+        #[msg("Array is empty")]
+        ArrayEmpty,
+        #[msg("Cannot get time")]
+        TimeGet,
+        #[msg("pubkey should be defined")]
+        PubkeyMissing,
     }
 }
 
@@ -142,6 +150,12 @@ mod anchor_none {
         PythAccountParse,
         #[error("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
         PythPriceGet,
+        #[error("Array is empty")]
+        ArrayEmpty,
+        #[error("Cannot get time")]
+        TimeGet,
+        #[error("pubkey should be defined")]
+        PubkeyMissing,
     }
 
     impl From<LibErrors> for JsValue {

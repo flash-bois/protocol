@@ -1,6 +1,5 @@
 use crate::{
     core_lib::decimal::Quantity,
-    core_lib::errors::LibErrors,
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -35,28 +34,30 @@ pub struct Borrow<'info> {
 
 impl<'info> Borrow<'info> {
     pub fn handler(ctx: Context<Borrow>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
-        // msg!("DotWave: Borrow");
+        msg!("DotWave: Borrow");
 
-        // let now = Clock::get()?.unix_timestamp as u32;
-        // let vaults = &mut ctx.accounts.vaults.load_mut()?;
-        // let user_statement = &mut ctx.accounts.statement.load_mut()?;
-        // let amount = Quantity::new(amount);
+        let now = Clock::get()?.unix_timestamp as u32;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
+        let user_statement = &mut ctx.accounts.statement.load_mut()?;
+        let amount = Quantity::new(amount);
 
-        // vaults.refresh_all(ctx.remaining_accounts)?;
+        vaults.refresh_all(ctx.remaining_accounts)?;
+        user_statement.statement.refresh(&vaults.arr.elements);
 
-        //let vault = vaults.vault_checked_mut(vault)?;
+        let vault = vaults.vault_checked_mut(vault)?;
 
-        // //refresh all vaults before user
+        let borrow_amount = vault.borrow(&mut user_statement.statement, amount, now)?;
 
-        // user_statement.statement.refresh(&vaults.arr.elements);
-        // vault.refresh(now)?;
+        let seeds = &[
+            b"state".as_ref(),
+            &[ctx.accounts.state.load().unwrap().bump],
+        ];
+        let signer = &[&seeds[..]];
 
-        // let borrow_amount = vault.borrow(&mut user_statement.statement, amount, now)?;
-
-        // let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
-        // let signer = &[&seeds[..]];
-
-        // transfer(self.send_base().with_signer(signer), borrow_amount.get())?;
+        transfer(
+            ctx.accounts.send_base().with_signer(signer),
+            borrow_amount.get(),
+        )?;
 
         Ok(())
     }

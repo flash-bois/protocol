@@ -2,14 +2,13 @@ use crate::{
     core_lib::{
         decimal::{DecimalPlaces, Price},
         errors::LibErrors,
-        structs::oracle::DEFAULT_MAX_ORACLE_AGE,
         Token,
     },
+    pyth::{get_oracle_update_data, OracleUpdate},
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
-use checked_decimal_macro::{Decimal, Factories};
-use pyth_sdk_solana::load_price_feed_from_account_info;
+use checked_decimal_macro::Factories;
 
 #[derive(Accounts)]
 pub struct EnableOracle<'info> {
@@ -60,30 +59,17 @@ impl EnableOracle<'_> {
         )?;
 
         if !skip_init {
-            let price_feed = load_price_feed_from_account_info(&self.price_feed)
-                .map_err(|_| LibErrors::PythAccountParse)?;
+            let OracleUpdate {
+                price, confidence, ..
+            } = get_oracle_update_data(&self.price_feed, current_timestamp)?;
 
-            let current_price = price_feed
-                .get_price_no_older_than(current_timestamp, DEFAULT_MAX_ORACLE_AGE.into())
-                .ok_or(LibErrors::PythPriceGet)?;
+            let oracle = if base {
+                vault.oracle_mut()?
+            } else {
+                vault.quote_oracle_mut()?
+            };
 
-            let price = Price::new(
-                current_price
-                    .price
-                    .try_into()
-                    .map_err(|_| LibErrors::ParseError)?,
-            );
-
-            let confidence = Price::new(
-                current_price
-                    .conf
-                    .try_into()
-                    .map_err(|_| LibErrors::ParseError)?,
-            );
-
-            vault
-                .oracle_mut()?
-                .update(price, confidence, our_current_timestamp)?;
+            oracle.update(price, confidence, our_current_timestamp)?;
         }
 
         let keys = vaults.keys_checked_mut(index)?;

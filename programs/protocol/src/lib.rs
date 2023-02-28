@@ -1,8 +1,11 @@
 mod core_lib;
+mod structs;
+
+#[cfg(feature = "anchor")]
+mod pyth;
 
 #[cfg(feature = "anchor")]
 mod instructions;
-mod structs;
 
 #[cfg(feature = "anchor")]
 pub use instructions::*;
