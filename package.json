@@ -4,8 +4,8 @@
   "main": "index.ts",
   "author": "fashbois",
   "scripts": {
-    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
-    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
+    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --dev --target bundler --out-dir ../../pkg",
+    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --prod --target bundler --out-dir ../../lib",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
