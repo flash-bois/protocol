@@ -14,8 +14,7 @@ mod zero {
 
 #[cfg(feature = "wasm")]
 mod non_zero {
-
-    use crate::ZeroCopyDecoder;
+    use crate::{ZeroCopyDecoder, wasm_wrapper::to_buffer};
     use js_sys::Uint8Array;
     use wasm_bindgen::prelude::*;
 
@@ -49,6 +48,11 @@ mod non_zero {
         #[wasm_bindgen]
         pub fn get_bump(&self) -> u8 {
             self.account.bump
+        }
+
+        #[wasm_bindgen]
+        pub fn get_vaults_account(&self) -> Result<Uint8Array, JsValue> {
+            Ok(to_buffer(&self.account.vaults_acc))
         }
     }
 }
