@@ -57,7 +57,7 @@ describe('Services', () => {
 
   it('enable lend', async () => {
     await program.methods
-      .enableLending(0, 800000, new BN(10000_000000))
+      .enableLending(0, 800000, new BN(10000_000000), 0)
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -101,7 +101,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.has_swap(0), true)
 
     await program.methods
-      .addStrategy(0, true, false)
+      .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -112,7 +112,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.does_swap(0, 0), false)
 
     await program.methods
-      .addStrategy(0, false, true)
+      .addStrategy(0, false, true, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -122,7 +122,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.does_swap(0, 1), true)
 
     await program.methods
-      .addStrategy(0, true, true)
+      .addStrategy(0, true, true, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })

@@ -64,7 +64,7 @@ impl EnableOracle<'_> {
                 vault.quote_oracle_mut()?
             };
 
-            oracle.update_oracle_from_acc(&self.price_feed, current_timestamp)?;
+            oracle.update_from_acc(&self.price_feed, current_timestamp)?;
         }
 
         let keys = vaults.keys_checked_mut(index)?;

@@ -76,7 +76,7 @@ mod zero {
                 .find(|acc| *acc.key == *key)
                 .ok_or(LibErrors::OracleAccountNotFound)?;
 
-            Ok(oracle.update_oracle_from_acc(acc, current_timestamp)?)
+            Ok(oracle.update_from_acc(acc, current_timestamp)?)
         }
 
         pub fn refresh_all(

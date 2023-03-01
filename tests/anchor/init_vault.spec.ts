@@ -66,11 +66,6 @@ describe('Init vault', () => {
       const vaultsAccount = VaultsAccount.load(vault_account_info)
       assert.equal(vaultsAccount.vaults_len(), 1)
 
-      try {
-        vaultsAccount.base_token(99)
-      } catch (error) {
-        console.log(error)
-      }
 
       assert.equal(
         Buffer.from(vaultsAccount.base_token(0)).toString('hex'),

@@ -109,7 +109,7 @@ impl Vault {
             confidence,
             spread_limit,
             time,
-        )?);
+        ));
 
         match for_token {
             Token::Base => self.oracle = oracle,

@@ -161,8 +161,6 @@ impl Position {
                 shares,
                 ..
             } => {
-                use anchor_lang::prelude::msg;
-
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle().unwrap();
                 let quote_oracle = vault.quote_oracle().unwrap();
@@ -182,16 +180,7 @@ impl Position {
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
-
-                msg!("val {}", value);
-
                 let with_collateral_ratio = value * strategy.collateral_ratio();
-
-                msg!(
-                    "val {} {}",
-                    with_collateral_ratio,
-                    strategy.collateral_ratio()
-                );
                 let unhealthy = value * strategy.liquidation_threshold();
 
                 CollateralValues {
