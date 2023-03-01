@@ -57,9 +57,8 @@ describe('Enable Oracle', () => {
   it('creates local oracle', async () => {
     let oracle = Keypair.generate()
 
-    console.log(oracle_program.programId.toString())
     const sig = await oracle_program.methods
-      .set(new BN(2200000000), -8, new BN(2200000000))
+      .set(new BN(2200000000), -8, new BN(11000000))
       .preInstructions([
         SystemProgram.createAccount({
           fromPubkey: admin.publicKey,
@@ -79,11 +78,9 @@ describe('Enable Oracle', () => {
   })
 
   it('enable base oracle', async () => {
-    // const priceFeed = Keypair.generate().publicKey
 
     const sig = await program.methods
       .enableOracle(0, 6, true, false)
-      .preInstructions([])
       .accounts({
         state,
         vaults,
@@ -107,10 +104,12 @@ describe('Enable Oracle', () => {
         Buffer.from(vaultsAccount.oracle_base(0)).toString('hex'),
         local_oracle.toBuffer().toString('hex')
       )
+      assert.equal(vaultsAccount.get_price(0), 22000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 110000000n)
     }
   })
 
-  it('enable base oracle', async () => {
+  it('enable quote oracle', async () => {
     const quotePriceFeed = Keypair.generate().publicKey
 
     const otherSig = await program.methods

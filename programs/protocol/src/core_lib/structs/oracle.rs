@@ -2,7 +2,7 @@ use crate::core_lib::{
     decimal::{DecimalPlaces, Price, Quantity, Time, Value},
     errors::LibErrors,
 };
-use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
+use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories, Others};
 
 #[repr(u8)]
 pub enum OraclePriceType {
@@ -50,7 +50,7 @@ mod zero {
         ) -> std::result::Result<(), LibErrors> {
             let OracleUpdate { price, conf, exp } =
                 get_oracle_update_from_acc(acc, current_timestamp)?;
-            msg!("{} {} {}", price, exp, conf);
+
             let (price, confidence) = if exp < 0 {
                 (
                     Price::from_scale(
@@ -63,16 +63,11 @@ mod zero {
                     ),
                 )
             } else {
-                msg!("{} {} {}", price, exp, conf);
                 (
-                    Price::from_integer(price).big_div(Price::from_scale(
-                        1,
-                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
-                    )),
-                    Price::from_integer(conf).big_div(Price::from_scale(
-                        1,
-                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
-                    )),
+                    Price::from_integer(price)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(conf)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
                 )
             };
 
@@ -140,8 +135,7 @@ impl Oracle {
 
     /// Updates the price and confidence of the oracle.
     pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
-        println!("{}", confidence.div_up(price));
-        if confidence.div_up(price) > self.spread_limit {
+        if confidence.big_div_up(price) > self.spread_limit {
             return Err(LibErrors::ConfidenceTooHigh);
         }
         self.price = price;
