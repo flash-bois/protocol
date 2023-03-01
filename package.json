@@ -6,6 +6,7 @@
   "scripts": {
     "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
     "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
+    "build:wasm:web": "cd ./programs/protocol && wasm-pack build --target bundler --out-dir ../../pkg --release",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
