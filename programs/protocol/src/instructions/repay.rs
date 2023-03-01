@@ -34,13 +34,13 @@ pub struct Repay<'info> {
 
 impl<'info> Repay<'info> {
     pub fn handler(ctx: Context<Repay>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
-        msg!("DotWave: Borrow");
+        msg!("DotWave: Repay");
 
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let user_statement = &mut ctx.accounts.statement.load_mut()?;
         let amount = Quantity::new(amount);
 
-        vaults.refresh_all(ctx.remaining_accounts)?;
+        //vaults.refresh_all(ctx.remaining_accounts)?;
         user_statement.statement.refresh(&vaults.arr.elements);
 
         let vault = vaults.vault_checked_mut(vault)?;

@@ -169,10 +169,12 @@ describe('Prepare user for borrow ', () => {
 
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
+    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 200000n)
+    assert.equal((await getAccount(connection, protocolAccounts.reserveQuote)).amount, 400000n)
   })
 })
 
-describe('User borrow', () => {
+describe('User borrow and repays', () => {
   it('borrows 100000 token units', async () => {
     let sig = await program.methods
       .borrow(0, new BN(100000))
@@ -194,6 +196,32 @@ describe('User borrow', () => {
     await waitFor(connection, sig)
 
     assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
+    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 100000n)
+  })
+
+  it('repays 100000 token units', async () => {
+    let sig = await program.methods
+      .repay(0, new BN(100000))
+      .accountsStrict({
+        state,
+        vaults,
+        accountBase,
+        statement: statement_address,
+        signer: user.publicKey,
+        reserveBase: protocolAccounts.reserveBase,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1000000
+      })])
+      .signers([user])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(connection, sig)
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
+    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 200000n)
+
   })
 })
 
