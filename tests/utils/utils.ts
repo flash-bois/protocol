@@ -11,8 +11,7 @@ import {
 } from '@solana/web3.js'
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
-
-export const STATEMENT_SEED = 'statement'
+import { STATE_SEED } from '../../microSdk'
 
 export interface DotWaveAccounts {
   state: PublicKey
@@ -33,8 +32,6 @@ export interface Loadable<T> {
   load(Buffer): T
 }
 
-export const STATE_SEED = 'state'
-
 export async function createBasicVault(
   program: Program<Protocol>,
   admin: Keypair,
@@ -50,7 +47,7 @@ export async function createBasicVault(
 
   await enableOracles(program, 0, accounts, admin)
   await program.methods
-    .enableLending(0, 800000, new BN(10000_000000))
+    .enableLending(0, 800000, new BN(10000_000000), 0)
     .accounts(accounts)
     .signers([admin])
     .postInstructions([
@@ -60,7 +57,7 @@ export async function createBasicVault(
         .signers([admin])
         .instruction(),
       await program.methods
-        .addStrategy(0, true, false)
+        .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
         .accounts(accounts)
         .signers([admin])
         .instruction()

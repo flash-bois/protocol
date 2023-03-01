@@ -62,6 +62,8 @@ impl Vault {
         has_lend: bool,
         has_swap: bool,
         has_trade: bool,
+        collateral_ratio: Fraction,
+        liquidation_threshold: Fraction,
     ) -> Result<(), LibErrors> {
         if has_lend && self.services.lend_mut().is_err() {
             return Err(LibErrors::LendServiceNone);
@@ -75,7 +77,13 @@ impl Vault {
         // }
 
         self.strategies
-            .add(Strategy::new(has_lend, has_swap, has_trade))
+            .add(Strategy::new(
+                has_lend,
+                has_swap,
+                has_trade,
+                collateral_ratio,
+                liquidation_threshold,
+            ))
             .map_err(|_| LibErrors::CannotAddStrategy)
     }
 
@@ -101,7 +109,7 @@ impl Vault {
             confidence,
             spread_limit,
             time,
-        )?);
+        ));
 
         match for_token {
             Token::Base => self.oracle = oracle,
@@ -287,7 +295,7 @@ impl Vault {
             FeeCurve::default(),
             Fraction::from_scale(1, 1),
         )?;
-        vault.add_strategy(true, true, false)?;
+        vault.add_strategy(true, true, false, Fraction::new(0), Fraction::new(0))?;
         Ok(vault)
     }
 }

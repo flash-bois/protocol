@@ -154,11 +154,11 @@ describe('Enable Oracle', () => {
     if (data) {
       const vaultsAccount = VaultsAccount.load(data)
 
-      vaultsAccount.update_oracle(0, 3000000000n, 15000000n, -2)
+      vaultsAccount.update_oracle(0, 3000000000n, 15000000n, 0)
       assert.equal(vaultsAccount.get_price(0), 3000000000n)
       assert.equal(vaultsAccount.get_confidence(0), 15000000n)
 
-      vaultsAccount.update_oracle(0, 5000000000n, 25000000n, -2)
+      vaultsAccount.update_oracle(0, 5000000000n, 25000000n, 0)
       assert.equal(vaultsAccount.get_price(0), 5000000000n)
       assert.equal(vaultsAccount.get_confidence(0), 25000000n)
     }

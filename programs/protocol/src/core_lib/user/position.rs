@@ -180,9 +180,7 @@ impl Position {
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
-
                 let with_collateral_ratio = value * strategy.collateral_ratio();
-
                 let unhealthy = value * strategy.liquidation_threshold();
 
                 CollateralValues {

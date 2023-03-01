@@ -163,10 +163,12 @@ impl Lend {
             self.available + self.borrowed,
         );
 
-        borrow_amount.big_mul_up(self.calculate_fee(
-            self.last_fee_paid + self.initial_fee_time,
+        let fee = self.calculate_fee(
+            self.initial_fee_time,
             Fraction::from_decimal(future_utilization),
-        ))
+        );
+
+        borrow_amount.big_mul_up(fee)
     }
 
     /// Performs repay operation on Service

@@ -15,7 +15,7 @@ impl VaultsAccount {
         from_base: bool,
         by_amount_out: bool,
         now: u32,
-    ) -> Result<i64, JsValue> {
+    ) -> Result<i64, JsError> {
         let mut vault = self.vault_checked_mut(vault)?.clone();
 
         let quantity = Quantity::new(amount);
@@ -33,7 +33,7 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn liquidity(&self, vault: u8, base: bool) -> Result<u64, JsValue> {
+    pub fn liquidity(&self, vault: u8, base: bool) -> Result<u64, JsError> {
         let vault = self.vault_checked(vault)?;
 
         let available = vault.swap_service_not_mut()?.available();

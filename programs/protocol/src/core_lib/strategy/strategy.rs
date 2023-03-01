@@ -167,7 +167,13 @@ impl Strategy {
         }
     }
 
-    pub fn new(lend: bool, swap: bool, trade: bool) -> Self {
+    pub fn new(
+        lend: bool,
+        swap: bool,
+        trade: bool,
+        collateral_ratio: Fraction,
+        liquidation_threshold: Fraction,
+    ) -> Self {
         let mut strategy = Self::default();
 
         if lend {
@@ -179,6 +185,9 @@ impl Strategy {
         if trade {
             strategy.traded = Some(Balances::default());
         }
+
+        strategy.collateral_ratio = collateral_ratio;
+        strategy.liquidation_threshold = liquidation_threshold;
 
         strategy
     }

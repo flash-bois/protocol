@@ -1,5 +1,4 @@
 use crate::{
-    core_lib::errors::LibErrors,
     core_lib::{decimal::Quantity, Token},
     structs::{State, Statement, Vaults},
 };
@@ -53,12 +52,9 @@ impl Deposit<'_> {
         base: bool,
     ) -> anchor_lang::Result<()> {
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(vault as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
-
+        let vault = vaults.vault_checked_mut(vault)?;
         let user_statement = &mut self.statement.load_mut()?.statement;
+
         let other_quantity = vault.deposit(
             user_statement,
             if base { Token::Base } else { Token::Quote },

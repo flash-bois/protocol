@@ -1,7 +1,11 @@
-use crate::core_lib::decimal::{DecimalPlaces, Price};
-use crate::core_lib::errors::LibErrors;
-use crate::core_lib::Token;
-use crate::structs::{State, Vaults};
+use crate::{
+    core_lib::{
+        decimal::{DecimalPlaces, Price},
+        errors::LibErrors,
+        Token,
+    },
+    structs::{State, Vaults},
+};
 use anchor_lang::prelude::*;
 use checked_decimal_macro::Factories;
 
@@ -31,10 +35,7 @@ impl EnableOracle<'_> {
         );
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         let decimal_places = match decimals {
             6 => DecimalPlaces::Six,
@@ -42,32 +43,31 @@ impl EnableOracle<'_> {
             _ => return Err(LibErrors::InvalidDecimalPlaces.into()),
         };
 
-        if skip_init {
-            vault.enable_oracle(
-                decimal_places,
-                Price::from_integer(0),
-                Price::from_integer(0),
-                Price::from_scale(2, 2),
-                Clock::get()?
-                    .unix_timestamp
-                    .try_into()
-                    .map_err(|_| LibErrors::ParseError)?,
-                if base { Token::Base } else { Token::Quote },
-            )?
-        } else {
-            // TODO parse price on init
-            unimplemented!();
-            // let price_feed: PriceFeed = load_price_feed_from_account_info(&self.price_feed).unwrap();
-            // let current_timestamp = Clock::get()?.unix_timestamp;
-            // let current_price = price_feed
-            //     .get_price_no_older_than(current_timestamp, DEFAULT_MAX_ORACLE_AGE.into())
-            //     .unwrap();
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        let our_current_timestamp = current_timestamp
+            .try_into()
+            .map_err(|_| LibErrors::ParseError)?;
+
+        vault.enable_oracle(
+            decimal_places,
+            Price::from_integer(0),
+            Price::from_integer(0),
+            Price::from_scale(2, 2),
+            our_current_timestamp,
+            if base { Token::Base } else { Token::Quote },
+        )?;
+
+        if !skip_init {
+            let oracle = if base {
+                vault.oracle_mut()?
+            } else {
+                vault.quote_oracle_mut()?
+            };
+
+            oracle.update_from_acc(&self.price_feed, current_timestamp)?;
         }
 
-        let keys = vaults
-            .keys
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let keys = vaults.keys_checked_mut(index)?;
 
         if base {
             keys.base_oracle = Some(self.price_feed.key());

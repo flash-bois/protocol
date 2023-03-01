@@ -1,14 +1,17 @@
 mod core_lib;
+mod structs;
+
+#[cfg(feature = "anchor")]
+mod pyth;
 
 #[cfg(feature = "anchor")]
 mod instructions;
-mod structs;
 
 #[cfg(feature = "anchor")]
 pub use instructions::*;
 
 #[cfg(feature = "anchor")]
-declare_id!("9DvKMoN2Wx1jFNszJU9aGDSsvBNJ5A3UfNp1Mvv9CVDi");
+declare_id!("3wnPHyMvFaAMQoHYmkQ52erfYocW5f4GmkmdNzu3Couv");
 
 #[cfg(feature = "anchor")]
 use anchor_lang::prelude::*;
@@ -58,9 +61,10 @@ pub mod protocol {
         index: u8,
         max_utilization: u32,
         max_total_borrow: u64,
+        initial_fee_time: u32,
     ) -> Result<()> {
         ctx.accounts
-            .enable_lending(index, max_utilization, max_total_borrow)?;
+            .enable_lending(index, max_utilization, max_total_borrow, initial_fee_time)?;
         Ok(())
     }
 
@@ -79,8 +83,16 @@ pub mod protocol {
         index: u8,
         lending: bool,
         swapping: bool,
+        collateral_ratio: u64,
+        liquidation_threshold: u64,
     ) -> Result<()> {
-        ctx.accounts.handler(index, lending, swapping)
+        ctx.accounts.handler(
+            index,
+            lending,
+            swapping,
+            collateral_ratio,
+            liquidation_threshold,
+        )
     }
 
     pub fn deposit(
@@ -117,6 +129,18 @@ pub mod protocol {
     ) -> Result<()> {
         ctx.accounts
             .modify_fee_curve(vault, service, base, bound, a, b, c)
+    }
+
+    pub fn borrow<'info>(
+        ctx: Context<'_, '_, '_, 'info, Borrow<'info>>,
+        vault: u8,
+        amount: u64,
+    ) -> Result<()> {
+        Borrow::handler(ctx, vault, amount)
+    }
+
+    pub fn repay(ctx: Context<Repay>, vault: u8, amount: u64) -> Result<()> {
+        Repay::handler(ctx, vault, amount)
     }
 }
 

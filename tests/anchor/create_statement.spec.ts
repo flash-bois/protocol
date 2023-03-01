@@ -4,9 +4,10 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert, use } from 'chai'
 import { Protocol } from '../../target/types/protocol'
 import { StateAccount, StatementAccount } from '../../pkg/protocol'
-import { STATEMENT_SEED } from '../utils/utils'
+import { STATEMENT_SEED } from '../../microSdk'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 
 describe('statement for user', () => {
   const provider = anchor.AnchorProvider.env()
@@ -64,17 +65,17 @@ describe('statement for user', () => {
 
     await sleep(5000)
 
-    console.log(program.account.statement.size)
+    //console.log(program.account.statement.size) //assert?
     const statement_account = await program.account.statement.fetch(statement_address)
-    console.log(statement_account)
+    // console.log(statement_account) //assert?
     // assert.equal(statement_account.owner.toString(), user.publicKey.toString())
 
     let account_info = (await connection.getAccountInfo(statement_address))?.data
-    console.log(account_info?.toString('hex'))
+    //console.log(account_info?.toString('hex')) //assert?
 
     if (account_info) {
       const state = StatementAccount.load(account_info)
-      console.log(state.get_bump())
+      //console.log(state.get_bump()) //assert?
     }
   })
 })

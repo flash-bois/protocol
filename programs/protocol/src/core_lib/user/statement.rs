@@ -186,6 +186,7 @@ mod position_management {
         let mut first_vault = Vault::default();
         let mut second_vault = Vault::default();
 
+        first_vault.id = 0;
         second_vault.id = 1;
 
         first_vault
@@ -219,7 +220,15 @@ mod position_management {
             )
             .unwrap();
 
-        first_vault.add_strategy(true, false, false).unwrap();
+        first_vault
+            .add_strategy(
+                true,
+                false,
+                false,
+                Fraction::from_integer(1),
+                Fraction::from_integer(1),
+            )
+            .unwrap();
 
         second_vault
             .enable_oracle(
@@ -252,7 +261,15 @@ mod position_management {
             )
             .unwrap();
 
-        second_vault.add_strategy(true, false, false).unwrap();
+        second_vault
+            .add_strategy(
+                true,
+                false,
+                false,
+                Fraction::from_integer(1),
+                Fraction::from_integer(1),
+            )
+            .unwrap();
 
         let mut vaults = [first_vault, second_vault];
 
@@ -276,16 +293,6 @@ mod position_management {
             )
             .unwrap();
 
-        vaults[1]
-            .strategy_mut(0)
-            .unwrap()
-            .set_collateral_ratio(Fraction::from_integer(1));
-
-        vaults[0]
-            .strategy_mut(0)
-            .unwrap()
-            .set_collateral_ratio(Fraction::from_integer(1));
-
         user_statement
             .add_position(Position::LiquidityProvide {
                 vault_index: 0,
@@ -299,20 +306,18 @@ mod position_management {
         user_statement.refresh(&mut vaults);
 
         vaults[0]
-            .borrow(&mut user_statement, Quantity::new(5000000), 0)
+            .borrow(&mut user_statement, Quantity::new(5000000))
             .unwrap();
 
         user_statement.refresh(&mut vaults);
 
         vaults[1]
-            .borrow(&mut user_statement, Quantity::new(4000000), 0)
+            .borrow(&mut user_statement, Quantity::new(4000000))
             .unwrap();
 
-        assert!(
-            user_statement.positions.iter().unwrap().len() == 5,
-            "should be empty"
-        );
+        assert_eq!(user_statement.positions.iter().unwrap().len(), 5);
 
+        user_statement.refresh(&mut vaults);
         assert_eq!(
             user_statement.collaterals_values(&vaults).exact,
             Value::new(50000000000)

@@ -4,20 +4,22 @@
   "main": "index.ts",
   "author": "fashbois",
   "scripts": {
-    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --dev --target bundler --out-dir ../../pkg",
-    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --prod --target bundler --out-dir ../../lib",
+    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
+    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
+    "build:wasm:web": "cd ./programs/protocol && wasm-pack build --target bundler --out-dir ../../pkg --release",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
     "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
-    "test:anchor": "yarn test:services && yarn test:user && yarn test:state && yarn test:vault && yarn test:oracle && yarn test:statement",
+    "test:anchor": "yarn test:borrow && yarn test:services && yarn test:user && yarn test:state && yarn test:vault && yarn test:oracle && yarn test:statement",
     "test:wasm": "anchor test --skip-build tests/wasm/*.ts",
     "test:services": "anchor test --skip-build tests/anchor/services.spec.ts",
     "test:user": "anchor test --skip-build tests/anchor/user.spec.ts",
     "test:state": "anchor test --skip-build tests/anchor/create_state.spec.ts",
     "test:vault": "anchor test --skip-build tests/anchor/init_vault.spec.ts",
     "test:oracle": "anchor test --skip-build tests/anchor/oracle.spec.ts",
-    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts"
+    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts",
+    "test:borrow": "anchor test --skip-build tests/anchor/borrow_repay.spec.ts"
   },
   "repository": {
     "type": "git",

@@ -29,21 +29,21 @@ impl DerefMut for VaultsAccount {
 }
 
 impl VaultsAccount {
-    pub fn vault_checked(&self, index: u8) -> Result<&Vault, JsValue> {
+    pub fn vault_checked(&self, index: u8) -> Result<&Vault, LibErrors> {
         Ok(self
             .arr
             .get_checked(index as usize)
             .ok_or(LibErrors::NoVaultOnIndex)?)
     }
 
-    pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, JsValue> {
+    pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, LibErrors> {
         Ok(self
             .keys
             .get_checked(index as usize)
             .ok_or(LibErrors::IndexOutOfBounds)?)
     }
 
-    pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, JsValue> {
+    pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, LibErrors> {
         Ok(self
             .arr
             .get_mut_checked(index as usize)
@@ -77,7 +77,7 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_token_with_id(&self) -> Result<Array, JsValue> {
+    pub fn base_token_with_id(&self) -> Result<Array, JsError> {
         let arr = Array::new();
 
         for index in self.arr.indexes() {
@@ -93,27 +93,27 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn base_token(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.keys_checked(index)?.base_token))
     }
 
     #[wasm_bindgen]
-    pub fn quote_token(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn quote_token(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.keys_checked(index)?.quote_token))
     }
 
     #[wasm_bindgen]
-    pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
-        Ok(to_buffer(&self.keys_checked(index)?.base_reserve))
+    pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsError> {
+        Ok(to_buffer(&self.account.keys_checked(index)?.base_reserve))
     }
 
     #[wasm_bindgen]
-    pub fn quote_reserve(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn quote_reserve(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(&self.keys_checked(index)?.quote_reserve))
     }
 
     #[wasm_bindgen]
-    pub fn oracle_base(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn oracle_base(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(
             &self
                 .keys_checked(index)?
@@ -123,7 +123,7 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn oracle_quote(&self, index: u8) -> Result<Uint8Array, JsValue> {
+    pub fn oracle_quote(&self, index: u8) -> Result<Uint8Array, JsError> {
         Ok(to_buffer(
             &self
                 .keys_checked(index)?
@@ -133,27 +133,32 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+    pub fn base_oracle_enabled(&self, index: u8) -> Result<bool, JsError> {
         Ok(self.vault_checked(index)?.oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn quote_oracle_enabled(&self, index: u8) -> Result<bool, JsValue> {
+    pub fn quote_oracle_enabled(&self, index: u8) -> Result<bool, JsError> {
         Ok(self.vault_checked(index)?.quote_oracle.is_some())
     }
 
     #[wasm_bindgen]
-    pub fn has_lending(&mut self, index: u8) -> Result<bool, JsValue> {
+    pub fn has_lending(&mut self, index: u8) -> Result<bool, JsError> {
         Ok(self.vault_checked_mut(index)?.lend_service().is_ok())
     }
 
     #[wasm_bindgen]
-    pub fn has_swap(&mut self, index: u8) -> Result<bool, JsValue> {
+    pub fn has_swap(&mut self, index: u8) -> Result<bool, JsError> {
         Ok(self.vault_checked_mut(index)?.swap_service().is_ok())
     }
 
     #[wasm_bindgen]
-    pub fn lending_apy(&mut self, index: u8) -> Result<u64, JsValue> {
+    pub fn refresh(&mut self, index: u8, current_time: u32) -> Result<(), JsError> {
+        Ok(self.vault_checked_mut(index)?.refresh(current_time)?)
+    }
+
+    #[wasm_bindgen]
+    pub fn lending_apy(&mut self, index: u8) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
                 let utilization = lend.current_utilization();

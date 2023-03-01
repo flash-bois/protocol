@@ -4,7 +4,6 @@ mod state;
 mod statement;
 mod strategy;
 mod swap;
-mod test;
 mod utils;
 mod vault;
 
@@ -13,6 +12,5 @@ pub use state::*;
 pub use statement::*;
 pub use strategy::*;
 pub use swap::*;
-pub use test::*;
 pub use utils::*;
 pub use vault::*;
