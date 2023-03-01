@@ -11,7 +11,7 @@ pub enum OraclePriceType {
     Buy,
 }
 
-pub const DEFAULT_MAX_ORACLE_AGE: u32 = 1;
+pub const DEFAULT_MAX_ORACLE_AGE: u32 = 10;
 
 #[cfg(feature = "anchor")]
 mod zero {
@@ -19,6 +19,7 @@ mod zero {
 
     use super::*;
     use anchor_lang::prelude::*;
+    use checked_decimal_macro::BigOps;
 
     #[zero_copy]
     #[repr(C)]
@@ -49,7 +50,7 @@ mod zero {
         ) -> std::result::Result<(), LibErrors> {
             let OracleUpdate { price, conf, exp } =
                 get_oracle_update_from_acc(acc, current_timestamp)?;
-
+            msg!("{} {} {}", price, exp, conf);
             let (price, confidence) = if exp < 0 {
                 (
                     Price::from_scale(
@@ -62,11 +63,16 @@ mod zero {
                     ),
                 )
             } else {
+                msg!("{} {} {}", price, exp, conf);
                 (
-                    Price::from_integer(price)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
-                    Price::from_integer(conf)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(price).big_div(Price::from_scale(
+                        1,
+                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
+                    )),
+                    Price::from_integer(conf).big_div(Price::from_scale(
+                        1,
+                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
+                    )),
                 )
             };
 

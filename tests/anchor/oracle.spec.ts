@@ -4,6 +4,7 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert } from 'chai'
 import { price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
+import { Oracle } from '../../target/types/oracle'
 import {
   createMint,
   createAssociatedTokenAccount,
@@ -12,13 +13,14 @@ import {
 } from '@solana/spl-token'
 import { createAccounts, initAccounts, sleep, waitFor } from '../utils/utils'
 import { SOL_ORACLE } from '../../microSdk'
+import { BN } from 'bn.js'
 
 const STATE_SEED = 'state'
 
 describe('Enable Oracle', () => {
   const provider = anchor.AnchorProvider.env()
   const program = anchor.workspace.Protocol as Program<Protocol>
-
+  const oracle_program = anchor.workspace.Oracle as Program<Oracle>
   const minter = Keypair.generate()
   const admin = Keypair.generate()
   const user = Keypair.generate()
@@ -29,6 +31,7 @@ describe('Enable Oracle', () => {
 
   let state: PublicKey
   let vaults: PublicKey
+  let local_oracle: PublicKey
 
   before(async () => {
     const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
@@ -51,16 +54,41 @@ describe('Enable Oracle', () => {
     }
   })
 
+  it('creates local oracle', async () => {
+    let oracle = Keypair.generate()
+
+    console.log(oracle_program.programId.toString())
+    const sig = await oracle_program.methods
+      .set(new BN(2200000000), -8, new BN(2200000000))
+      .preInstructions([
+        SystemProgram.createAccount({
+          fromPubkey: admin.publicKey,
+          newAccountPubkey: oracle.publicKey,
+          space: 3312,
+          lamports: await connection.getMinimumBalanceForRentExemption(3312),
+          programId: oracle_program.programId
+        })
+      ])
+      .accounts({ price: oracle.publicKey })
+      .signers([oracle, admin])
+      .rpc()
+
+    await waitFor(oracle_program.provider.connection, sig)
+
+    local_oracle = oracle.publicKey
+  })
+
   it('enable base oracle', async () => {
-    const priceFeed = Keypair.generate().publicKey
+    // const priceFeed = Keypair.generate().publicKey
 
     const sig = await program.methods
-      .enableOracle(0, 6, true, true)
+      .enableOracle(0, 6, true, false)
+      .preInstructions([])
       .accounts({
         state,
         vaults,
         admin: admin.publicKey,
-        priceFeed: SOL_ORACLE
+        priceFeed: local_oracle
       })
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -77,7 +105,7 @@ describe('Enable Oracle', () => {
       assert.equal(vaultsAccount.quote_oracle_enabled(0), false)
       assert.equal(
         Buffer.from(vaultsAccount.oracle_base(0)).toString('hex'),
-        priceFeed.toBuffer().toString('hex')
+        local_oracle.toBuffer().toString('hex')
       )
     }
   })

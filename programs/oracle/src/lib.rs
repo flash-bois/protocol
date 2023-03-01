@@ -180,7 +180,9 @@ impl PriceAccount {
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
-pub mod oracle_testnet {
+pub mod oracle {
+    use pyth_sdk_solana::state::AccountType;
+
     use super::*;
 
     pub fn set(ctx: Context<Initialize>, price: i64, exp: i32, confidence: u64) -> Result<()> {
@@ -188,6 +190,10 @@ pub mod oracle_testnet {
 
         **price_acc = PriceAccount::default();
 
+        price_acc.magic = MAGIC;
+        price_acc.ver = VERSION_2;
+        price_acc.atype = AccountType::Price as u32;
+        price_acc.timestamp = Clock::get()?.unix_timestamp;
         price_acc.agg.price = price;
         price_acc.agg.conf = confidence;
         price_acc.expo = exp;
@@ -198,5 +204,6 @@ pub mod oracle_testnet {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
+    /// CHECK:`
     pub price: AccountInfo<'info>,
 }
