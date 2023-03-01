@@ -3,12 +3,10 @@ use crate::core_lib::{errors::LibErrors, Vault};
 #[cfg(feature = "anchor")]
 mod zero {
     use super::*;
-    use crate::core_lib::decimal::Price;
     use crate::core_lib::structs::Oracle;
-    use crate::pyth::{get_oracle_update_from_acc, OracleUpdate};
     use anchor_lang::prelude::*;
+
     use checked_decimal_macro::num_traits::ToPrimitive;
-    use checked_decimal_macro::Factories;
     use std::ops::Range;
     use std::slice::{Iter, IterMut};
     use vec_macro::SafeArray;
@@ -67,43 +65,6 @@ mod zero {
     }
 
     impl Vaults {
-        pub fn update_oracle_from_acc(
-            oracle: &mut Oracle,
-            acc: &AccountInfo,
-            current_timestamp: i64,
-        ) -> std::result::Result<(), LibErrors> {
-            let OracleUpdate { price, conf, exp } =
-                get_oracle_update_from_acc(acc, current_timestamp)?;
-
-            let (price, confidence) = if exp < 0 {
-                (
-                    Price::from_scale(
-                        price,
-                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
-                    ),
-                    Price::from_scale(
-                        conf,
-                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
-                    ),
-                )
-            } else {
-                (
-                    Price::from_integer(price)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
-                    Price::from_integer(conf)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
-                )
-            };
-
-            oracle.update(
-                price,
-                confidence,
-                current_timestamp
-                    .try_into()
-                    .map_err(|_| LibErrors::ParseError)?,
-            )
-        }
-
         fn update_oracle_from_accs(
             oracle: &mut Oracle,
             accounts: &[AccountInfo],
@@ -115,11 +76,7 @@ mod zero {
                 .find(|acc| *acc.key == *key)
                 .ok_or(LibErrors::OracleAccountNotFound)?;
 
-            Ok(Self::update_oracle_from_acc(
-                oracle,
-                acc,
-                current_timestamp,
-            )?)
+            Ok(oracle.update_oracle_from_acc(acc, current_timestamp)?)
         }
 
         pub fn refresh_all(

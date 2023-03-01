@@ -95,4 +95,12 @@ impl VaultsAccount {
             .swap_service()
             .is_ok())
     }
+
+    #[wasm_bindgen]
+    pub fn refresh(&mut self, index: u8, current_time: u32) -> Result<(), JsError> {
+        Ok(self
+            .account
+            .vault_checked_mut(index)?
+            .refresh(current_time)?)
+    }
 }
