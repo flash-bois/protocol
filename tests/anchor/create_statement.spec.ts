@@ -4,7 +4,8 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert, use } from 'chai'
 import { Protocol } from '../../target/types/protocol'
 import { StateAccount, StatementAccount } from '../../pkg/protocol'
-import { STATEMENT_SEED } from '../utils/utils'
+import { STATEMENT_SEED } from '../../microSdk'
+
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 

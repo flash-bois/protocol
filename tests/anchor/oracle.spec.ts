@@ -11,6 +11,7 @@ import {
   createAccount
 } from '@solana/spl-token'
 import { createAccounts, initAccounts, sleep, waitFor } from '../utils/utils'
+import { SOL_ORACLE } from '../../microSdk'
 
 const STATE_SEED = 'state'
 
@@ -59,7 +60,7 @@ describe('Enable Oracle', () => {
         state,
         vaults,
         admin: admin.publicKey,
-        priceFeed
+        priceFeed: SOL_ORACLE
       })
       .signers([admin])
       .rpc({ skipPreflight: true })

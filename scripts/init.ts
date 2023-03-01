@@ -27,7 +27,6 @@ const vaults = Keypair.generate()
 //@ts-ignore
 const wallet: Signer = provider.wallet.payer
 
-const vaults_size = program.account.vaults.size
 const connection = program.provider.connection
 
 const [state_address, bump] = PublicKey.findProgramAddressSync(
@@ -36,8 +35,6 @@ const [state_address, bump] = PublicKey.findProgramAddressSync(
 )
 
 const main = async () => {
-  console.log(connection)
-
   const sig = await program.methods
     .createState()
     .accounts({

@@ -91,7 +91,7 @@ const main = async () => {
         .accountsStrict(accounts)
         .instruction(),
       await program.methods
-        .enableLending(index, 800000, new BN(10000_000000))
+        .enableLending(index, 800000, new BN(10000_000000), 0)
         .accounts(accounts)
         .signers([admin])
         .instruction(),
@@ -101,7 +101,7 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
-        .addStrategy(index, true, false)
+        .addStrategy(index, true, false, new BN(1000_000), new BN(1000_000))
         .accounts(accounts)
         .signers([admin])
         .instruction()

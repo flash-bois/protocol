@@ -12,7 +12,10 @@ import {
   mintTo,
   getAccount
 } from '@solana/spl-token'
-import { AdminAccounts, DotWaveAccounts, createAccounts, enableOracles, initAccounts, STATEMENT_SEED, waitFor } from '../utils/utils'
+import { AdminAccounts, DotWaveAccounts, createAccounts, enableOracles, initAccounts, waitFor } from '../utils/utils'
+import { STATEMENT_SEED } from '../../microSdk'
+
+
 
 const STATE_SEED = 'state'
 const provider = anchor.AnchorProvider.env()
