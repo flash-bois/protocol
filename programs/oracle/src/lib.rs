@@ -206,4 +206,6 @@ pub struct Initialize<'info> {
     #[account(mut)]
     /// CHECK:`
     pub price: AccountInfo<'info>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
 }

@@ -19,7 +19,6 @@ mod zero {
 
     use super::*;
     use anchor_lang::prelude::*;
-    use checked_decimal_macro::BigOps;
 
     #[zero_copy]
     #[repr(C)]
@@ -64,10 +63,14 @@ mod zero {
                 )
             } else {
                 (
-                    Price::from_integer(price)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
-                    Price::from_integer(conf)
-                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(price).big_div(Price::from_scale(
+                        1,
+                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
+                    )),
+                    Price::from_integer(conf).big_div(Price::from_scale(
+                        1,
+                        exp.try_into().map_err(|_| LibErrors::ParseError)?,
+                    )),
                 )
             };
 
