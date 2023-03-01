@@ -8,7 +8,9 @@ members = [
 ]
 
 [programs.localnet]
-protocol = "9DvKMoN2Wx1jFNszJU9aGDSsvBNJ5A3UfNp1Mvv9CVDi"
+protocol = "3wnPHyMvFaAMQoHYmkQ52erfYocW5f4GmkmdNzu3Couv"
+[programs.devnet]
+protocol = "3wnPHyMvFaAMQoHYmkQ52erfYocW5f4GmkmdNzu3Couv"
 
 [registry]
 url = "https://api.apr.dev"

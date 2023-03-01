@@ -25,7 +25,7 @@ thiserror = { version = "1.0.38", optional = true }
 cfg-if = "1.0.0"
 
 [features]
-default = ["wasm"]
+default = ["anchor"]
 anchor = ["dep:anchor-lang", "dep:anchor-spl", "dep:pyth-sdk-solana"]
 wasm = ["dep:wasm-bindgen", "dep:bytemuck", "dep:js-sys", "dep:console_error_panic_hook", "dep:thiserror"]
 

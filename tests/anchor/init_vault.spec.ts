@@ -12,8 +12,6 @@ import {
 } from '@solana/spl-token'
 import { createAccounts } from '../utils/utils'
 
-const STATE_SEED = 'state'
-
 describe('Init vault', () => {
   const provider = anchor.AnchorProvider.env()
   const program = anchor.workspace.Protocol as Program<Protocol>

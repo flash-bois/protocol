@@ -11,8 +11,7 @@ import {
 } from '@solana/web3.js'
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
-
-export const STATEMENT_SEED = 'statement'
+import { STATE_SEED } from '../../microSdk'
 
 export interface DotWaveAccounts {
   state: PublicKey
@@ -32,8 +31,6 @@ export interface AdminAccounts {
 export interface Loadable<T> {
   load(Buffer): T
 }
-
-export const STATE_SEED = 'state'
 
 export async function createBasicVault(
   program: Program<Protocol>,

@@ -24,12 +24,10 @@ import {
   tryFetch,
   createBasicVault,
   mintTokensForUser,
-  STATEMENT_SEED,
   DotWaveAccounts
 } from '../utils/utils'
 import { BN } from 'bn.js'
-
-const STATE_SEED = 'state'
+import { STATEMENT_SEED, STATE_SEED } from '../../microSdk'
 
 describe('Services', () => {
   const provider = anchor.AnchorProvider.env()
