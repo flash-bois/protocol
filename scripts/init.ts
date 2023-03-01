@@ -34,6 +34,8 @@ const [state_address, bump] = PublicKey.findProgramAddressSync(
   program.programId
 )
 
+console.log(program.programId.toString())
+
 const main = async () => {
   const sig = await program.methods
     .createState()
