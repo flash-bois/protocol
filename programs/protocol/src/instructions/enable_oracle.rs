@@ -4,7 +4,6 @@ use crate::{
         errors::LibErrors,
         Token,
     },
-    pyth::{get_oracle_update_data, OracleUpdate},
     structs::{State, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -59,17 +58,13 @@ impl EnableOracle<'_> {
         )?;
 
         if !skip_init {
-            let OracleUpdate {
-                price, confidence, ..
-            } = get_oracle_update_data(&self.price_feed, current_timestamp)?;
-
             let oracle = if base {
                 vault.oracle_mut()?
             } else {
                 vault.quote_oracle_mut()?
             };
 
-            oracle.update(price, confidence, our_current_timestamp)?;
+            oracle.update_oracle_from_acc(&self.price_feed, current_timestamp)?;
         }
 
         let keys = vaults.keys_checked_mut(index)?;

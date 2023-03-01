@@ -15,6 +15,8 @@ pub const DEFAULT_MAX_ORACLE_AGE: u32 = 1;
 
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::pyth::{get_oracle_update_from_acc, OracleUpdate};
+
     use super::*;
     use anchor_lang::prelude::*;
 
@@ -37,6 +39,45 @@ mod zero {
         pub spread_limit: Price,
         /// The number of decimals of the asset.
         pub decimals: DecimalPlaces,
+    }
+
+    impl Oracle {
+        pub fn update_oracle_from_acc(
+            &mut self,
+            acc: &AccountInfo,
+            current_timestamp: i64,
+        ) -> std::result::Result<(), LibErrors> {
+            let OracleUpdate { price, conf, exp } =
+                get_oracle_update_from_acc(acc, current_timestamp)?;
+
+            let (price, confidence) = if exp < 0 {
+                (
+                    Price::from_scale(
+                        price,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                    Price::from_scale(
+                        conf,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                )
+            } else {
+                (
+                    Price::from_integer(price)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(conf)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                )
+            };
+
+            self.update(
+                price,
+                confidence,
+                current_timestamp
+                    .try_into()
+                    .map_err(|_| LibErrors::ParseError)?,
+            )
+        }
     }
 }
 

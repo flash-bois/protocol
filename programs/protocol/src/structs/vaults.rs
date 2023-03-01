@@ -1,15 +1,14 @@
-use crate::core_lib::errors::LibErrors;
-use crate::core_lib::Vault;
+use crate::core_lib::{errors::LibErrors, Vault};
 
 #[cfg(feature = "anchor")]
 mod zero {
-    use crate::core_lib::structs::Oracle;
-    use crate::pyth::{get_oracle_update_data, OracleUpdate};
-
     use super::*;
-
+    use crate::core_lib::decimal::Price;
+    use crate::core_lib::structs::Oracle;
+    use crate::pyth::{get_oracle_update_from_acc, OracleUpdate};
     use anchor_lang::prelude::*;
     use checked_decimal_macro::num_traits::ToPrimitive;
+    use checked_decimal_macro::Factories;
     use std::ops::Range;
     use std::slice::{Iter, IterMut};
     use vec_macro::SafeArray;
@@ -31,6 +30,16 @@ mod zero {
         pub quote_reserve: Pubkey,
         pub base_oracle: Option<Pubkey>,
         pub quote_oracle: Option<Pubkey>,
+    }
+
+    impl VaultKeys {
+        pub fn base_oracle(&self) -> std::result::Result<&Pubkey, LibErrors> {
+            Ok(self.base_oracle.as_ref().ok_or(LibErrors::PubkeyMissing)?)
+        }
+
+        pub fn quote_oracle(&self) -> std::result::Result<&Pubkey, LibErrors> {
+            Ok(self.quote_oracle.as_ref().ok_or(LibErrors::PubkeyMissing)?)
+        }
     }
 
     #[zero_copy]
@@ -58,19 +67,33 @@ mod zero {
     }
 
     impl Vaults {
-        fn find_key_and_update_oracle(
+        pub fn update_oracle_from_acc(
             oracle: &mut Oracle,
-            accounts: &[AccountInfo],
-            key: &Pubkey,
+            acc: &AccountInfo,
             current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
-            let acc = accounts
-                .iter()
-                .find(|acc| *acc.key == *key)
-                .ok_or(LibErrors::OracleAccountNotFound)?;
+            let OracleUpdate { price, conf, exp } =
+                get_oracle_update_from_acc(acc, current_timestamp)?;
 
-            let OracleUpdate { price, confidence } =
-                get_oracle_update_data(acc, current_timestamp)?;
+            let (price, confidence) = if exp < 0 {
+                (
+                    Price::from_scale(
+                        price,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                    Price::from_scale(
+                        conf,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                )
+            } else {
+                (
+                    Price::from_integer(price)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(conf)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                )
+            };
 
             oracle.update(
                 price,
@@ -81,48 +104,58 @@ mod zero {
             )
         }
 
+        fn update_oracle_from_accs(
+            oracle: &mut Oracle,
+            accounts: &[AccountInfo],
+            key: &Pubkey,
+            current_timestamp: i64,
+        ) -> std::result::Result<(), LibErrors> {
+            let acc = accounts
+                .iter()
+                .find(|acc| *acc.key == *key)
+                .ok_or(LibErrors::OracleAccountNotFound)?;
+
+            Ok(Self::update_oracle_from_acc(
+                oracle,
+                acc,
+                current_timestamp,
+            )?)
+        }
+
         pub fn refresh_all(
             &mut self,
             accounts: &[AccountInfo],
         ) -> std::result::Result<(), LibErrors> {
             let indexes = self.arr.indexes();
+            let current_timestamp = Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
+            let current_timestamp_u32: u32 = current_timestamp
+                .try_into()
+                .map_err(|_| LibErrors::ParseError)?;
 
             for index in indexes {
                 let (vault, vault_keys) = self.vault_with_keys(index as u8)?;
 
-                let current_timestamp =
-                    Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
-
-                vault.refresh(current_timestamp as u32)?;
+                vault.refresh(current_timestamp_u32)?;
 
                 if let Some(ref mut base_oracle) = vault.oracle {
-                    let key = vault_keys
-                        .base_oracle
-                        .as_ref()
-                        .ok_or(LibErrors::PubkeyMissing)?;
-
-                    Self::find_key_and_update_oracle(
+                    Self::update_oracle_from_accs(
                         base_oracle,
                         accounts,
-                        key,
+                        vault_keys.base_oracle()?,
                         current_timestamp,
                     )?;
                 }
 
                 if let Some(ref mut quote_oracle) = vault.quote_oracle {
-                    let key = vault_keys
-                        .quote_oracle
-                        .as_ref()
-                        .ok_or(LibErrors::PubkeyMissing)?;
-
-                    Self::find_key_and_update_oracle(
+                    Self::update_oracle_from_accs(
                         quote_oracle,
                         accounts,
-                        key,
+                        vault_keys.quote_oracle()?,
                         current_timestamp,
                     )?;
                 }
             }
+
             Ok(())
         }
     }
