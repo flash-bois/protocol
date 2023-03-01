@@ -15,6 +15,8 @@ pub const DEFAULT_MAX_ORACLE_AGE: u32 = 1;
 
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::pyth::{get_oracle_update_from_acc, OracleUpdate};
+
     use super::*;
     use anchor_lang::prelude::*;
 
@@ -37,6 +39,45 @@ mod zero {
         pub spread_limit: Price,
         /// The number of decimals of the asset.
         pub decimals: DecimalPlaces,
+    }
+
+    impl Oracle {
+        pub fn update_from_acc(
+            &mut self,
+            acc: &AccountInfo,
+            current_timestamp: i64,
+        ) -> std::result::Result<(), LibErrors> {
+            let OracleUpdate { price, conf, exp } =
+                get_oracle_update_from_acc(acc, current_timestamp)?;
+
+            let (price, confidence) = if exp < 0 {
+                (
+                    Price::from_scale(
+                        price,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                    Price::from_scale(
+                        conf,
+                        exp.abs().try_into().map_err(|_| LibErrors::ParseError)?,
+                    ),
+                )
+            } else {
+                (
+                    Price::from_integer(price)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                    Price::from_integer(conf)
+                        / Price::from_scale(1, exp.try_into().map_err(|_| LibErrors::ParseError)?),
+                )
+            };
+
+            self.update(
+                price,
+                confidence,
+                current_timestamp
+                    .try_into()
+                    .map_err(|_| LibErrors::ParseError)?,
+            )
+        }
     }
 }
 
@@ -79,24 +120,23 @@ impl Oracle {
         confidence: Price,
         spread_limit: Price,
         time: Time,
-    ) -> Result<Self, LibErrors> {
-        let mut oracle = Self {
-            price: Price::from_integer(0),
-            confidence: Price::from_integer(0),
-            last_update: 0,
+    ) -> Self {
+        Self {
+            price: price,
+            confidence: confidence,
+            last_update: time,
             max_update_interval: DEFAULT_MAX_ORACLE_AGE,
             use_spread: 0,
             decimals,
             spread_limit,
-        };
-        oracle.update(price, confidence, time)?;
-        Ok(oracle)
+        }
     }
 
     /// Updates the price and confidence of the oracle.
     pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
-        if confidence > price {
-            return Err(LibErrors::ConfidenceHigherThanPrice);
+        println!("{}", confidence.div_up(price));
+        if confidence.div_up(price) > self.spread_limit {
+            return Err(LibErrors::ConfidenceTooHigh);
         }
         self.price = price;
         self.confidence = confidence;
@@ -104,13 +144,13 @@ impl Oracle {
         Ok(())
     }
 
-    /// Checks if the oracle has been updated in the last `max_update_interval` seconds.
-    pub fn check_if_updated(&self, now: Time) -> Result<(), ()> {
-        if now - self.last_update <= self.max_update_interval {
-            return Ok(());
-        }
-        Err(())
-    }
+    // /// Checks if the oracle has been updated in the last `max_update_interval` seconds.
+    // pub fn check_if_updated(&self, now: Time) -> Result<(), LibErrors> {
+    //     if now - self.last_update <= self.max_update_interval {
+    //         return Ok(());
+    //     }
+    //     Err(())
+    // }
 
     /// Returns the price of the oracle. Depending on OraclePriceType, it can return the spot price,
     /// the sell price or the buy price.
@@ -180,7 +220,6 @@ impl Oracle {
             Price::from_scale(5, 3),
             0,
         )
-        .unwrap()
     }
 
     pub fn new_stable_for_test() -> Self {
@@ -191,7 +230,6 @@ impl Oracle {
             Price::from_scale(5, 3),
             0,
         )
-        .unwrap()
     }
 }
 
@@ -204,6 +242,21 @@ mod test_oracle {
     use super::Oracle;
 
     #[test]
+    fn test_update_oracle() {
+        let mut oracle = Oracle::new(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::from_scale(1, 3),
+            Price::from_scale(2, 2),
+            0,
+        );
+
+        oracle
+            .update(Price::new(5000000000), Price::new(25000000), 0)
+            .unwrap();
+    }
+
+    #[test]
     fn test_calculate_value() {
         let mut oracle = Oracle::new(
             DecimalPlaces::Six,
@@ -211,8 +264,7 @@ mod test_oracle {
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             oracle.calculate_value(Quantity::new(100_000000)),
@@ -267,8 +319,8 @@ mod test_oracle {
             Price::from_scale(1, 9),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
+
         assert_eq!(
             oracle.calculate_value(Quantity::new(1_000000_000000000),),
             Value::from_integer(2u64)
@@ -283,8 +335,7 @@ mod test_oracle {
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             oracle.calculate_needed_value(Quantity::new(100_000000),),
@@ -339,8 +390,8 @@ mod test_oracle {
             Price::from_scale(1, 9),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
+
         assert_eq!(
             oracle.calculate_needed_value(Quantity::new(1_000000_000000000)),
             Value::from_integer(500000_000000u64)
@@ -355,8 +406,7 @@ mod test_oracle {
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             oracle.calculate_quantity(Value::from_integer(200)),
@@ -384,8 +434,7 @@ mod test_oracle {
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
             0,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_integer(100)),

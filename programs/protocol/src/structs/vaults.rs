@@ -1,7 +1,11 @@
+use crate::core_lib::{errors::LibErrors, Vault};
+
 #[cfg(feature = "anchor")]
 mod zero {
-    use crate::core_lib::Vault;
+    use super::*;
+    use crate::core_lib::structs::Oracle;
     use anchor_lang::prelude::*;
+
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::ops::Range;
     use std::slice::{Iter, IterMut};
@@ -24,6 +28,16 @@ mod zero {
         pub quote_reserve: Pubkey,
         pub base_oracle: Option<Pubkey>,
         pub quote_oracle: Option<Pubkey>,
+    }
+
+    impl VaultKeys {
+        pub fn base_oracle(&self) -> std::result::Result<&Pubkey, LibErrors> {
+            Ok(self.base_oracle.as_ref().ok_or(LibErrors::PubkeyMissing)?)
+        }
+
+        pub fn quote_oracle(&self) -> std::result::Result<&Pubkey, LibErrors> {
+            Ok(self.quote_oracle.as_ref().ok_or(LibErrors::PubkeyMissing)?)
+        }
     }
 
     #[zero_copy]
@@ -49,12 +63,63 @@ mod zero {
         pub arr: VaultsArray,
         pub keys: VaultsKeysArray,
     }
-}
 
+    impl Vaults {
+        fn update_oracle_from_accs(
+            oracle: &mut Oracle,
+            accounts: &[AccountInfo],
+            key: &Pubkey,
+            current_timestamp: i64,
+        ) -> std::result::Result<(), LibErrors> {
+            let acc = accounts
+                .iter()
+                .find(|acc| *acc.key == *key)
+                .ok_or(LibErrors::OracleAccountNotFound)?;
+
+            Ok(oracle.update_from_acc(acc, current_timestamp)?)
+        }
+
+        pub fn refresh_all(
+            &mut self,
+            accounts: &[AccountInfo],
+        ) -> std::result::Result<(), LibErrors> {
+            let indexes = self.arr.indexes();
+            let current_timestamp = Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
+            let current_timestamp_u32: u32 = current_timestamp
+                .try_into()
+                .map_err(|_| LibErrors::ParseError)?;
+
+            for index in indexes {
+                let (vault, vault_keys) = self.vault_with_keys(index as u8)?;
+
+                vault.refresh(current_timestamp_u32)?;
+
+                if let Some(ref mut base_oracle) = vault.oracle {
+                    Self::update_oracle_from_accs(
+                        base_oracle,
+                        accounts,
+                        vault_keys.base_oracle()?,
+                        current_timestamp,
+                    )?;
+                }
+
+                if let Some(ref mut quote_oracle) = vault.quote_oracle {
+                    Self::update_oracle_from_accs(
+                        quote_oracle,
+                        accounts,
+                        vault_keys.quote_oracle()?,
+                        current_timestamp,
+                    )?;
+                }
+            }
+
+            Ok(())
+        }
+    }
+}
 #[cfg(feature = "wasm")]
 mod non_zero {
     use checked_decimal_macro::num_traits::ToPrimitive;
-    use js_sys::Uint8Array;
     use std::{
         ops::Range,
         slice::{Iter, IterMut},
@@ -118,18 +183,43 @@ pub use non_zero::*;
 #[cfg(feature = "anchor")]
 pub use zero::*;
 
-#[cfg(test)]
-mod tests {
-    use crate::structs::Statement;
+impl Vaults {
+    pub fn vault_checked(&self, index: u8) -> Result<&Vault, LibErrors> {
+        Ok(self
+            .arr
+            .get_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
 
-    use super::*;
-    use std::mem::size_of;
+    pub fn keys_checked(&self, index: u8) -> Result<&VaultKeys, LibErrors> {
+        Ok(self
+            .keys
+            .get_checked(index as usize)
+            .ok_or(LibErrors::IndexOutOfBounds)?)
+    }
 
-    #[test]
-    fn size() {
-        println!("{}", size_of::<VaultsArray>());
-        println!("{}", size_of::<VaultsKeysArray>());
-        println!("{}", size_of::<Vaults>());
-        println!("{}", size_of::<Statement>());
+    pub fn keys_checked_mut(&mut self, index: u8) -> Result<&mut VaultKeys, LibErrors> {
+        Ok(self
+            .keys
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::IndexOutOfBounds)?)
+    }
+
+    pub fn vault_checked_mut(&mut self, index: u8) -> Result<&mut Vault, LibErrors> {
+        Ok(self
+            .arr
+            .get_mut_checked(index as usize)
+            .ok_or(LibErrors::NoVaultOnIndex)?)
+    }
+
+    pub fn vault_with_keys(&mut self, index: u8) -> Result<(&mut Vault, &VaultKeys), LibErrors> {
+        let Self { arr, keys, .. } = self;
+
+        Ok((
+            arr.get_mut_checked(index as usize)
+                .ok_or(LibErrors::NoVaultOnIndex)?,
+            keys.get_checked(index as usize)
+                .ok_or(LibErrors::IndexOutOfBounds)?,
+        ))
     }
 }

@@ -1,6 +1,9 @@
-use crate::core_lib::errors::LibErrors;
-use crate::structs::{State, Vaults};
+use crate::{
+    core_lib::decimal::Fraction,
+    structs::{State, Vaults},
+};
 use anchor_lang::prelude::*;
+use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
 pub struct AddStrategy<'info> {
@@ -13,14 +16,18 @@ pub struct AddStrategy<'info> {
 }
 
 impl AddStrategy<'_> {
-    pub fn handler(&mut self, index: u8, lending: bool, swapping: bool) -> anchor_lang::Result<()> {
+    pub fn handler(
+        &mut self,
+        index: u8,
+        lending: bool,
+        swapping: bool,
+        collateral_ratio: u64,
+        liquidation_threshold: u64,
+    ) -> anchor_lang::Result<()> {
         msg!("DotWave: Adding Strategy");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         msg!(
             "here {} {}",
@@ -28,7 +35,13 @@ impl AddStrategy<'_> {
             vault.swap_service().is_ok()
         );
 
-        vault.add_strategy(lending, swapping, false)?;
+        vault.add_strategy(
+            lending,
+            swapping,
+            false,
+            Fraction::new(collateral_ratio),
+            Fraction::new(liquidation_threshold),
+        )?;
 
         Ok(())
     }

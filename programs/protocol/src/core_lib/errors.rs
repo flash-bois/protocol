@@ -25,8 +25,8 @@ mod anchor_one {
         QuoteOracleNone,
         #[msg("Given oracle was enabled before")]
         OracleAlreadyEnabled,
-        #[msg("Price confidence is higher than price")]
-        ConfidenceHigherThanPrice,
+        #[msg("Price confidence is higher than spread limit")]
+        ConfidenceTooHigh,
         #[msg("Strategy does not provide to lend")]
         StrategyNoLend,
         #[msg("Strategy does not provide to swap")]
@@ -63,6 +63,20 @@ mod anchor_one {
         NoStrategyOnIndex,
         #[msg("Service is not valid")]
         InvalidService,
+        #[msg("Parse price account error")]
+        PythAccountParse,
+        #[msg("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
+        PythPriceGet,
+        #[msg("Cannot find desired oracle account in remaining account infos")]
+        OracleAccountNotFound,
+        #[msg("Array is empty")]
+        ArrayEmpty,
+        #[msg("Cannot get time")]
+        TimeGet,
+        #[msg("pubkey should be defined")]
+        PubkeyMissing,
+        #[msg("Given position was not found")]
+        PositionNotFound,
     }
 }
 
@@ -72,7 +86,6 @@ pub use anchor_one::*;
 #[cfg(not(feature = "anchor"))]
 mod anchor_none {
     use thiserror::Error;
-    use wasm_bindgen::JsValue;
 
     #[derive(Debug, Error, PartialEq)]
     pub enum LibErrors {
@@ -96,8 +109,8 @@ mod anchor_none {
         QuoteOracleNone,
         #[error("Given oracle was enabled before")]
         OracleAlreadyEnabled,
-        #[error("Price confidence is higher than price")]
-        ConfidenceHigherThanPrice,
+        #[error("Price confidence is higher than spread limit")]
+        ConfidenceTooHigh,
         #[error("Strategy does not provide to lend")]
         StrategyNoLend,
         #[error("Strategy does not provide to swap")]
@@ -134,13 +147,18 @@ mod anchor_none {
         NoStrategyOnIndex,
         #[error("Service is not valid")]
         InvalidService,
-    }
-
-    impl From<LibErrors> for JsValue {
-        fn from(value: LibErrors) -> Self {
-            let val = format!("{}:{}", value.to_string(), (value as u32).to_string());
-            JsValue::from(val)
-        }
+        #[error("Parse price account error")]
+        PythAccountParse,
+        #[error("Cannot get price within DEFAULT_MAX_ORACLE_AGE")]
+        PythPriceGet,
+        #[error("Array is empty")]
+        ArrayEmpty,
+        #[error("Cannot get time")]
+        TimeGet,
+        #[error("pubkey should be defined")]
+        PubkeyMissing,
+        #[error("Given position was not found")]
+        PositionNotFound,
     }
 }
 

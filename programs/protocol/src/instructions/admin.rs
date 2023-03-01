@@ -32,10 +32,7 @@ impl Admin<'_> {
         msg!("DotWave: Force override oracle");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         let oracle = match base {
             true => vault.oracle_mut(),
@@ -79,23 +76,18 @@ impl Admin<'_> {
         index: u8,
         max_utilization: u32,
         max_total_borrow: u64,
+        initial_fee_time: u32,
     ) -> anchor_lang::Result<()> {
         msg!("DotWave: Enabling lending");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         vault.enable_lending(
             FeeCurve::default(),
             Utilization::from_decimal(Fraction::new(max_utilization as u64)),
             Quantity::new(max_total_borrow),
-            Clock::get()?
-                .unix_timestamp
-                .try_into()
-                .map_err(|_| LibErrors::ParseError)?,
+            initial_fee_time,
         )?;
 
         Ok(())
@@ -110,10 +102,7 @@ impl Admin<'_> {
         msg!("DotWave: Enabling swapping");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(index as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(index)?;
 
         vault.enable_swapping(
             FeeCurve::default(),
@@ -137,10 +126,7 @@ impl Admin<'_> {
         msg!("DotWave: Modify fee curve");
 
         let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults
-            .arr
-            .get_mut(vault as usize)
-            .ok_or(LibErrors::NoVaultOnIndex)?;
+        let vault = vaults.vault_checked_mut(vault)?;
 
         let curve = match (service, base) {
             (1, true) => vault.lend_service()?.fee_curve(),

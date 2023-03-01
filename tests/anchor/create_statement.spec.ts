@@ -64,17 +64,17 @@ describe('statement for user', () => {
 
     await sleep(5000)
 
-    console.log(program.account.statement.size)
+    //console.log(program.account.statement.size) //assert?
     const statement_account = await program.account.statement.fetch(statement_address)
-    console.log(statement_account)
+    // console.log(statement_account) //assert?
     // assert.equal(statement_account.owner.toString(), user.publicKey.toString())
 
     let account_info = (await connection.getAccountInfo(statement_address))?.data
-    console.log(account_info?.toString('hex'))
+    //console.log(account_info?.toString('hex')) //assert?
 
     if (account_info) {
       const state = StatementAccount.load(account_info)
-      console.log(state.get_bump())
+      //console.log(state.get_bump()) //assert?
     }
   })
 })

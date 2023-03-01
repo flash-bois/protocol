@@ -59,6 +59,7 @@ impl InitVault<'_> {
             .arr
             .add(created_vault)
             .map_err(|_| LibErrors::AddVault)?;
+
         vaults.keys.add(keys).map_err(|_| LibErrors::AddKeys)?;
 
         Ok(())
