@@ -1,29 +1,27 @@
-use crate::{
-    core_lib::{
-        decimal::{Decimal, Price},
-        errors::LibErrors,
-        structs::Oracle,
-    },
-    structs::VaultsAccount,
+use super::vault::VaultsAccount;
+use crate::core_lib::{
+    decimal::{Decimal, Price},
+    errors::LibErrors,
+    structs::Oracle,
 };
 
 use wasm_bindgen::prelude::*;
 
 impl VaultsAccount {
     pub fn oracle(&self, index: u8) -> Result<&Oracle, LibErrors> {
-        Ok(self.account.vault_checked(index)?.oracle()?)
+        Ok(self.vault_checked(index)?.oracle()?)
     }
 
     pub fn quote_oracle(&self, index: u8) -> Result<&Oracle, LibErrors> {
-        Ok(self.account.vault_checked(index)?.quote_oracle()?)
+        Ok(self.vault_checked(index)?.quote_oracle()?)
     }
 
     pub fn oracle_mut(&mut self, index: u8) -> Result<&mut Oracle, LibErrors> {
-        Ok(self.account.vault_checked_mut(index)?.oracle_mut()?)
+        Ok(self.vault_checked_mut(index)?.oracle_mut()?)
     }
 
     pub fn quote_oracle_mut(&mut self, index: u8) -> Result<&mut Oracle, LibErrors> {
-        Ok(self.account.vault_checked_mut(index)?.quote_oracle_mut()?)
+        Ok(self.vault_checked_mut(index)?.quote_oracle_mut()?)
     }
 }
 

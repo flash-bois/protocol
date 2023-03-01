@@ -1,6 +1,8 @@
+use crate::core_lib::user::UserStatement;
+
 #[cfg(feature = "anchor")]
 mod zero {
-    use crate::core_lib::user::UserStatement;
+    use super::UserStatement;
     use anchor_lang::prelude::*;
 
     #[account(zero_copy)]
@@ -15,10 +17,7 @@ mod zero {
 
 #[cfg(feature = "wasm")]
 mod non_zero {
-    use crate::core_lib::user::UserStatement;
-    use crate::ZeroCopyDecoder;
-    use js_sys::Uint8Array;
-    use wasm_bindgen::prelude::*;
+    use super::UserStatement;
 
     #[repr(C)]
     #[derive(Debug, Default, Clone, Copy)]
@@ -32,39 +31,9 @@ mod non_zero {
     unsafe impl bytemuck::Pod for Statement {}
     #[automatically_derived]
     unsafe impl bytemuck::Zeroable for Statement {}
-
-    #[wasm_bindgen]
-    pub struct StatementAccount {
-        account: Statement,
-    }
-
-    #[wasm_bindgen]
-    impl StatementAccount {
-        #[wasm_bindgen]
-        pub fn load(account_info: &Uint8Array) -> Self {
-            let v = account_info.to_vec();
-            let account = *ZeroCopyDecoder::decode_account_info::<Statement>(&v);
-            Self { account }
-        }
-
-        #[wasm_bindgen]
-        pub fn get_bump(&self) -> u8 {
-            self.account.bump
-        }
-    }
 }
 
 #[cfg(feature = "wasm")]
-pub use non_zero::{Statement, StatementAccount};
+pub use non_zero::Statement;
 #[cfg(feature = "anchor")]
 pub use zero::Statement;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn tt() {
-        println!("{}", std::mem::size_of::<Statement>())
-    }
-}

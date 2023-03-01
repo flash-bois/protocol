@@ -119,15 +119,13 @@ mod zero {
 }
 #[cfg(feature = "wasm")]
 mod non_zero {
+    use crate::{core_lib::vault::Vault, wasm_wrapper::to_buffer};
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::{
         ops::Range,
         slice::{Iter, IterMut},
     };
     use vec_macro::SafeArray;
-    use wasm_bindgen::prelude::*;
-
-    use crate::core_lib::vault::Vault;
 
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -138,7 +136,7 @@ mod non_zero {
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Clone, Copy)]
     pub struct VaultKeys {
-        pub base_token: [u8; 32],
+        pub base_token: [u8; 32], // buffer
         pub quote_token: [u8; 32],
         pub base_reserve: [u8; 32],
         pub quote_reserve: [u8; 32],
@@ -167,14 +165,9 @@ mod non_zero {
         pub arr: VaultsArray,
         pub keys: VaultsKeysArray,
     }
+
     unsafe impl bytemuck::Pod for Vaults {}
     unsafe impl bytemuck::Zeroable for Vaults {}
-
-    #[wasm_bindgen]
-    #[derive(Clone)]
-    pub struct VaultsAccount {
-        pub(crate) account: Vaults,
-    }
 }
 
 #[cfg(feature = "wasm")]

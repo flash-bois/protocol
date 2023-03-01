@@ -114,6 +114,14 @@ describe('Init vault', () => {
 
     if (vault_account_info) {
       const vaultsAccount = VaultsAccount.load(vault_account_info)
+      const keys = vaultsAccount.base_token_with_id();
+
+
+      assert.equal(
+        Buffer.from(keys[1].key).toString('hex'),
+        base.toBuffer().toString('hex')
+      )
+
       assert.equal(vaultsAccount.vaults_len(), 2)
 
       assert.equal(
