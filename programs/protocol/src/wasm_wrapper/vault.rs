@@ -52,8 +52,9 @@ impl VaultsAccount {
 }
 
 #[wasm_bindgen(getter_with_clone)]
-pub struct BaseKeyWithId {
-    pub key: Uint8Array,
+pub struct VaultsKeysWithId {
+    pub base_key: Uint8Array,
+    pub quote_key: Uint8Array,
     pub index: u8,
 }
 
@@ -77,14 +78,16 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn base_token_with_id(&self) -> Result<Array, JsError> {
+    pub fn vaults_keys_with_id(&self) -> Result<Array, JsError> {
         let arr = Array::new();
 
         for index in self.arr.indexes() {
             let base_key = to_buffer(&self.keys_checked(index as u8)?.base_token);
+            let quote_key = to_buffer(&self.keys_checked(index as u8)?.quote_token);
 
-            arr.push(&JsValue::from(BaseKeyWithId {
-                key: base_key,
+            arr.push(&JsValue::from(VaultsKeysWithId {
+                base_key,
+                quote_key,
                 index: index as u8,
             }));
         }
