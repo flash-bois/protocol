@@ -1,5 +1,5 @@
 import * as anchor from '@coral-xyz/anchor'
-import { BN, Program } from '@coral-xyz/anchor'
+import { BN, Program, stateDiscriminator } from '@coral-xyz/anchor'
 import { createAccount, createMint, getAccount, mintTo, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Connection,
@@ -12,6 +12,70 @@ import {
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import { STATE_SEED } from '../../microSdk'
+import { Oracle } from '../../target/types/oracle'
+
+export type StateWithVaults = {
+  state: PublicKey
+  vaults: PublicKey
+}
+
+export interface ICreateStateWithVaults {
+  program: Program<Protocol>
+  admin: Keypair
+}
+
+export interface IAddVault {
+  program: Program<Protocol>
+  state: PublicKey
+  vaults: PublicKey
+  minter: PublicKey
+  admin: Keypair
+}
+
+export type VaultAccounts = {
+  base: PublicKey
+  quote: PublicKey
+  reserveBase: PublicKey
+  reserveQuote: PublicKey
+}
+
+export interface IEnableOracle {
+  program: Program<Protocol>
+  oracle_program: Program<Oracle>
+  vault: number
+  base: boolean
+  decimals: number
+  skip_init: boolean
+  admin: Keypair
+  price: BN
+  conf: BN
+  exp: number
+  state: PublicKey
+  vaults: PublicKey
+}
+
+export type OracleKey = PublicKey
+
+export type OracleKeys = {
+  base_oracle: PublicKey
+  quote_oracle: PublicKey
+}
+
+export type VaultAccountsWithOracles = VaultAccounts & OracleKeys
+
+export interface ICreateStrategy {
+  program: Program<Protocol>
+  vault: number
+  lend: boolean
+  swap: boolean
+  collateral_ratio: BN
+  liquidation_threshold: BN
+  admin: Keypair
+  state: PublicKey
+  vaults: PublicKey
+}
+
+/// MEINE
 
 export interface DotWaveAccounts {
   state: PublicKey
@@ -169,7 +233,7 @@ export async function initAccounts(
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 
-  const sig = await program.methods
+  await program.methods
     .initVault()
     .accounts({
       state,
@@ -246,12 +310,147 @@ export async function enableOracles(
     .rpc({ skipPreflight: true })
 }
 
-export async function createStrategy(program, accounts, admin) {
-  await program.methods
-    .addStrategy(0, false, true)
-    .accounts(accounts)
+export async function createStrategy(params: ICreateStrategy) {
+  const {
+    admin,
+    collateral_ratio,
+    lend,
+    liquidation_threshold,
+    program,
+    state,
+    swap,
+    vault,
+    vaults
+  } = params
+
+  const sig = await program.methods
+    .addStrategy(vault, lend, swap, collateral_ratio, liquidation_threshold)
+    .accounts({ admin: admin.publicKey, state, vaults })
     .signers([admin])
     .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
+export async function enableOracle(params: IEnableOracle): Promise<OracleKey> {
+  const {
+    admin,
+    vaults,
+    state,
+    base,
+    decimals,
+    skip_init,
+    vault,
+    oracle_program,
+    program,
+    conf,
+    exp,
+    price
+  } = params
+  const oracle = Keypair.generate()
+  const o_connection = oracle_program.provider.connection
+  const connection = program.provider.connection
+
+  const sig = await oracle_program.methods
+    .set(price, exp, conf)
+    .preInstructions([
+      SystemProgram.createAccount({
+        fromPubkey: admin.publicKey,
+        newAccountPubkey: oracle.publicKey,
+        space: 3312,
+        lamports: await o_connection.getMinimumBalanceForRentExemption(3312),
+        programId: oracle_program.programId
+      })
+    ])
+    .accounts({ price: oracle.publicKey, signer: admin.publicKey })
+    .signers([oracle, admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(o_connection, sig)
+
+  const enable_sig = await program.methods
+    .enableOracle(vault, decimals, base, skip_init)
+    .accounts({
+      priceFeed: oracle.publicKey,
+      admin: admin.publicKey,
+      state,
+      vaults
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(connection, enable_sig)
+
+  return oracle.publicKey
+}
+
+export async function createStateWithVaults(
+  params: ICreateStateWithVaults
+): Promise<StateWithVaults> {
+  const { admin, program } = params
+
+  const vaults = Keypair.generate()
+  const connection = program.provider.connection
+
+  const [state, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
+    program.programId
+  )
+
+  const sig = await program.methods
+    .createState()
+    .accounts({
+      admin: admin.publicKey,
+      state,
+      rent: SYSVAR_RENT_PUBKEY,
+      systemProgram: SystemProgram.programId,
+      vaults: vaults.publicKey
+    })
+    .preInstructions([
+      SystemProgram.createAccount({
+        fromPubkey: admin.publicKey,
+        newAccountPubkey: vaults.publicKey,
+        space: VaultsAccount.size(),
+        lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
+        programId: program.programId
+      })
+    ])
+    .signers([admin, vaults])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(connection, sig)
+
+  return { vaults: vaults.publicKey, state }
+}
+
+export async function addVault(params: IAddVault): Promise<VaultAccounts> {
+  const { admin, minter, program, state, vaults } = params
+
+  const connection = program.provider.connection
+  const base = await createMint(connection, admin, minter, null, 6)
+  const quote = await createMint(connection, admin, minter, null, 6)
+  const reserveBase = Keypair.generate()
+  const reserveQuote = Keypair.generate()
+
+  const sig = await program.methods
+    .initVault()
+    .accounts({
+      state,
+      vaults,
+      base,
+      quote,
+      reserveBase: reserveBase.publicKey,
+      reserveQuote: reserveQuote.publicKey,
+      admin: admin.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId
+    })
+    .signers([admin, reserveBase, reserveQuote])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(connection, sig)
+
+  return { base, quote, reserveBase: reserveBase.publicKey, reserveQuote: reserveQuote.publicKey }
 }
 
 export async function tryFetch(connection: Connection, address: PublicKey): Promise<Buffer> {
