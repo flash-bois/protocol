@@ -2,7 +2,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert, use } from 'chai'
-import { price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
+import { DepositAmounts, price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import {
   createMint,
@@ -100,6 +100,15 @@ describe('Services', () => {
       })
       .signers([user])
       .rpc({ skipPreflight: true })
+  })
+
+
+  it('calculates deposit', async () => {
+    const account_info = (await connection.getAccountInfo(vaults))?.data
+    const vaults_acc = VaultsAccount.load(account_info as Buffer)
+
+    assert.equal(vaults_acc.deposit(0, 0, 200000n, true).base, 200000n)
+    assert.equal(vaults_acc.deposit(0, 0, 200000n, true).quote, 400000n)
   })
 
   it('deposit', async () => {
