@@ -1,4 +1,4 @@
-use checked_decimal_macro::{BetweenDecimals, Factories};
+use checked_decimal_macro::{BetweenDecimals, Decimal, Factories};
 
 use crate::core_lib::decimal::{Balances, Fraction, Quantity};
 use crate::core_lib::errors::LibErrors;
@@ -149,6 +149,9 @@ impl Swap {
         base_oracle: &Oracle,
         quote_oracle: &Oracle,
     ) -> Result<Quantity, LibErrors> {
+        if self.available.quote == Quantity::new(0) {
+            return Err(LibErrors::NotEnoughQuoteQuantity); // has to be checked before calculating proportion
+        }
         let proportion_before = self.get_proportion(base_oracle, quote_oracle);
         let swap_value = base_oracle.calculate_value(base_quantity);
         let quote_quantity = quote_oracle.calculate_quantity(swap_value);
