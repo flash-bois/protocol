@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "programs/protocol"
+    "programs/protocol",
+    "programs/oracle"
 ]
 
 [profile.release]

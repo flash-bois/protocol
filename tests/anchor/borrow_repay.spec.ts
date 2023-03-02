@@ -1,9 +1,18 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program, BN } from '@coral-xyz/anchor'
-import { ComputeBudgetInstruction, ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import {
+  ComputeBudgetInstruction,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  Transaction
+} from '@solana/web3.js'
 import { assert } from 'chai'
 import { StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
+import { Oracle } from '../../target/types/oracle'
 import {
   createMint,
   createAssociatedTokenAccount,
@@ -12,21 +21,39 @@ import {
   mintTo,
   getAccount
 } from '@solana/spl-token'
-import { AdminAccounts, DotWaveAccounts, createAccounts, enableOracles, initAccounts, waitFor } from '../utils/utils'
+import {
+  AdminAccounts,
+  DotWaveAccounts,
+  createAccounts,
+  VaultAccounts,
+  enableOracles,
+  initAccounts,
+  waitFor,
+  StateWithVaults,
+  createStateWithVaults,
+  addVault,
+  VaultAccountsWithOracles,
+  enableOracle,
+  createStrategy
+} from '../utils/utils'
 import { STATEMENT_SEED } from '../../microSdk'
-
 
 const STATE_SEED = 'state'
 const provider = anchor.AnchorProvider.env()
 const program = anchor.workspace.Protocol as Program<Protocol>
+const oracle_program = anchor.workspace.Oracle as Program<Oracle>
 
 const minter = Keypair.generate()
 const admin = Keypair.generate()
 const user = Keypair.generate()
+const base_oracle = Keypair.generate()
+const quote_oracle = Keypair.generate()
 const connection = program.provider.connection
-let protocolAccounts: DotWaveAccounts
-let state: PublicKey
-let vaults: PublicKey
+
+let state_with_vaults: StateWithVaults
+let first_vault_accounts: VaultAccounts
+let second_vault_accounts: VaultAccounts
+
 let accounts: AdminAccounts
 let accountBase: PublicKey
 let accountQuote: PublicKey
@@ -38,34 +65,109 @@ const [statement_address, bump] = PublicKey.findProgramAddressSync(
 
 anchor.setProvider(provider)
 
-
-describe('Prepare vault for borrow', () => {
+describe('Prepare 2 vault for borrow', () => {
   before(async () => {
-    const sig = await connection.requestAirdrop(admin.publicKey, 1000000000)
+    const sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
     await waitFor(connection, sig)
 
     const user_sig = await connection.requestAirdrop(user.publicKey, 1000000000)
     await waitFor(connection, user_sig)
 
-    protocolAccounts = await initAccounts(program, admin, minter)
-    const { state: g_state, vaults: g_vaults } = protocolAccounts
+    const { state, vaults } = (state_with_vaults = await createStateWithVaults({ admin, program }))
 
-    accounts = {
-      state: g_state,
-      vaults: g_vaults,
-      admin: admin.publicKey
-    };
+    first_vault_accounts = await addVault({
+      admin,
+      minter: minter.publicKey,
+      program,
+      state,
+      vaults
+    })
+    second_vault_accounts = await addVault({
+      admin,
+      minter: minter.publicKey,
+      program,
+      state,
+      vaults
+    })
 
-    state = g_state
-    vaults = g_vaults
+  })
 
-    await enableOracles(program, 0, accounts, admin)
+  it('create local oracle and enable it as base one', async () => {
+    const { state, vaults } = state_with_vaults
+
+    const base_oracle = await enableOracle({
+      vault: 0,
+      base: true,
+      decimals: 6,
+      skip_init: false,
+      price: new BN(200000000),
+      exp: -8,
+      conf: new BN(200000),
+      oracle_program,
+      program,
+      state,
+      vaults,
+      admin
+    })
+
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+      assert.equal(vaultsAccount.vaults_len(), 2)
+      assert.equal(vaultsAccount.base_oracle_enabled(0), true)
+      assert.equal(
+        Buffer.from(vaultsAccount.oracle_base(0)).toString('hex'),
+        base_oracle.toBuffer().toString('hex')
+      )
+      assert.equal(vaultsAccount.get_price(0), 2000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 2000000n)
+    }
+  })
+
+  it('create local oracle and enable it as quote one', async () => {
+    const { state, vaults } = state_with_vaults
+
+    const quote_oracle = await enableOracle({
+      vault: 0,
+      base: false,
+      decimals: 6,
+      skip_init: false,
+      price: new BN(100000000),
+      exp: -8,
+      conf: new BN(100000),
+      oracle_program,
+      program,
+      state,
+      vaults,
+      admin
+    })
+
+    let data = (await connection.getAccountInfo(vaults))?.data
+    assert.notEqual(data, undefined)
+
+    if (data) {
+      const vaultsAccount = VaultsAccount.load(data)
+      assert.equal(vaultsAccount.quote_oracle_enabled(0), true)
+      assert.equal(
+        Buffer.from(vaultsAccount.oracle_quote(0)).toString('hex'),
+        quote_oracle.toBuffer().toString('hex')
+      )
+      assert.equal(vaultsAccount.get_price_quote(0), 1000000000n)
+      assert.equal(vaultsAccount.get_confidence_quote(0), 1000000n)
+    }
   })
 
   it('Enables lend without open fee', async () => {
+    const { state, vaults } = state_with_vaults
+
     let sig = await program.methods
       .enableLending(0, 800000, new BN(10_000_000_000), 0)
-      .accounts(accounts)
+      .accounts({
+        admin: admin.publicKey,
+        ...state_with_vaults
+      })
       .signers([admin])
       .rpc({ skipPreflight: true })
 
@@ -73,50 +175,36 @@ describe('Prepare vault for borrow', () => {
   })
 
   it('Adds lend strategy', async () => {
-    let sig = await program.methods
-      .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
-      .accounts(accounts)
-      .signers([admin])
-      .rpc({ skipPreflight: true })
+    const { state, vaults } = state_with_vaults
 
-    await waitFor(connection, sig)
-  })
-
-  it('Overrides base oracle', async () => {
-    let sig = await program.methods
-      .forceOverrideOracle(0, true, 2000, 2, -3, 100)
-      .accountsStrict(accounts)
-      .signers([admin])
-      .rpc({ skipPreflight: true })
-
-    await waitFor(connection, sig)
-  })
-
-  it('Overrides quote oracle', async () => {
-    let sig = await program.methods
-      .forceOverrideOracle(0, false, 1000, 2, -3, 100)
-      .accountsStrict(accounts)
-      .signers([admin])
-      .rpc({ skipPreflight: true })
-
-    await waitFor(connection, sig)
+    await createStrategy({
+      admin,
+      collateral_ratio: new BN(1000000),
+      liquidation_threshold: new BN(1000000),
+      lend: true,
+      swap: false,
+      program,
+      state,
+      vaults,
+      vault: 0
+    })
   })
 
   it('Set lend fee', async () => {
     let sig = await program.methods
       .modifyFeeCurve(0, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
-      .accounts(accounts)
+    .accounts({
+      admin: admin.publicKey,
+      ...state_with_vaults
+    })
       .signers([admin])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
   })
-
 })
 
 describe('Prepare user for borrow ', () => {
-
-
   it('Creates statement', async () => {
     let sig = await program.methods
       .createStatement()
@@ -136,21 +224,26 @@ describe('Prepare user for borrow ', () => {
     accountBase = await createAssociatedTokenAccount(
       connection,
       user,
-      protocolAccounts.base,
+      first_vault_accounts.base,
       user.publicKey
     )
 
     accountQuote = await createAssociatedTokenAccount(
       connection,
       user,
-      protocolAccounts.quote,
+      first_vault_accounts.quote,
       user.publicKey
     )
 
-    await Promise.all([mintTo(connection, user, protocolAccounts.base, accountBase, minter, 1e6), mintTo(connection, user, protocolAccounts.quote, accountQuote, minter, 1e6)])
+    await Promise.all([
+      mintTo(connection, user, first_vault_accounts.base, accountBase, minter, 1e6),
+      mintTo(connection, user, first_vault_accounts.quote, accountQuote, minter, 1e6)
+    ])
   })
 
   it('deposit', async () => {
+    const { state, vaults } = state_with_vaults
+
     let sig = await program.methods
       .deposit(0, 0, new BN(200000), true)
       .accountsStrict({
@@ -160,8 +253,8 @@ describe('Prepare user for borrow ', () => {
         accountQuote,
         statement: statement_address,
         signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
-        reserveQuote: protocolAccounts.reserveQuote,
+        reserveBase: first_vault_accounts.reserveBase,
+        reserveQuote: first_vault_accounts.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
@@ -171,13 +264,15 @@ describe('Prepare user for borrow ', () => {
 
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
-    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 200000n)
-    assert.equal((await getAccount(connection, protocolAccounts.reserveQuote)).amount, 400000n)
+    assert.equal((await getAccount(connection, first_vault_accounts.reserveBase)).amount, 200000n)
+    assert.equal((await getAccount(connection, first_vault_accounts.reserveQuote)).amount, 400000n)
   })
 })
 
 describe('User borrow and repays', () => {
   it('borrows 100000 token units', async () => {
+    const { state, vaults } = state_with_vaults
+
     let sig = await program.methods
       .borrow(0, new BN(100000))
       .accountsStrict({
@@ -186,22 +281,26 @@ describe('User borrow and repays', () => {
         accountBase,
         statement: statement_address,
         signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
+        reserveBase: first_vault_accounts.reserveBase,
         tokenProgram: TOKEN_PROGRAM_ID
       })
-      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({
-        units: 1000000
-      })])
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({
+          units: 1000000
+        })
+      ])
       .signers([user])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
 
     assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
-    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 100000n)
+    assert.equal((await getAccount(connection, first_vault_accounts.reserveBase)).amount, 100000n)
   })
 
   it('repays 100000 token units', async () => {
+    const { state, vaults } = state_with_vaults
+
     let sig = await program.methods
       .repay(0, new BN(100000))
       .accountsStrict({
@@ -210,23 +309,20 @@ describe('User borrow and repays', () => {
         accountBase,
         statement: statement_address,
         signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
+        reserveBase: first_vault_accounts.reserveBase,
         tokenProgram: TOKEN_PROGRAM_ID
       })
-      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({
-        units: 1000000
-      })])
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({
+          units: 1000000
+        })
+      ])
       .signers([user])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
 
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
-    assert.equal((await getAccount(connection, protocolAccounts.reserveBase)).amount, 200000n)
-
+    assert.equal((await getAccount(connection, first_vault_accounts.reserveBase)).amount, 200000n)
   })
 })
-
-
-
-
