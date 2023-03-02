@@ -6,6 +6,7 @@ mod strategy;
 mod swap;
 mod utils;
 mod vault;
+mod deposit;
 
 pub use oracle::*;
 pub use state::*;
@@ -14,3 +15,4 @@ pub use strategy::*;
 pub use swap::*;
 pub use utils::*;
 pub use vault::*;
+pub use deposit::*;

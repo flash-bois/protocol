@@ -33,6 +33,7 @@ impl StatementAccount {
 
     #[wasm_bindgen]
     pub fn get_bump(&self) -> u8 {
-        self.account.bump
+        self.bump
     }
+
 }

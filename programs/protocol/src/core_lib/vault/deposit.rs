@@ -41,7 +41,7 @@ impl Vault {
             .ok_or(LibErrors::StrategyMissing)
     }
 
-    fn get_opposite_quantity(
+    pub fn get_opposite_quantity(
         &self,
         opposite_oracle: &Oracle,
         opposite_quantity: Quantity,
