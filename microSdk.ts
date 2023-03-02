@@ -30,6 +30,10 @@ export const admin = Keypair.fromSecretKey(
   )
 )
 
+// export const vaults = new PublicKey('6SSMHiwvK8ra5Y7Z4p5gx3igNGjT4M9NVHXL62M8W4cj')
+export const SOL_ORACLE = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
+export const ETH_ORACLE = new PublicKey('EdVCmQ9FSPcVe5YySXDPCRmc8aDQLKJ9xvYBMZPie1Vw')
+
 // export const moderator = Keypair.fromSecretKey(
 //   Uint8Array.from(
 //     Buffer.from(

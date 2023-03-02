@@ -5,12 +5,15 @@ skip-lint = false
 [workspace]
 members = [
     "programs/protocol",
+    "programs/oracle"
 ]
 
 [programs.localnet]
 protocol = "3EoFa6QYUQW1pgjoMbhhmERypWrf5dYfTYiJPMbnKNn9"
+oracle = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 [programs.devnet]
 protocol = "3EoFa6QYUQW1pgjoMbhhmERypWrf5dYfTYiJPMbnKNn9"
+oracle = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [registry]
 url = "https://api.apr.dev"

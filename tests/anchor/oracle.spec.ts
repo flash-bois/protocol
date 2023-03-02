@@ -4,6 +4,7 @@ import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } fr
 import { assert } from 'chai'
 import { price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
+import { Oracle } from '../../target/types/oracle'
 import {
   createMint,
   createAssociatedTokenAccount,
@@ -11,15 +12,18 @@ import {
   createAccount
 } from '@solana/spl-token'
 import { createAccounts, initAccounts, sleep, waitFor } from '../utils/utils'
+import { SOL_ORACLE } from '../../microSdk'
+import { BN } from 'bn.js'
 
 const STATE_SEED = 'state'
 
 describe('Enable Oracle', () => {
   const provider = anchor.AnchorProvider.env()
   const program = anchor.workspace.Protocol as Program<Protocol>
-
+  const oracle_program = anchor.workspace.Oracle as Program<Oracle>
   const minter = Keypair.generate()
   const admin = Keypair.generate()
+  const oracle = Keypair.generate()
   const user = Keypair.generate()
 
   const connection = program.provider.connection
@@ -50,16 +54,37 @@ describe('Enable Oracle', () => {
     }
   })
 
+
+
+  it('sets local oracle  22.0 SOL, -8 exp', async () => {
+    const sig = await oracle_program.methods
+      .set(new BN(2200000000), -8, new BN(11000000))
+      .preInstructions([
+        SystemProgram.createAccount({
+          fromPubkey: admin.publicKey,
+          newAccountPubkey: oracle.publicKey,
+          space: 3312,
+          lamports: await connection.getMinimumBalanceForRentExemption(3312),
+          programId: oracle_program.programId
+        })
+      ])
+      .accounts({ price: oracle.publicKey, signer: admin.publicKey })
+      .signers([oracle, admin])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(oracle_program.provider.connection, sig)
+  })
+
+
   it('enable base oracle', async () => {
-    const priceFeed = Keypair.generate().publicKey
 
     const sig = await program.methods
-      .enableOracle(0, 6, true, true)
+      .enableOracle(0, 6, true, false)
       .accounts({
         state,
         vaults,
         admin: admin.publicKey,
-        priceFeed
+        priceFeed: oracle.publicKey
       })
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -76,21 +101,34 @@ describe('Enable Oracle', () => {
       assert.equal(vaultsAccount.quote_oracle_enabled(0), false)
       assert.equal(
         Buffer.from(vaultsAccount.oracle_base(0)).toString('hex'),
-        priceFeed.toBuffer().toString('hex')
+        oracle.publicKey.toBuffer().toString('hex')
       )
+      assert.equal(vaultsAccount.get_price(0), 22000000000n)
+      assert.equal(vaultsAccount.get_confidence(0), 110000000n)
     }
   })
 
-  it('enable base oracle', async () => {
-    const quotePriceFeed = Keypair.generate().publicKey
+
+  it('sets local oracle  2220000.0 (6 dec) , 4 exp', async () => {
+    const sig = await oracle_program.methods
+      .set(new BN(222), 4, new BN(1))
+      .accounts({ price: oracle.publicKey, signer: admin.publicKey })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(oracle_program.provider.connection, sig)
+  })
+
+  it('enable quote oracle', async () => {
+    // const quotePriceFeed = Keypair.generate().publicKey
 
     const otherSig = await program.methods
-      .enableOracle(0, 6, false, true)
+      .enableOracle(0, 6, false, false)
       .accounts({
         state,
         vaults,
         admin: admin.publicKey,
-        priceFeed: quotePriceFeed
+        priceFeed: oracle.publicKey
       })
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -107,8 +145,10 @@ describe('Enable Oracle', () => {
       assert.equal(vaultsAccount.quote_oracle_enabled(0), true)
       assert.equal(
         Buffer.from(vaultsAccount.oracle_quote(0)).toString('hex'),
-        quotePriceFeed.toBuffer().toString('hex')
+        oracle.publicKey.toBuffer().toString('hex')
       )
+      assert.equal(vaultsAccount.get_price_quote(0), 2220000000000000n)
+      assert.equal(vaultsAccount.get_confidence_quote(0), 10000000000000n)
     }
   })
 
