@@ -6,8 +6,8 @@ import { Protocol } from '../../target/types/protocol'
 import { StateAccount, StatementAccount } from '../../pkg/protocol'
 import { STATEMENT_SEED } from '../../microSdk'
 
-
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 
 describe('statement for user', () => {
   const provider = anchor.AnchorProvider.env()

@@ -1,9 +1,7 @@
-use crate::{
-    core_lib::{
-        decimal::{Decimal, Quantity},
-        services::ServiceUpdate,
-    },
-    structs::VaultsAccount,
+use super::vault::VaultsAccount;
+use crate::core_lib::{
+    decimal::{Decimal, Quantity},
+    services::ServiceUpdate,
 };
 use wasm_bindgen::prelude::*;
 
@@ -18,7 +16,7 @@ impl VaultsAccount {
         by_amount_out: bool,
         now: u32,
     ) -> Result<i64, JsError> {
-        let mut vault = self.account.vault_checked_mut(vault)?.clone();
+        let mut vault = self.vault_checked_mut(vault)?.clone();
 
         let quantity = Quantity::new(amount);
 
@@ -36,7 +34,7 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn liquidity(&self, vault: u8, base: bool) -> Result<u64, JsError> {
-        let vault = self.account.vault_checked(vault)?;
+        let vault = self.vault_checked(vault)?;
 
         let available = vault.swap_service_not_mut()?.available();
 
