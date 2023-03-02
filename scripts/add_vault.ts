@@ -12,7 +12,7 @@ import {
 import { assert } from 'chai'
 import { StateAccount, VaultsAccount } from '../pkg/protocol'
 import { Protocol } from '../target/types/protocol'
-import { STATE_SEED, admin, vaults, minter } from '../microSdk'
+import { STATE_SEED, admin, minter } from '../microSdk'
 import { createMint, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 
 anchor.setProvider(
@@ -38,7 +38,15 @@ const [state_address, bump] = PublicKey.findProgramAddressSync(
 const main = async () => {
   console.log(connection)
 
-  const index = 0
+  const fetchedState = await program.account.state.fetch(state_address)
+  const vaults = fetchedState.vaultsAcc
+
+  const accountInfo = await connection.getAccountInfo(vaults)
+  const vaultsAccount = VaultsAccount.load(accountInfo!.data)
+  const index = vaultsAccount.vaults_len()
+
+  console.log(`index: ${index}`)
+  assert.equal(index, 0)
 
   const base = await createMint(connection, admin, minter.publicKey, null, 6)
   const quote = await createMint(connection, admin, minter.publicKey, null, 6)
@@ -72,14 +80,14 @@ const main = async () => {
         .enableOracle(index, 6, true, true)
         .accountsStrict({
           ...accounts,
-          priceFeed: new PublicKey('H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG')
+          priceFeed: new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
         })
         .instruction(),
       await program.methods
         .enableOracle(index, 6, false, true)
         .accountsStrict({
           ...accounts,
-          priceFeed: new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD')
+          priceFeed: new PublicKey('5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7')
         })
         .instruction(),
       await program.methods
@@ -102,6 +110,16 @@ const main = async () => {
         .instruction(),
       await program.methods
         .addStrategy(index, true, false, new BN(1000_000), new BN(1000_000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .modifyFeeCurve(0, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(1000))
         .accounts(accounts)
         .signers([admin])
         .instruction()

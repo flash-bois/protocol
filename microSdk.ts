@@ -30,8 +30,6 @@ export const admin = Keypair.fromSecretKey(
   )
 )
 
-export const vaults = new PublicKey('6SSMHiwvK8ra5Y7Z4p5gx3igNGjT4M9NVHXL62M8W4cj')
-
 // export const moderator = Keypair.fromSecretKey(
 //   Uint8Array.from(
 //     Buffer.from(
