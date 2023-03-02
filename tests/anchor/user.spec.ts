@@ -2,7 +2,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
 import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert, use } from 'chai'
-import { DepositAmounts, price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
+import { DepositAmounts, price_denominator, StateAccount, StatementAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import {
   createMint,
@@ -44,6 +44,8 @@ describe('Services', () => {
   let state: PublicKey
   let vaults: PublicKey
   let accounts: AdminAccounts
+  let vaults_acc: VaultsAccount
+  let statement_acc: StatementAccount
   let protocolAccounts: DotWaveAccounts
   let accountBase: PublicKey
   let accountQuote: PublicKey
@@ -105,7 +107,7 @@ describe('Services', () => {
 
   it('calculates deposit', async () => {
     const account_info = (await connection.getAccountInfo(vaults))?.data
-    const vaults_acc = VaultsAccount.load(account_info as Buffer)
+    vaults_acc = VaultsAccount.load(account_info as Buffer)
 
     assert.equal(vaults_acc.deposit(0, 0, 200000n, true).base, 200000n)
     assert.equal(vaults_acc.deposit(0, 0, 200000n, true).quote, 400000n)
@@ -133,6 +135,15 @@ describe('Services', () => {
 
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
+  })
+
+  it('gives max borrow user value', async () => { 
+    const account_info = (await connection.getAccountInfo(statement))?.data
+
+    statement_acc = StatementAccount.load(account_info as Buffer)
+    console.log(statement_acc.refresh(vaults_acc))
+
+    console.log(statement_acc.max_allowed_borrow_value())
   })
 
   it('single swap', async () => {
