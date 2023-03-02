@@ -3,6 +3,9 @@ use crate::ZeroCopyDecoder;
 use js_sys::Uint8Array;
 use std::ops::{Deref, DerefMut};
 use wasm_bindgen::prelude::*;
+use checked_decimal_macro::Decimal;
+
+use super::VaultsAccount;
 
 #[wasm_bindgen]
 pub struct StatementAccount {
@@ -22,6 +25,7 @@ impl DerefMut for StatementAccount {
     }
 }
 
+
 #[wasm_bindgen]
 impl StatementAccount {
     #[wasm_bindgen]
@@ -36,4 +40,14 @@ impl StatementAccount {
         self.bump
     }
 
+    #[wasm_bindgen]
+    pub fn refresh(&mut self, vaults: &VaultsAccount) {
+        let vaults = &vaults.arr.elements;
+        self.statement.refresh(vaults)
+    }
+
+    #[wasm_bindgen]
+    pub fn max_allowed_borrow_value(&self) -> u64 {
+        self.statement.permitted_debt().get() as u64   
+    }
 }
