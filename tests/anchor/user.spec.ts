@@ -29,7 +29,7 @@ import {
 import { BN } from 'bn.js'
 import { STATEMENT_SEED, STATE_SEED } from '../../microSdk'
 
-describe('Services', () => {
+describe('User', () => {
   const provider = anchor.AnchorProvider.env()
   const program = anchor.workspace.Protocol as Program<Protocol>
 
@@ -59,7 +59,7 @@ describe('Services', () => {
     await waitFor(connection, sigAdmin)
     await waitFor(connection, sigUser)
 
-    const initializedProtocolAccounts = await createBasicVault(program, admin, minter)
+    const initializedProtocolAccounts = await createBasicVault(program, admin, minter, 2)
     protocolAccounts = initializedProtocolAccounts
 
     state = protocolAccounts.state
@@ -153,5 +153,64 @@ describe('Services', () => {
 
     assert.equal((await getAccount(connection, accountBase)).amount, 700000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 800000n - 2000n)
+  })
+
+  it('double swap', async () => {
+    const accountInfo = await connection.getAccountInfo(vaults)
+    assert.notEqual(accountInfo, null)
+    const vaultsAccount = VaultsAccount.load(accountInfo?.data as Buffer)
+    const otherBase = new PublicKey(vaultsAccount.base_token(1))
+    const otherQuote = new PublicKey(vaultsAccount.quote_token(1))
+    assert.equal(otherQuote.toBase58(), protocolAccounts.quote.toBase58())
+    assert.notEqual(otherBase.toBase58(), protocolAccounts.base.toBase58())
+
+    const accountOther = await createAssociatedTokenAccount(
+      connection,
+      user,
+      otherBase,
+      user.publicKey
+    )
+    await mintTo(connection, user, otherBase, accountOther, minter, 1e6),
+      await program.methods
+        .deposit(1, 1, new BN(200000), true)
+        .accountsStrict({
+          state,
+          vaults,
+          accountBase,
+          accountQuote,
+          statement,
+          signer: user.publicKey,
+          reserveBase: protocolAccounts.reserveBase,
+          reserveQuote: protocolAccounts.reserveQuote,
+          tokenProgram: TOKEN_PROGRAM_ID
+        })
+        .signers([user])
+        .rpc({ skipPreflight: true })
+
+    await program.methods
+      .modifyFeeCurve(1, 2, false, new BN(1000000), new BN(0), new BN(0), new BN(10000))
+      .accounts(accounts)
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    await program.methods
+      .doubleSwap(0, 1, new BN(100000), new BN(10), false)
+      .accountsStrict({
+        state,
+        vaults,
+        accountOut: accountOther,
+        accountIn: accountBase,
+        signer: user.publicKey,
+        reserveOut: otherBase,
+        reserveIn: protocolAccounts.reserveBase,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .signers([user])
+      .rpc({ skipPreflight: true })
+
+    // TODO: uncomment and confirm this
+
+    // assert.equal((await getAccount(connection, accountBase)).amount, 700000n)
+    // assert.equal((await getAccount(connection, accountQuote)).amount, 800000n - 2000n)
   })
 })

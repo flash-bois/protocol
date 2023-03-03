@@ -46,10 +46,13 @@ const main = async () => {
   const index = vaultsAccount.vaults_len()
 
   console.log(`index: ${index}`)
-  assert.equal(index, 0)
+  assert.equal(index, 1)
 
   const base = await createMint(connection, admin, minter.publicKey, null, 6)
-  const quote = await createMint(connection, admin, minter.publicKey, null, 6)
+  const quote =
+    index === 0
+      ? await createMint(connection, admin, minter.publicKey, null, 6)
+      : new PublicKey(vaultsAccount.quote_token(0))
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 
@@ -80,18 +83,20 @@ const main = async () => {
         .enableOracle(index, 6, true, true)
         .accountsStrict({
           ...accounts,
-          priceFeed: new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
+          // priceFeed: new PublicKey('EhgAdTrgxi4ZoVZLQx1n93vULucPpiFi2BQtz9RJr1y6') // RAY
+          priceFeed: new PublicKey('A1WttWF7X3Rg6ZRpB2YQUFHCRh1kiXV8sKKLV3S9neJV') // ORCA
         })
         .instruction(),
       await program.methods
         .enableOracle(index, 6, false, true)
         .accountsStrict({
           ...accounts,
-          priceFeed: new PublicKey('5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7')
+          priceFeed: new PublicKey('5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7') // USDC
         })
         .instruction(),
       await program.methods
-        .forceOverrideOracle(0, true, 200, 1, -2, 42)
+        // .forceOverrideOracle(0, true, 200, 1, -2, 42)
+        .forceOverrideOracle(0, true, 50, 1, -2, 42)
         .accountsStrict(accounts)
         .instruction(),
       await program.methods
@@ -115,6 +120,11 @@ const main = async () => {
         .instruction(),
       await program.methods
         .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .modifyFeeCurve(0, 2, false, new BN(2000000), new BN(0), new BN(0), new BN(100))
         .accounts(accounts)
         .signers([admin])
         .instruction(),

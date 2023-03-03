@@ -84,6 +84,9 @@ export interface DotWaveAccounts {
   quote: PublicKey
   reserveBase: PublicKey
   reserveQuote: PublicKey
+  otherBases?: PublicKey[]
+  otherReserveBases?: PublicKey[]
+  otherReserveQuotes?: PublicKey[]
 }
 
 export interface AdminAccounts {
@@ -99,9 +102,10 @@ export interface Loadable<T> {
 export async function createBasicVault(
   program: Program<Protocol>,
   admin: Keypair,
-  minter: Keypair
+  minter: Keypair,
+  amount: number = 1
 ): Promise<DotWaveAccounts> {
-  const result = await initAccounts(program, admin, minter)
+  const result = await initAccounts(program, admin, minter, amount)
 
   const accounts = {
     state: result.state,
@@ -109,25 +113,26 @@ export async function createBasicVault(
     admin: admin.publicKey
   }
 
-  await enableOracles(program, 0, accounts, admin)
-  await program.methods
-    .enableLending(0, 800000, new BN(10000_000000), 0)
-    .accounts(accounts)
-    .signers([admin])
-    .postInstructions([
-      await program.methods
-        .enableSwapping(0, 100000, new BN(10000_000000))
-        .accounts(accounts)
-        .signers([admin])
-        .instruction(),
-      await program.methods
-        .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
-        .accounts(accounts)
-        .signers([admin])
-        .instruction()
-    ])
-    .rpc({ skipPreflight: true })
-
+  for (let i = 0; i < amount; i++) {
+    await enableOracles(program, i, accounts, admin)
+    await program.methods
+      .enableLending(i, 800000, new BN(10000_000000), 0)
+      .accounts(accounts)
+      .signers([admin])
+      .postInstructions([
+        await program.methods
+          .enableSwapping(i, 100000, new BN(10000_000000))
+          .accounts(accounts)
+          .signers([admin])
+          .instruction(),
+        await program.methods
+          .addStrategy(i, true, false, new BN(1000000), new BN(1000000))
+          .accounts(accounts)
+          .signers([admin])
+          .instruction()
+      ])
+      .rpc({ skipPreflight: true })
+  }
   return result
 }
 
@@ -198,7 +203,8 @@ export async function createAccounts(
 export async function initAccounts(
   program: Program<Protocol>,
   admin: Keypair,
-  minter: Keypair
+  minter: Keypair,
+  amount: number = 1
 ): Promise<DotWaveAccounts> {
   const vaults = Keypair.generate()
   const connection = program.provider.connection
@@ -228,35 +234,42 @@ export async function initAccounts(
     .signers([admin, vaults])
     .rpc({ skipPreflight: true })
 
-  const base = await createMint(connection, admin, minter.publicKey, null, 6)
   const quote = await createMint(connection, admin, minter.publicKey, null, 6)
-  const reserveBase = Keypair.generate()
-  const reserveQuote = Keypair.generate()
+  let result: DotWaveAccounts | undefined = undefined
 
-  await program.methods
-    .initVault()
-    .accounts({
-      state,
-      vaults: vaults.publicKey,
-      base,
-      quote,
-      reserveBase: reserveBase.publicKey,
-      reserveQuote: reserveQuote.publicKey,
-      admin: admin.publicKey,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId
-    })
-    .signers([admin, reserveBase, reserveQuote])
-    .rpc({ skipPreflight: true })
+  for (let i = 0; i < amount; i++) {
+    const base = await createMint(connection, admin, minter.publicKey, null, 6)
+    const reserveBase = Keypair.generate()
+    const reserveQuote = Keypair.generate()
 
-  return {
-    state,
-    vaults: vaults.publicKey,
-    base,
-    quote,
-    reserveBase: reserveBase.publicKey,
-    reserveQuote: reserveQuote.publicKey
+    await program.methods
+      .initVault()
+      .accounts({
+        state,
+        vaults: vaults.publicKey,
+        base,
+        quote,
+        reserveBase: reserveBase.publicKey,
+        reserveQuote: reserveQuote.publicKey,
+        admin: admin.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([admin, reserveBase, reserveQuote])
+      .rpc({ skipPreflight: true })
+
+    if (!result)
+      result = {
+        state,
+        vaults: vaults.publicKey,
+        base,
+        quote,
+        reserveBase: reserveBase.publicKey,
+        reserveQuote: reserveQuote.publicKey
+      }
   }
+
+  return result!
 }
 
 export async function waitFor(connection: Connection, sig: string) {
