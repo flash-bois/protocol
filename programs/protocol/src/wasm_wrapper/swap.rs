@@ -16,6 +16,7 @@ impl VaultsAccount {
         by_amount_out: bool,
         now: u32,
     ) -> Result<i64, JsError> {
+        console_error_panic_hook::set_once();
         let mut vault = self.vault_checked_mut(vault)?.clone();
 
         let quantity = Quantity::new(amount);
