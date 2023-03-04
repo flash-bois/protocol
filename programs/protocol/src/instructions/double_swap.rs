@@ -32,13 +32,26 @@ pub struct DoubleSwap<'info> {
         constraint = reserve_in.key() == vaults.load()?.keys.get(vault_in as usize).unwrap().base_reserve,
         constraint = reserve_in.owner == state.key(),
     )]
-    pub reserve_in: Account<'info, TokenAccount>,
+    pub reserve_in: Box<Account<'info, TokenAccount>>,
     #[account(mut,
         constraint = reserve_out.mint == vaults.load()?.keys.get(vault_out as usize).unwrap().base_token,
         constraint = reserve_out.key() == vaults.load()?.keys.get(vault_out as usize).unwrap().base_reserve,
         constraint = reserve_out.owner == state.key(),
     )]
-    pub reserve_out: Account<'info, TokenAccount>,
+    pub reserve_out: Box<Account<'info, TokenAccount>>,
+    #[account(mut,
+        constraint = reserve_in_quote.mint == vaults.load()?.keys.get(vault_in as usize).unwrap().quote_token,
+        constraint = reserve_in_quote.key() == vaults.load()?.keys.get(vault_in as usize).unwrap().quote_reserve,
+        constraint = reserve_in_quote.owner == state.key(),
+    )]
+    pub reserve_in_quote: Box<Account<'info, TokenAccount>>,
+    #[account(mut,
+        constraint = reserve_out_quote.mint == vaults.load()?.keys.get(vault_out as usize).unwrap().quote_token,
+        constraint = reserve_out_quote.mint == vaults.load()?.keys.get(vault_in as usize).unwrap().quote_token,
+        constraint = reserve_out_quote.key() == vaults.load()?.keys.get(vault_out as usize).unwrap().quote_reserve,
+        constraint = reserve_out_quote.owner == state.key(),
+    )]
+    pub reserve_out_quote: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, token::Token>,
 }
 
@@ -76,6 +89,7 @@ impl<'info> DoubleSwap<'info> {
         let signer = &[&seeds[..]];
 
         transfer(self.take_in(), amount)?;
+        transfer(self.move_quote().with_signer(signer), quote_quantity.get())?;
         transfer(self.send_out().with_signer(signer), quantity_out.get())?;
 
         Ok(())
@@ -98,6 +112,17 @@ impl<'info> DoubleSwap<'info> {
             Transfer {
                 from: self.reserve_out.to_account_info(),
                 to: self.account_out.to_account_info(),
+                authority: self.state.to_account_info(),
+            },
+        )
+    }
+
+    fn move_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.reserve_in_quote.to_account_info(),
+                to: self.reserve_out_quote.to_account_info(),
                 authority: self.state.to_account_info(),
             },
         )

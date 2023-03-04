@@ -218,7 +218,9 @@ describe('User', () => {
         accountOut: secondAccountBase,
         signer: user.publicKey,
         reserveIn: protocolAccounts.reserveBase,
+        reserveInQuote: protocolAccounts.reserveQuote,
         reserveOut: secondProtocolAccounts.reserveBase,
+        reserveOutQuote: secondProtocolAccounts.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
