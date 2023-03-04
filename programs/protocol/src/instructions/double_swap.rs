@@ -34,8 +34,8 @@ pub struct DoubleSwap<'info> {
     )]
     pub reserve_in: Account<'info, TokenAccount>,
     #[account(mut,
-        constraint = reserve_out.mint == vaults.load()?.keys.get(vault_out as usize).unwrap().base_token,
-        constraint = reserve_out.key() == vaults.load()?.keys.get(vault_out as usize).unwrap().base_reserve,
+        constraint = reserve_out.mint == vaults.load()?.keys.get(vault_out as usize).unwrap().quote_token,
+        constraint = reserve_out.key() == vaults.load()?.keys.get(vault_out as usize).unwrap().quote_reserve,
         constraint = reserve_out.owner == state.key(),
     )]
     pub reserve_out: Account<'info, TokenAccount>,
@@ -96,9 +96,9 @@ impl<'info> DoubleSwap<'info> {
         CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
-                from: self.reserve_out.to_account_info(),
-                to: self.account_out.to_account_info(),
-                authority: self.state.to_account_info(),
+                from: self.account_out.to_account_info(),
+                to: self.reserve_out.to_account_info(),
+                authority: self.signer.to_account_info(),
             },
         )
     }
