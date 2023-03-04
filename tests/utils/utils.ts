@@ -1,6 +1,13 @@
 import * as anchor from '@coral-xyz/anchor'
 import { BN, Program, stateDiscriminator } from '@coral-xyz/anchor'
-import { createAccount, createMint, getAccount, mintTo, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import {
+  createAccount,
+  createAssociatedTokenAccount,
+  createMint,
+  getAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID
+} from '@solana/spl-token'
 import {
   Connection,
   Keypair,
@@ -103,9 +110,10 @@ export async function createBasicVault(
   program: Program<Protocol>,
   admin: Keypair,
   minter: Keypair,
-  amount: number = 1
+  existing?: DotWaveAccounts,
+  index = 0
 ): Promise<DotWaveAccounts> {
-  const result = await initAccounts(program, admin, minter, amount)
+  const result = await initAccounts(program, admin, minter, existing)
 
   const accounts = {
     state: result.state,
@@ -113,26 +121,25 @@ export async function createBasicVault(
     admin: admin.publicKey
   }
 
-  for (let i = 0; i < amount; i++) {
-    await enableOracles(program, i, accounts, admin)
-    await program.methods
-      .enableLending(i, 800000, new BN(10000_000000), 0)
-      .accounts(accounts)
-      .signers([admin])
-      .postInstructions([
-        await program.methods
-          .enableSwapping(i, 100000, new BN(10000_000000))
-          .accounts(accounts)
-          .signers([admin])
-          .instruction(),
-        await program.methods
-          .addStrategy(i, true, false, new BN(1000000), new BN(1000000))
-          .accounts(accounts)
-          .signers([admin])
-          .instruction()
-      ])
-      .rpc({ skipPreflight: true })
-  }
+  const i = index
+  await enableOracles(program, i, accounts, admin)
+  await program.methods
+    .enableLending(i, 800000, new BN(10000_000000), 0)
+    .accounts(accounts)
+    .signers([admin])
+    .postInstructions([
+      await program.methods
+        .enableSwapping(i, 100000, new BN(10000_000000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .addStrategy(i, true, false, new BN(1000000), new BN(1000000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction()
+    ])
+    .rpc({ skipPreflight: true })
   return result
 }
 
@@ -144,14 +151,22 @@ export async function mintTokensForUser(
   quote: PublicKey,
   mintAmount: number | bigint = 1e9
 ) {
-  const [accountBase, accountQuote] = await Promise.all([
-    createAccount(connection, user, base, user.publicKey),
-    createAccount(connection, user, quote, user.publicKey)
-  ])
+  // const [accountBase, accountQuote] = await Promise.all([
+  //   createAccount(connection, user, base, user.publicKey),
+  //   createAccount(connection, user, quote, user.publicKey)
+  // ])
+
+  // await Promise.all([
+  //   mintTo(connection, user, base, accountBase, minter, mintAmount),
+  //   mintTo(connection, user, quote, accountQuote, minter, mintAmount)
+  // ])
+
+  const accountBase = await createAssociatedTokenAccount(connection, user, base, user.publicKey)
+  const accountQuote = await createAssociatedTokenAccount(connection, user, quote, user.publicKey)
 
   await Promise.all([
-    mintTo(connection, user, base, accountBase, minter, mintAmount),
-    mintTo(connection, user, quote, accountQuote, minter, mintAmount)
+    mintTo(connection, user, base, accountBase, minter, 1e6),
+    mintTo(connection, user, quote, accountQuote, minter, 1e6)
   ])
 
   return {
@@ -204,72 +219,76 @@ export async function initAccounts(
   program: Program<Protocol>,
   admin: Keypair,
   minter: Keypair,
-  amount: number = 1
+  existing?: DotWaveAccounts
 ): Promise<DotWaveAccounts> {
-  const vaults = Keypair.generate()
   const connection = program.provider.connection
-  const [state, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
-    program.programId
-  )
+  let state
+  let vaults
 
-  await program.methods
-    .createState()
-    .accounts({
-      admin: admin.publicKey,
-      state,
-      rent: SYSVAR_RENT_PUBKEY,
-      systemProgram: SystemProgram.programId,
-      vaults: vaults.publicKey
-    })
-    .preInstructions([
-      SystemProgram.createAccount({
-        fromPubkey: admin.publicKey,
-        newAccountPubkey: vaults.publicKey,
-        space: VaultsAccount.size(),
-        lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
-        programId: program.programId
-      })
-    ])
-    .signers([admin, vaults])
-    .rpc({ skipPreflight: true })
-
-  const quote = await createMint(connection, admin, minter.publicKey, null, 6)
-  let result: DotWaveAccounts | undefined = undefined
-
-  for (let i = 0; i < amount; i++) {
-    const base = await createMint(connection, admin, minter.publicKey, null, 6)
-    const reserveBase = Keypair.generate()
-    const reserveQuote = Keypair.generate()
+  if (!existing) {
+    const vaultsKeypair = Keypair.generate()
+    const [stateAddress, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from(anchor.utils.bytes.utf8.encode(STATE_SEED))],
+      program.programId
+    )
+    state = stateAddress
+    vaults = vaultsKeypair.publicKey
 
     await program.methods
-      .initVault()
+      .createState()
       .accounts({
-        state,
-        vaults: vaults.publicKey,
-        base,
-        quote,
-        reserveBase: reserveBase.publicKey,
-        reserveQuote: reserveQuote.publicKey,
         admin: admin.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId
-      })
-      .signers([admin, reserveBase, reserveQuote])
-      .rpc({ skipPreflight: true })
-
-    if (!result)
-      result = {
         state,
-        vaults: vaults.publicKey,
-        base,
-        quote,
-        reserveBase: reserveBase.publicKey,
-        reserveQuote: reserveQuote.publicKey
-      }
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId,
+        vaults: vaultsKeypair.publicKey
+      })
+      .preInstructions([
+        SystemProgram.createAccount({
+          fromPubkey: admin.publicKey,
+          newAccountPubkey: vaultsKeypair.publicKey,
+          space: VaultsAccount.size(),
+          lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
+          programId: program.programId
+        })
+      ])
+      .signers([admin, vaultsKeypair])
+      .rpc({ skipPreflight: true })
+  } else {
+    state = existing.state
+    vaults = existing.vaults
   }
 
-  return result!
+  const quote = existing?.quote ?? (await createMint(connection, admin, minter.publicKey, null, 6))
+
+  const base = await createMint(connection, admin, minter.publicKey, null, 6)
+  const reserveBase = Keypair.generate()
+  const reserveQuote = Keypair.generate()
+
+  await program.methods
+    .initVault()
+    .accounts({
+      state,
+      vaults,
+      base,
+      quote,
+      reserveBase: reserveBase.publicKey,
+      reserveQuote: reserveQuote.publicKey,
+      admin: admin.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId
+    })
+    .signers([admin, reserveBase, reserveQuote])
+    .rpc({ skipPreflight: true })
+
+  return {
+    state,
+    vaults,
+    base,
+    quote,
+    reserveBase: reserveBase.publicKey,
+    reserveQuote: reserveQuote.publicKey
+  }
 }
 
 export async function waitFor(connection: Connection, sig: string) {
@@ -311,11 +330,11 @@ export async function enableOracles(
         })
         .instruction(),
       await program.methods
-        .forceOverrideOracle(0, true, 200, 1, -2, 42)
+        .forceOverrideOracle(index, true, 200, 1, -2, 42)
         .accountsStrict(accounts)
         .instruction(),
       await program.methods
-        .forceOverrideOracle(0, false, 1000, 2, -3, 42)
+        .forceOverrideOracle(index, false, 1000, 2, -3, 42)
         .accountsStrict(accounts)
         .instruction()
     ])

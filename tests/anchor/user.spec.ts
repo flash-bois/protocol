@@ -59,7 +59,7 @@ describe('User', () => {
     await waitFor(connection, sigAdmin)
     await waitFor(connection, sigUser)
 
-    const initializedProtocolAccounts = await createBasicVault(program, admin, minter, 2)
+    const initializedProtocolAccounts = await createBasicVault(program, admin, minter)
     protocolAccounts = initializedProtocolAccounts
 
     state = protocolAccounts.state
@@ -156,36 +156,49 @@ describe('User', () => {
   })
 
   it('double swap', async () => {
-    const accountInfo = await connection.getAccountInfo(vaults)
-    assert.notEqual(accountInfo, null)
-    const vaultsAccount = VaultsAccount.load(accountInfo?.data as Buffer)
-    const otherBase = new PublicKey(vaultsAccount.base_token(1))
-    const otherQuote = new PublicKey(vaultsAccount.quote_token(1))
-    assert.equal(otherQuote.toBase58(), protocolAccounts.quote.toBase58())
-    assert.notEqual(otherBase.toBase58(), protocolAccounts.base.toBase58())
+    const secondProtocolAccounts = await createBasicVault(
+      program,
+      admin,
+      minter,
+      protocolAccounts,
+      1
+    )
 
-    const accountOther = await createAssociatedTokenAccount(
+    assert.equal(secondProtocolAccounts.quote.toBase58(), protocolAccounts.quote.toBase58())
+    assert.notEqual(secondProtocolAccounts.base.toBase58(), protocolAccounts.base.toBase58())
+
+    const accountInfo = await connection.getAccountInfo(vaults)
+    assert.isNotNull(accountInfo)
+    const vaultsAccount = VaultsAccount.load(accountInfo!.data)
+    assert.equal(
+      new PublicKey(vaultsAccount.base_reserve(1)).toString(),
+      secondProtocolAccounts.reserveBase.toString()
+    )
+
+    const secondAccountBase = await createAssociatedTokenAccount(
       connection,
       user,
-      otherBase,
+      secondProtocolAccounts.base,
       user.publicKey
     )
-    await mintTo(connection, user, otherBase, accountOther, minter, 1e6),
-      await program.methods
-        .deposit(1, 1, new BN(200000), true)
-        .accountsStrict({
-          state,
-          vaults,
-          accountBase,
-          accountQuote,
-          statement,
-          signer: user.publicKey,
-          reserveBase: protocolAccounts.reserveBase,
-          reserveQuote: protocolAccounts.reserveQuote,
-          tokenProgram: TOKEN_PROGRAM_ID
-        })
-        .signers([user])
-        .rpc({ skipPreflight: true })
+
+    await mintTo(connection, user, secondProtocolAccounts.base, secondAccountBase, minter, 1e6)
+
+    await program.methods
+      .deposit(1, 0, new BN(300000), true)
+      .accountsStrict({
+        state,
+        vaults,
+        accountBase: secondAccountBase,
+        accountQuote,
+        statement,
+        signer: user.publicKey,
+        reserveBase: secondProtocolAccounts.reserveBase,
+        reserveQuote: secondProtocolAccounts.reserveQuote,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .signers([user])
+      .rpc({ skipPreflight: true })
 
     await program.methods
       .modifyFeeCurve(1, 2, false, new BN(1000000), new BN(0), new BN(0), new BN(10000))
@@ -193,24 +206,25 @@ describe('User', () => {
       .signers([admin])
       .rpc({ skipPreflight: true })
 
+    assert.equal((await getAccount(connection, accountBase)).amount, 700000n)
+    assert.equal((await getAccount(connection, secondAccountBase)).amount, 700000n)
+
     await program.methods
       .doubleSwap(0, 1, new BN(100000), new BN(10), false)
       .accountsStrict({
         state,
         vaults,
-        accountOut: accountOther,
         accountIn: accountBase,
+        accountOut: secondAccountBase,
         signer: user.publicKey,
-        reserveOut: otherBase,
         reserveIn: protocolAccounts.reserveBase,
+        reserveOut: secondProtocolAccounts.reserveBase,
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
       .rpc({ skipPreflight: true })
 
-    // TODO: uncomment and confirm this
-
-    // assert.equal((await getAccount(connection, accountBase)).amount, 700000n)
-    // assert.equal((await getAccount(connection, accountQuote)).amount, 800000n - 2000n)
+    assert.equal((await getAccount(connection, accountBase)).amount, 600000n)
+    assert.equal((await getAccount(connection, secondAccountBase)).amount, 800000n - 1990n)
   })
 })
