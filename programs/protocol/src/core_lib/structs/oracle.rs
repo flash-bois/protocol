@@ -188,7 +188,7 @@ impl Oracle {
     pub fn calculate_needed_value(&self, quantity: Quantity) -> Value {
         let quantity = Value::from_scale(quantity.get(), self.decimals as u8);
         let price = self.price(OraclePriceType::Buy);
-        quantity.div_up(price)
+        quantity.mul_up(price)
     }
 
     /// Calculates the quantity of token that can be bought for a given value.
@@ -208,7 +208,7 @@ impl Oracle {
         Quantity::from_decimal_up(
             value
                 .div_up(Value::from_scale(1, self.decimals as u8))
-                .mul_up(self.price(OraclePriceType::Sell)),
+                .div_up(self.price(OraclePriceType::Sell)),
         )
     }
 }
@@ -274,11 +274,23 @@ mod test_oracle {
             Value::from_integer(200)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(100_000000)),
+            Value::from_integer(200)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(2, 6)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1),),
+            Value::from_scale(2, 6)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1_000000_000000),),
+            Value::from_integer(2_000000)
+        );
+        assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000),),
             Value::from_integer(2_000000)
         );
 
@@ -291,11 +303,23 @@ mod test_oracle {
             Value::from_integer(5000000)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(100_000000),),
+            Value::from_integer(5000000)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(50000, 6)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1),),
+            Value::from_scale(50000, 6)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1_000000_000000),),
+            Value::from_integer(50000000000u64)
+        );
+        assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000),),
             Value::from_integer(50000000000u64)
         );
 
@@ -308,11 +332,23 @@ mod test_oracle {
             Value::from_scale(200, 6)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(100_000000),),
+            Value::from_scale(200, 6)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1),),
             Value::from_scale(0, 6)
         );
         assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1),),
+            Value::from_scale(1, 9)
+        );
+        assert_eq!(
             oracle.calculate_value(Quantity::new(1_000000_000000),),
+            Value::from_integer(2u64)
+        );
+        assert_eq!(
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000),),
             Value::from_integer(2u64)
         );
 
@@ -328,76 +364,9 @@ mod test_oracle {
             oracle.calculate_value(Quantity::new(1_000000_000000000),),
             Value::from_integer(2u64)
         );
-    }
-
-    #[test]
-    fn test_calculate_needed_value() {
-        let mut oracle = Oracle::new(
-            DecimalPlaces::Six,
-            Price::from_scale(5, 1),
-            Price::from_scale(1, 3),
-            Price::from_scale(5, 3),
-            0,
-        );
-
         assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(100_000000),),
-            Value::from_integer(200)
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1),),
-            Value::from_scale(2, 6)
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
-            Value::from_integer(2_000000)
-        );
-
-        oracle
-            .update(Price::from_integer(50000), Price::from_scale(2, 3), 0)
-            .unwrap();
-
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(100_000000),),
-            Value::from_scale(2, 3)
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1),),
-            Value::from_scale(1, Value::scale())
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
-            Value::from_integer(20)
-        );
-
-        oracle
-            .update(Price::from_scale(2, 6), Price::from_scale(1, 9), 0)
-            .unwrap();
-
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(100_000000)),
-            Value::from_integer(50000000)
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1)),
-            Value::from_scale(5, 1)
-        );
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1_000000_000000)),
-            Value::from_integer(500000_000000u64)
-        );
-
-        let oracle = Oracle::new(
-            DecimalPlaces::Nine,
-            Price::from_scale(2, 6),
-            Price::from_scale(1, 9),
-            Price::from_scale(5, 3),
-            0,
-        );
-
-        assert_eq!(
-            oracle.calculate_needed_value(Quantity::new(1_000000_000000000)),
-            Value::from_integer(500000_000000u64)
+            oracle.calculate_needed_value(Quantity::new(1_000000_000000000),),
+            Value::from_integer(2u64)
         );
     }
 
@@ -415,8 +384,17 @@ mod test_oracle {
             oracle.calculate_quantity(Value::from_integer(200)),
             Quantity::new(100_000000)
         );
+
+        assert_eq!(
+            oracle.calculate_needed_quantity(Value::from_integer(200)),
+            Quantity::new(100_000000)
+        );
         assert_eq!(
             oracle.calculate_quantity(Value::from_scale(2, 6)),
+            Quantity::new(1)
+        );
+        assert_eq!(
+            oracle.calculate_needed_quantity(Value::from_scale(2, 6)),
             Quantity::new(1)
         );
         assert_eq!(
@@ -424,39 +402,15 @@ mod test_oracle {
             Quantity::new(1_000000_000000)
         );
         assert_eq!(
+            oracle.calculate_needed_quantity(Value::from_integer(2_000000)),
+            Quantity::new(1_000000_000000)
+        );
+        assert_eq!(
             oracle.calculate_quantity(Value::from_scale(1, 6)),
             Quantity::new(0)
         );
-    }
-
-    #[test]
-    fn test_calculate_needed_quantity() {
-        let oracle = Oracle::new(
-            DecimalPlaces::Six,
-            Price::from_integer(2),
-            Price::from_scale(1, 3),
-            Price::from_scale(5, 3),
-            0,
-        );
-
-        assert_eq!(
-            oracle.calculate_needed_quantity(Value::from_integer(100)),
-            Quantity::new(200_000000)
-        );
         assert_eq!(
             oracle.calculate_needed_quantity(Value::from_scale(1, 6)),
-            Quantity::new(2)
-        );
-        assert_eq!(
-            oracle.calculate_needed_quantity(Value::from_integer(1_000000)),
-            Quantity::new(2_000000_000000)
-        );
-        assert_eq!(
-            oracle.calculate_needed_quantity(Value::from_scale(1, 6)),
-            Quantity::new(2)
-        );
-        assert_eq!(
-            oracle.calculate_needed_quantity(Value::from_scale(1, 7)),
             Quantity::new(1)
         );
     }
