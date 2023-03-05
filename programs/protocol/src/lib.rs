@@ -11,7 +11,7 @@ mod instructions;
 pub use instructions::*;
 
 #[cfg(feature = "anchor")]
-declare_id!("3EoFa6QYUQW1pgjoMbhhmERypWrf5dYfTYiJPMbnKNn9");
+declare_id!("xRkECZZpCjQ9PfpGvJ1R87GtVcMzJq31qZjGz9fYo95");
 
 #[cfg(feature = "anchor")]
 use anchor_lang::prelude::*;
@@ -115,6 +115,18 @@ pub mod protocol {
     ) -> Result<()> {
         ctx.accounts
             .handler(vault, amount, min_expected, from_base, by_amount_out)
+    }
+
+    pub fn double_swap(
+        ctx: Context<DoubleSwap>,
+        vault_in: u8,
+        vault_out: u8,
+        amount: u64,
+        min_expected: u64,
+        by_amount_out: bool,
+    ) -> Result<()> {
+        ctx.accounts
+            .handler(vault_in, vault_out, amount, min_expected, by_amount_out)
     }
 
     pub fn modify_fee_curve(
