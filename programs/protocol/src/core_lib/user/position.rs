@@ -2,7 +2,7 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::core_lib::services::ServiceUpdate;
+use crate::core_lib::{errors::LibErrors, services::ServiceUpdate};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -133,7 +133,7 @@ impl Position {
         *self.shares() -= shares
     }
 
-    pub fn liability_value(&self, vaults: &[Vault]) -> Value {
+    pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
         match *self {
             Position::Borrow {
                 vault_index,
@@ -141,19 +141,19 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle().unwrap();
-                let service = vault.lend_service_not_mut().unwrap();
+                let oracle = vault.oracle()?;
+                let service = vault.lend_service_not_mut()?;
 
                 let amount = service
                     .borrow_shares()
                     .calculate_owed(shares, service.locked().base);
-                oracle.calculate_value(amount)
+                Ok(oracle.calculate_value(amount))
             }
             _ => unreachable!("should be called on liability, oopsie"),
         }
     }
 
-    pub fn collateral_values(&self, vaults: &[Vault]) -> CollateralValues {
+    pub fn collateral_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
         match *self {
             Position::LiquidityProvide {
                 vault_index,
@@ -162,13 +162,10 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle().unwrap();
-                let quote_oracle = vault.quote_oracle().unwrap();
+                let oracle = vault.oracle()?;
+                let quote_oracle = vault.quote_oracle()?;
 
-                let strategy = vault
-                    .strategies
-                    .get_checked(strategy_index as usize)
-                    .unwrap();
+                let strategy = vault.strategies.get_strategy(strategy_index)?;
 
                 let base_quantity = strategy
                     .total_shares()
@@ -183,11 +180,11 @@ impl Position {
                 let with_collateral_ratio = value * strategy.collateral_ratio();
                 let unhealthy = value * strategy.liquidation_threshold();
 
-                CollateralValues {
+                Ok(CollateralValues {
                     exact: value,
                     with_collateral_ratio,
                     unhealthy,
-                }
+                })
             }
             _ => unreachable!("should be called on collateral, oopsie"),
         }

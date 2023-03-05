@@ -1,3 +1,5 @@
+use crate::core_lib::errors::LibErrors;
+
 use super::{
     utils::{CollateralValues, TradeResult},
     *,
@@ -37,8 +39,8 @@ mod zero {
     #[derive(Default, Debug)]
     #[repr(C)]
     pub struct UserStatement {
-        pub positions: Positions,
         pub values: UserTemporaryValues,
+        pub positions: Positions,
     }
 }
 
@@ -63,8 +65,8 @@ mod non_zero {
     #[derive(Default, Clone, Copy, Debug)]
     #[repr(C)]
     pub struct UserStatement {
-        pub positions: Positions,
         pub values: UserTemporaryValues,
+        pub positions: Positions,
     }
 }
 
@@ -96,26 +98,26 @@ impl UserStatement {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
     }
 
-    fn liabilities_value(&self, vaults: &[Vault]) -> Value {
+    fn liabilities_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_liability())
-                .fold(Value::new(0), |sum, curr| {
-                    sum + curr.liability_value(vaults)
+                .fold(Ok(Value::new(0)), |sum, curr| {
+                    Ok(sum? + curr.liability_value(vaults)?)
                 })
         } else {
-            Value::new(0)
+            Ok(Value::new(0))
         }
     }
 
     /// Vault's oracles should be refreshed before using this function
-    fn collaterals_values(&self, vaults: &[Vault]) -> CollateralValues {
+    fn collaterals_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_collateral())
-                .fold(CollateralValues::default(), |sum, curr| {
-                    sum + curr.collateral_values(vaults)
+                .fold(Ok(CollateralValues::default()), |sum, curr| {
+                    Ok(sum? + curr.collateral_values(vaults)?)
                 })
         } else {
-            CollateralValues::default()
+            Ok(CollateralValues::default())
         }
     }
 
@@ -131,10 +133,12 @@ impl UserStatement {
     }
 
     /// calculates user temporary values for collateral and liabilities positions
-    pub fn refresh(&mut self, vaults: &[Vault]) {
-        self.values.liabilities = self.liabilities_value(vaults);
-        self.values.collateral = self.collaterals_values(vaults);
+    pub fn refresh(&mut self, vaults: &[Vault]) -> Result<(), LibErrors> {
+        self.values.liabilities = self.liabilities_value(vaults)?;
+        self.values.collateral = self.collaterals_values(vaults)?;
 
+
+        Ok(())
         // TODO: handle trades
     }
 }
@@ -303,13 +307,13 @@ mod position_management {
             })
             .unwrap();
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
 
         vaults[0]
             .borrow(&mut user_statement, Quantity::new(5000000))
             .unwrap();
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
 
         vaults[1]
             .borrow(&mut user_statement, Quantity::new(4000000))
@@ -317,14 +321,14 @@ mod position_management {
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 5);
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
         assert_eq!(
-            user_statement.collaterals_values(&vaults).exact,
+            user_statement.collaterals_values(&vaults).unwrap().exact,
             Value::new(50000000000)
         );
 
         assert_eq!(
-            user_statement.liabilities_value(&vaults),
+            user_statement.liabilities_value(&vaults).unwrap(),
             Value::new(13000000000)
         )
     }

@@ -2,7 +2,7 @@ use super::*;
 use crate::core_lib::user::{Position, UserStatement};
 use checked_decimal_macro::Decimal;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Token {
     Base,
@@ -10,7 +10,7 @@ pub enum Token {
 }
 
 impl Vault {
-    pub fn opposite_quantity(
+    pub fn other_quantity_in_ratio(
         &self,
         input_quantity: Quantity,
         input_token: Token,
@@ -50,11 +50,15 @@ impl Vault {
     ) -> (Quantity, Quantity) {
         let known_value = known_oracle.calculate_value(known_amount);
 
+       
         let opposite_quantity = if opposite_quantity == Quantity::new(0) {
+            println!("yo");
             opposite_oracle.calculate_needed_quantity(known_value)
         } else {
             opposite_quantity
         };
+
+        println!("{} {} {}", known_value, opposite_quantity, opposite_oracle.price);
 
         (known_amount, opposite_quantity)
     }
@@ -72,8 +76,13 @@ impl Vault {
         let quote_oracle = self.quote_oracle()?;
 
         let strategy = self.strategy(strategy_index)?;
-        let opposite_quantity = self.opposite_quantity(amount, deposit_token, strategy);
+        // get other quantity in ratio based on base token and quote token balances and given input,
+        // if neither of them are greaten than zero returns 0 as marker for further calculations
+        let opposite_quantity = self.other_quantity_in_ratio(amount, deposit_token, strategy);
 
+        // returns quantities, if previously mentioned zero amount case happened,
+        // then calculate worth of known input and get others in 1:1 value to value ratio
+        // from oracles
         let (base_quantity, quote_quantity, input_balance) = match deposit_token {
             Token::Base => {
                 let (base, quote) = self.get_opposite_quantity(
@@ -144,6 +153,30 @@ mod tests {
     use crate::core_lib::Vault;
 
     #[test]
+    fn deposit_base_and_quote() {
+        let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
+        let user_statement = &mut UserStatement::default();
+
+        //assert_eq!(vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0).unwrap(), Quantity::new(4000000));
+        assert_eq!(
+            vault
+                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)
+                .unwrap(),
+            Quantity::new(2000000)
+        );
+
+        // decrease balance and then check
+
+        //assert_eq!(vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0).unwrap(), Quantity::new(4000000));
+        assert_eq!(
+            vault
+                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)
+                .unwrap(),
+            Quantity::new(2000000)
+        );
+    }
+
+    #[test]
     fn test_deposit() {
         let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
         let user_statement = &mut UserStatement::default();
@@ -153,3 +186,7 @@ mod tests {
             .expect("deposit failed");
     }
 }
+
+// var love = "you";
+// var love2 = "me";
+// console.log (love + ' + ' +  love2);

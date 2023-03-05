@@ -295,7 +295,7 @@ impl Vault {
             FeeCurve::default(),
             Fraction::from_scale(1, 1),
         )?;
-        vault.add_strategy(true, true, false, Fraction::new(0), Fraction::new(0))?;
+        vault.add_strategy(true, true, false, Fraction::from_integer(1), Fraction::from_integer(1))?;
         Ok(vault)
     }
 }

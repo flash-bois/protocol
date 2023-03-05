@@ -13,7 +13,8 @@ pub struct Deposit<'info> {
     pub state: AccountLoader<'info, State>,
     #[account(mut, constraint = vaults.key() == state.load()?.vaults_acc)]
     pub vaults: AccountLoader<'info, Vaults>,
-    #[account(mut, constraint = statement.load()?.owner == signer.key())]
+    #[account(mut, seeds = [b"statement".as_ref(), signer.key.as_ref()], bump=statement.load()?.bump, 
+    constraint = statement.load()?.owner == signer.key())]
     pub statement: AccountLoader<'info, Statement>,
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -53,8 +54,9 @@ impl Deposit<'_> {
     ) -> anchor_lang::Result<()> {
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults.vault_checked_mut(vault)?;
-        let user_statement = &mut self.statement.load_mut()?.statement;
-
+        let statement = &mut self.statement.load_mut()?;
+        let user_statement = &mut statement.statement;
+ 
         let other_quantity = vault.deposit(
             user_statement,
             if base { Token::Base } else { Token::Quote },
@@ -62,6 +64,8 @@ impl Deposit<'_> {
             strategy,
             Clock::get()?.unix_timestamp as u32,
         )?;
+
+        msg!("{}", user_statement.positions.head);
 
         let (base_amount, quote_amount) = if base {
             (quantity, other_quantity.get())
@@ -86,6 +90,8 @@ impl Deposit<'_> {
                 authority: self.signer.to_account_info(),
             },
         );
+
+        msg!("{:?}", statement.statement.positions.head);
 
         transfer(take_base_ctx, base_amount)?;
         transfer(take_quote_ctx, quote_amount)?;
