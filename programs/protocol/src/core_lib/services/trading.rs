@@ -19,7 +19,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     #[zero_copy]
-    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    #[derive(Debug, Default, PartialEq, Eq)]
     #[repr(C)]
     pub struct Trade {
         /// liquidity available to be locked
