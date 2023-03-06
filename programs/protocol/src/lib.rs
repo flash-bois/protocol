@@ -165,22 +165,20 @@ mod decoder {
     pub struct ZeroCopyDecoder;
 
     impl ZeroCopyDecoder {
-        pub(crate) fn decode_account_info<'a, R>(d: &'a Vec<u8>) -> &'a R
+        pub(crate) fn decode<'a, R>(d: &'a Vec<u8>) -> &'a R
         where
             R: Pod + Zeroable,
         {
             let size = std::mem::size_of::<R>();
             assert!(size == d.len(), "bad buffer len");
-            bytemuck::from_bytes::<R>(&d[..std::mem::size_of::<R>()])
+            bytemuck::from_bytes::<R>(&d[..size])
         }
 
-        pub(crate) fn mut_decode_account_info<'a, R>(d: &'a mut Vec<u8>) -> &'a R
+        pub(crate) fn encode<'a, R>(d: &'a R) -> &'a [u8]
         where
             R: Pod + Zeroable,
         {
-            let size = std::mem::size_of::<R>();
-            assert!(size == d.len(), "bad buffer len");
-            bytemuck::from_bytes_mut::<R>(&mut d[..std::mem::size_of::<R>()])
+            bytemuck::bytes_of::<R>(&d)
         }
     }
 }

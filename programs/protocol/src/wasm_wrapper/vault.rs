@@ -63,8 +63,19 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn load(account_info: &Uint8Array) -> Self {
         let v = account_info.to_vec();
-        let account = *ZeroCopyDecoder::decode_account_info::<Vaults>(&v);
+        let account = *ZeroCopyDecoder::decode::<Vaults>(&v);
         Self { account }
+    }
+
+    pub fn reload(&mut self, account_info: &Uint8Array) {
+        let v = account_info.to_vec();
+        let account = *ZeroCopyDecoder::decode::<Vaults>(&v);
+
+        self.account.clone_from(&account)
+    }
+
+    pub fn buffer(&self) -> Uint8Array {
+        to_buffer(ZeroCopyDecoder::encode(&self.account))
     }
 
     #[wasm_bindgen]

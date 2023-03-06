@@ -9,9 +9,9 @@ mod zero {
     #[repr(C)]
     #[derive(Debug, Default)]
     pub struct Statement {
-        pub bump: u8,
-        pub owner: Pubkey,
         pub statement: UserStatement,
+        pub owner: Pubkey,
+        pub bump: u8,
     }
 }
 
@@ -23,13 +23,12 @@ mod non_zero {
     #[derive(Debug, Default, Clone, Copy)]
     pub struct Statement {
         pub padding: [u8; 8],
-        pub bump: u8,
-        pub owner: [u8; 32],
         pub statement: UserStatement,
+        pub owner: [u8; 32],
+        pub bump: u8,
     }
-    //#[automatically_derived]
+
     unsafe impl bytemuck::Pod for Statement {}
-    // /#[automatically_derived]
     unsafe impl bytemuck::Zeroable for Statement {}
 }
 

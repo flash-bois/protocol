@@ -50,15 +50,11 @@ impl Vault {
     ) -> (Quantity, Quantity) {
         let known_value = known_oracle.calculate_value(known_amount);
 
-       
         let opposite_quantity = if opposite_quantity == Quantity::new(0) {
-            println!("yo");
             opposite_oracle.calculate_needed_quantity(known_value)
         } else {
             opposite_quantity
         };
-
-        println!("{} {} {}", known_value, opposite_quantity, opposite_oracle.price);
 
         (known_amount, opposite_quantity)
     }
@@ -157,17 +153,12 @@ mod tests {
         let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
         let user_statement = &mut UserStatement::default();
 
-        //assert_eq!(vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0).unwrap(), Quantity::new(4000000));
         assert_eq!(
             vault
-                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)
+                .deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0)
                 .unwrap(),
-            Quantity::new(2000000)
+            Quantity::new(4000000)
         );
-
-        // decrease balance and then check
-
-        //assert_eq!(vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0).unwrap(), Quantity::new(4000000));
         assert_eq!(
             vault
                 .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)

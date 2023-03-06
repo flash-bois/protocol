@@ -12,7 +12,7 @@ pub enum Side {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-#[repr(u8)]
+#[repr(C, u8)]
 pub enum Position {
     #[default]
     Empty,

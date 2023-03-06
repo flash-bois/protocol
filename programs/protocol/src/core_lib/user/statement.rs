@@ -23,15 +23,15 @@ mod zero {
     #[derive(SafeArray, Debug)]
     pub struct Positions {
         pub head: u8,
-        pub elements: [Position; 64],
+        pub elements: [Position; 32],
     }
 
     #[zero_copy]
     #[derive(Default, Debug)]
     #[repr(C)]
     pub struct UserTemporaryValues {
-        pub liabilities: Value,
         pub collateral: CollateralValues,
+        pub liabilities: Value,
         // pub trades: Trades,
     }
 
@@ -39,8 +39,8 @@ mod zero {
     #[derive(Default, Debug)]
     #[repr(C)]
     pub struct UserStatement {
-        pub values: UserTemporaryValues,
         pub positions: Positions,
+        pub values: UserTemporaryValues,
     }
 }
 
@@ -49,24 +49,25 @@ mod non_zero {
     use super::*;
 
     #[derive(SafeArray, Clone, Copy, Debug)]
+    #[repr(C)]
     pub struct Positions {
         pub head: u8,
-        pub elements: [Position; 64],
+        pub elements: [Position; 32],
     }
 
     #[derive(Default, Clone, Copy, Debug)]
     #[repr(C)]
     pub struct UserTemporaryValues {
-        pub liabilities: Value,
         pub collateral: CollateralValues,
+        pub liabilities: Value,
         // pub trades: Trades,
     }
 
     #[derive(Default, Clone, Copy, Debug)]
     #[repr(C)]
     pub struct UserStatement {
-        pub values: UserTemporaryValues,
         pub positions: Positions,
+        pub values: UserTemporaryValues,
     }
 }
 
@@ -136,7 +137,6 @@ impl UserStatement {
     pub fn refresh(&mut self, vaults: &[Vault]) -> Result<(), LibErrors> {
         self.values.liabilities = self.liabilities_value(vaults)?;
         self.values.collateral = self.collaterals_values(vaults)?;
-
 
         Ok(())
         // TODO: handle trades

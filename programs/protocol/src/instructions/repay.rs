@@ -41,7 +41,7 @@ impl<'info> Repay<'info> {
         let amount = Quantity::new(amount);
 
         //vaults.refresh_all(ctx.remaining_accounts)?;
-        user_statement.statement.refresh(&vaults.arr.elements);
+        user_statement.statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
         let repay_amount = vault.repay(&mut user_statement.statement, amount)?;
