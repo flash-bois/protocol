@@ -172,14 +172,16 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn lending_apy(&mut self, index: u8) -> Result<u64, JsError> {
+    pub fn lending_apy(&mut self, index: u8, daily: bool) -> Result<u64, JsError> {
+        let day_time: u32 = 60 * 60 * 24;
+        let time = if daily { day_time } else { day_time * 365 };
+
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
                 let utilization = lend.current_utilization();
                 let fee_curve = lend.fee_curve();
                 Fraction::from_decimal(
-                    fee_curve
-                        .compounded_fee(Fraction::from_decimal(utilization), 60 * 60 * 24 * 365),
+                    fee_curve.compounded_fee(Fraction::from_decimal(utilization), time),
                 )
                 .get()
             } else {
