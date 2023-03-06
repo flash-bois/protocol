@@ -4,20 +4,35 @@ version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "lib"]
 name = "protocol"
 
-[features]
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-
 [dependencies]
-anchor-lang = "0.26.0"
-solana-sdk = "1.14.11"
 checked_decimal_macro = "0.1.4"
+vec_macro = { path = "../vec_macro"}
 
-core-lib = { path = "../core-lib"}
+anchor-lang = { version = "0.26.0", optional = true }
+anchor-spl = { version = "0.26.0", optional = true }
+pyth-sdk-solana = { version = "0.7.1", optional = true }
+
+wasm-bindgen = { version = "0.2.63", optional = true }
+bytemuck = { version = "1.13.0", optional = true }
+js-sys = { version = "0.3.61", optional = true }
+console_error_panic_hook = { version = "0.1.6", optional = true }
+thiserror = { version = "1.0.38", optional = true }
+
+
+[features]
+default = ["wasm"]
+anchor = ["dep:anchor-lang", "dep:anchor-spl", "dep:pyth-sdk-solana"]
+wasm = ["dep:wasm-bindgen", "dep:bytemuck", "dep:js-sys", "dep:console_error_panic_hook", "dep:thiserror"]
+
+# UNUSED
+# no-entrypoint = []
+# no-idl = []
+# no-log-ix-name = []
+# cpi = ["no-entrypoint"]
+# default = []
+
