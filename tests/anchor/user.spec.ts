@@ -139,17 +139,30 @@ describe('User', () => {
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
   })
 
+  it('gets lp position info from statement', async () => {
+    const account_info = (await connection.getAccountInfo(statement))?.data
+    statement_acc = StatementAccount.load(account_info as Buffer)
+    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
+    vaults_acc.reload(vaults_acc_info as Buffer)
+
+    const position_info = vaults_acc.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
+
+    assert.equal(position_info.base_quantity, 200000n)
+    assert.equal(position_info.quote_quantity, 400000n)
+    assert.equal(position_info.position_value, 800000000n)
+  })
+
   it('gives max borrow user value', async () => {
     const account_info = (await connection.getAccountInfo(statement))?.data
     const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
     vaults_acc.reload(vaults_acc_info as Buffer)
-    statement_acc = StatementAccount.load(account_info as Buffer)
+    statement_acc.reload(account_info as Buffer)
 
     assert.equal(Buffer.from(statement_acc.owner()).toString('hex'), user.publicKey.toBuffer().toString('hex'))
 
     statement_acc.refresh(vaults_acc.buffer())
 
-    assert.equal(statement_acc.max_allowed_borrow_value(), 800000000n)
+    assert.equal(statement_acc.remaining_permitted_debt(), 800000000n)
   })
 
   it('single swap', async () => {

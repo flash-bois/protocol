@@ -107,6 +107,7 @@ impl VaultsAccount {
         };
 
         let found_position = statement_account.statement.search(&position_search)?;
+
         let (base_quantity, quote_quantity) =
             found_position.get_owed_double(strategy_index, found_position.shares(), vault)?;
 

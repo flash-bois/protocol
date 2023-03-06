@@ -102,10 +102,7 @@ impl Vault {
             }
         };
 
-        let mut_strategy = self
-            .strategies
-            .get_mut_checked(strategy_index as usize)
-            .ok_or(LibErrors::StrategyMissing)?;
+        let mut_strategy = self.strategies.get_strategy_mut(strategy_index)?;
 
         let shares = mut_strategy.deposit(
             base_quantity,
@@ -126,6 +123,7 @@ impl Vault {
         match user_statement.search_mut(&temp_position) {
             Ok(position) => {
                 position.increase_amount(amount);
+                position.increase_quote_amount(quote_quantity);
                 position.increase_shares(shares);
             }
             Err(..) => {

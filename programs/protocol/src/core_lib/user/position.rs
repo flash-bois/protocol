@@ -117,6 +117,15 @@ impl Position {
         }
     }
 
+    fn amount_quote_mut(&mut self) -> &mut Quantity {
+        match self {
+            Position::Borrow { .. } => unreachable!(),
+            Position::LiquidityProvide { quote_amount, .. } => quote_amount,
+            Position::Trading { .. } => unimplemented!(),
+            Position::Empty => unreachable!(),
+        }
+    }
+
     pub fn shares(&self) -> &Shares {
         match self {
             Position::Borrow { shares, .. } => shares,
@@ -137,6 +146,10 @@ impl Position {
 
     pub fn increase_amount(&mut self, amount: Quantity) {
         *self.amount_mut() += amount
+    }
+
+    pub fn increase_quote_amount(&mut self, amount: Quantity) {
+        *self.amount_quote_mut() += amount
     }
 
     pub fn increase_shares(&mut self, shares: Shares) {
@@ -195,21 +208,21 @@ impl Position {
     }
 
     pub fn collateral_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
-        match *self {
+        match self {
             Position::LiquidityProvide {
                 vault_index,
                 strategy_index,
                 shares,
                 ..
             } => {
-                let vault = &vaults[vault_index as usize];
+                let vault = &vaults[*vault_index as usize];
                 let oracle = vault.oracle()?;
                 let quote_oracle = vault.quote_oracle()?;
 
-                let strategy = vault.strategies.get_strategy(strategy_index)?;
+                let strategy = vault.strategies.get_strategy(*strategy_index)?;
 
                 let (base_quantity, quote_quantity) =
-                    self.get_owed_double(strategy_index, &shares, vault)?;
+                    self.get_owed_double(*strategy_index, shares, vault)?;
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
