@@ -151,12 +151,31 @@ impl Position {
         *self.shares_mut() -= shares
     }
 
-    pub fn get_owed(&self, shares: &Shares, vault: &Vault) -> Result<Quantity, LibErrors> {
+    pub fn get_owed_single(&self, shares: &Shares, vault: &Vault) -> Result<Quantity, LibErrors> {
         let service = vault.lend_service_not_mut()?;
 
         Ok(service
             .borrow_shares()
             .calculate_owed(*shares, service.locked().base))
+    }
+
+    pub fn get_owed_double(
+        &self,
+        strategy_index: u8,
+        shares: &Shares,
+        vault: &Vault,
+    ) -> Result<(Quantity, Quantity), LibErrors> {
+        let strategy = vault.strategies.get_strategy(strategy_index)?;
+
+        let base_quantity = strategy
+            .total_shares()
+            .calculate_earned(*shares, strategy.balance());
+
+        let quote_quantity = strategy
+            .total_shares()
+            .calculate_earned(*shares, strategy.balance_quote());
+
+        Ok((base_quantity, quote_quantity))
     }
 
     pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
@@ -168,7 +187,7 @@ impl Position {
             } => {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle()?;
-                let amount = self.get_owed(&shares, vault)?;
+                let amount = self.get_owed_single(&shares, vault)?;
                 Ok(oracle.calculate_value(amount))
             }
             _ => unreachable!("should be called on liability, oopsie"),
@@ -189,13 +208,8 @@ impl Position {
 
                 let strategy = vault.strategies.get_strategy(strategy_index)?;
 
-                let base_quantity = strategy
-                    .total_shares()
-                    .calculate_earned(shares, strategy.balance());
-
-                let quote_quantity = strategy
-                    .total_shares()
-                    .calculate_earned(shares, strategy.balance_quote());
+                let (base_quantity, quote_quantity) =
+                    self.get_owed_double(strategy_index, &shares, vault)?;
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);

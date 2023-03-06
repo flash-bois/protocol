@@ -33,9 +33,18 @@ impl DerefMut for StatementAccount {
 }
 
 #[wasm_bindgen]
-pub struct BorrowPosition {
+pub struct BorrowPositionInfo {
     pub vault_id: u8,
-    pub owed: u64,
+    pub owed_quantity: u64,
+}
+
+#[wasm_bindgen]
+pub struct LpPositionInfo {
+    pub vault_id: u8,
+    pub strategy_id: u8,
+    pub position_value: u64,
+    pub base_quantity: u64,
+    pub quote_quantity: u64,
 }
 
 #[wasm_bindgen]
@@ -48,11 +57,11 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn get_borrow_position(
+    pub fn get_borrow_position_info(
         &self,
         vault_index: u8,
         statement: &Uint8Array,
-    ) -> Result<BorrowPosition, JsError> {
+    ) -> Result<BorrowPositionInfo, JsError> {
         let vault = self.vault_checked(vault_index)?;
         let statement_account = StatementAccount::load(statement);
 
@@ -64,11 +73,49 @@ impl VaultsAccount {
         };
 
         let found_position = statement_account.statement.search(&position_search)?;
-        let owed_amount = found_position.get_owed(found_position.shares(), vault)?;
+        let owed_amount = found_position.get_owed_single(found_position.shares(), vault)?;
 
-        Ok(BorrowPosition {
+        Ok(BorrowPositionInfo {
             vault_id: vault_index,
-            owed: owed_amount.get(),
+            owed_quantity: owed_amount.get(),
+        })
+    }
+
+    #[wasm_bindgen]
+    pub fn get_lp_position_info(
+        &self,
+        vault_index: u8,
+        strategy_index: u8,
+        statement: &Uint8Array,
+    ) -> Result<LpPositionInfo, JsError> {
+        let vault = self.vault_checked(vault_index)?;
+        let statement_account = StatementAccount::load(statement);
+
+        // Search by vault index (PartialEq depended implementation)
+        let position_search = Position::LiquidityProvide {
+            vault_index,
+            strategy_index,
+            shares: Shares::new(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
+        };
+
+        let found_position = statement_account.statement.search(&position_search)?;
+        let (base_quantity, quote_quantity) =
+            found_position.get_owed_double(strategy_index, found_position.shares(), vault)?;
+
+        let oracle = vault.oracle()?;
+        let quote_oracle = vault.quote_oracle()?;
+
+        let value =
+            oracle.calculate_value(base_quantity) + quote_oracle.calculate_value(quote_quantity);
+
+        Ok(LpPositionInfo {
+            vault_id: vault_index,
+            strategy_id: strategy_index,
+            position_value: value.get() as u64,
+            base_quantity: base_quantity.get(),
+            quote_quantity: quote_quantity.get(),
         })
     }
 }
