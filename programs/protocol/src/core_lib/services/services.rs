@@ -49,8 +49,8 @@ pub enum ServiceType {
 }
 
 impl Services {
-    pub fn trade(&self) -> Result<&Trade, ()> {
-        self.trade.as_ref().ok_or(())
+    pub fn trade(&self) -> Result<&Trade, LibErrors> {
+        self.trade.as_ref().ok_or(LibErrors::TradeServiceNone)
     }
 
     pub fn swap(&self) -> Result<&Swap, LibErrors> {

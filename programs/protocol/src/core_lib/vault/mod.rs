@@ -3,6 +3,7 @@ pub mod general;
 pub mod lend;
 pub mod swap;
 pub mod test;
+pub mod trade;
 
 use crate::core_lib::{
     decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization},

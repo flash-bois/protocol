@@ -126,11 +126,7 @@ impl Vault {
                 position.increase_quote_amount(quote_quantity);
                 position.increase_shares(shares);
             }
-            Err(..) => {
-                user_statement
-                    .add_position(temp_position)
-                    .map_err(|_| LibErrors::CannotAddPosition)?;
-            }
+            Err(..) => user_statement.add_position(temp_position)?,
         }
 
         if deposit_token == Token::Base {

@@ -14,13 +14,6 @@ mod zero {
     #[zero_copy]
     #[repr(C)]
     #[derive(Debug, Default, PartialEq)]
-    pub struct VaultEntry {
-        pub data: Vault,
-    }
-
-    #[zero_copy]
-    #[repr(C)]
-    #[derive(Debug, Default, PartialEq)]
     pub struct VaultKeys {
         pub base_token: Pubkey,
         pub quote_token: Pubkey,
@@ -119,19 +112,13 @@ mod zero {
 }
 #[cfg(feature = "wasm")]
 mod non_zero {
-    use crate::{core_lib::vault::Vault};
+    use crate::core_lib::vault::Vault;
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::{
         ops::Range,
         slice::{Iter, IterMut},
     };
     use vec_macro::SafeArray;
-
-    #[repr(C)]
-    #[derive(Debug, Default, PartialEq, Clone, Copy)]
-    pub struct VaultEntry {
-        pub data: Vault,
-    }
 
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Clone, Copy)]

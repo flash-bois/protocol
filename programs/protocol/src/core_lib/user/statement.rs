@@ -75,8 +75,10 @@ pub use zero::*;
 pub use non_zero::*;
 
 impl UserStatement {
-    pub fn add_position(&mut self, position: Position) -> Result<(), ()> {
-        self.positions.add(position)
+    pub fn add_position(&mut self, position: Position) -> Result<(), LibErrors> {
+        self.positions
+            .add(position)
+            .map_err(|_| LibErrors::CannotAddPosition)
     }
 
     pub fn search_mut(&mut self, position_search: &Position) -> Result<&mut Position, LibErrors> {
@@ -135,24 +137,25 @@ impl UserStatement {
         }
     }
 
-    fn trades_values(&self, vaults: &[Vault]) -> (Value, CollateralValues) {
+    fn trades_values(&self, vaults: &[Vault]) -> Result<(Value, CollateralValues), LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_trade()).fold(
-                (Value::new(0), CollateralValues::default()),
-                |(loss, prof), current| {
-                    let (position_loss, position_profit) = current.pos_loss_n_profit(vaults);
+                Ok((Value::new(0), CollateralValues::default())),
+                |sum, current| {
+                    let (loss, profit) = sum?;
+                    let (position_loss, position_profit) = current.loss_n_profit(vaults)?;
 
-                    (loss + position_loss, prof + position_profit)
+                    Ok((loss + position_loss, profit + position_profit))
                 },
             )
         } else {
-            (Value::new(0), CollateralValues::default())
+            Ok((Value::new(0), CollateralValues::default()))
         }
     }
 
     /// calculates user temporary values for collateral and liabilities positions
     pub fn refresh(&mut self, vaults: &[Vault]) -> Result<(), LibErrors> {
-        let (loss, profit) = self.trades_values(vaults);
+        let (loss, profit) = self.trades_values(vaults)?;
 
         self.values.liabilities = self.liabilities_value(vaults)? + loss;
         self.values.collateral = self.collaterals_values(vaults)? + profit;

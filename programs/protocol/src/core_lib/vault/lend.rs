@@ -46,11 +46,7 @@ impl Vault {
                 position.increase_amount(borrow_quantity);
                 position.increase_shares(shares);
             }
-            Err(..) => {
-                user_statement
-                    .add_position(position_temp)
-                    .map_err(|_| LibErrors::CannotAddPosition)?;
-            }
+            Err(..) => user_statement.add_position(position_temp)?,
         }
 
         Ok(borrow_quantity)

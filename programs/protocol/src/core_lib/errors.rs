@@ -79,6 +79,10 @@ mod anchor_one {
         PositionNotFound,
         #[msg("Trade service is none")]
         TradeServiceNone,
+        #[msg("Function called on bad position type")]
+        PositionMismatch,
+        #[msg("Collateralization is lower than max allowed leverage")]
+        CollateralizationTooLow,
     }
 }
 
@@ -163,6 +167,10 @@ mod anchor_none {
         PositionNotFound,
         #[error("Trade service is none")]
         TradeServiceNone,
+        #[error("Function called on bad position type")]
+        PositionMismatch,
+        #[error("Collateralization is lower than max allowed leverage")]
+        CollateralizationTooLow,
     }
 }
 

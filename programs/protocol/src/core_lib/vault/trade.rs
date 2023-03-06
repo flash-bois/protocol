@@ -1,5 +1,6 @@
-use crate::{
+use crate::core_lib::{
     decimal::{BalanceChange, Quantity, Time},
+    errors::LibErrors,
     services::{ServiceType, ServiceUpdate},
     structs::{Receipt, Side},
     user::{Position, UserStatement},
@@ -14,7 +15,7 @@ impl Vault {
         quantity: Quantity,
         side: Side,
         now: Time,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.refresh(now)?;
 
         let collateral = user_statement.permitted_debt();
@@ -52,7 +53,7 @@ impl Vault {
         user_statement: &mut UserStatement,
         side: Side,
         now: Time,
-    ) -> Result<BalanceChange, ()> {
+    ) -> Result<BalanceChange, LibErrors> {
         let temp_position = Position::Trading {
             vault_index: self.id,
             receipt: Receipt {
@@ -63,8 +64,7 @@ impl Vault {
 
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
-        let (position_id, found_position) =
-            user_statement.search_mut_id(&temp_position).ok_or(())?;
+        let (position_id, found_position) = user_statement.search_mut_id(&temp_position)?;
         let receipt = found_position.receipt();
 
         let change = match receipt.side {

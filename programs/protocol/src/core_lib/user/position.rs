@@ -247,7 +247,7 @@ impl Position {
         }
     }
 
-    pub fn pos_loss_n_profit(&self, vaults: &[Vault]) -> (Value, CollateralValues) {
+    pub fn loss_n_profit(&self, vaults: &[Vault]) -> Result<(Value, CollateralValues), LibErrors> {
         match *self {
             Position::Trading {
                 vault_index,
@@ -255,12 +255,12 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let trade = vault.services.trade().unwrap();
-                let oracle = vault.oracle().unwrap();
-                let quote_oracle = vault.quote_oracle().unwrap();
+                let trade = vault.services.trade()?;
+                let oracle = vault.oracle()?;
+                let quote_oracle = vault.quote_oracle()?;
                 let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
 
-                match profit_or_loss {
+                let res = match profit_or_loss {
                     TradeResult::None => unreachable!(),
                     TradeResult::Profitable(val) => (
                         Value::new(0),
@@ -271,7 +271,9 @@ impl Position {
                         },
                     ),
                     TradeResult::Loss(val) => (val, CollateralValues::default()),
-                }
+                };
+
+                Ok(res)
             }
             _ => unreachable!("should be called on trade, oopsie"),
         }

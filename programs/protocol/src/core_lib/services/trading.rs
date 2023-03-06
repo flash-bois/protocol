@@ -3,6 +3,7 @@ use std::cmp::min;
 
 use crate::core_lib::{
     decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value},
+    errors::LibErrors,
     structs::{
         oracle::{Oracle, OraclePriceType},
         FeeCurve, Receipt, Side,
@@ -177,14 +178,15 @@ impl Trade {
         collateral: Value,
         oracle: &Oracle,
         current_time: Time,
-    ) -> Result<Receipt, ()> {
+    ) -> Result<Receipt, LibErrors> {
         let position_value = oracle.calculate_needed_value(quantity);
         let collateralization = Fraction::from_decimal_up(position_value.div_up(collateral));
+
         if collateralization > self.max_open_leverage {
-            return Err(());
+            return Err(LibErrors::CollateralizationTooLow);
         }
         if quantity > self.available.base {
-            return Err(());
+            return Err(LibErrors::NotEnoughBaseQuantity);
         }
 
         self.locked.base += quantity;
@@ -209,13 +211,13 @@ impl Trade {
         oracle: &Oracle,
         quote_oracle: &Oracle,
         current_time: Time,
-    ) -> Result<Receipt, ()> {
+    ) -> Result<Receipt, LibErrors> {
         let position_value = oracle.calculate_value(quantity);
         let quote_quantity = quote_oracle.calculate_needed_quantity(position_value);
         let collateralization = Fraction::from_decimal_up(position_value.div_up(collateral));
 
         if collateralization > self.max_open_leverage {
-            return Err(());
+            return Err(LibErrors::CollateralizationTooLow);
         }
 
         self.locked.quote += quote_quantity;
@@ -235,7 +237,7 @@ impl Trade {
         &mut self,
         receipt: Receipt,
         oracle: &Oracle,
-    ) -> Result<(BalanceChange, Quantity), ()> {
+    ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
 
         let position_change = self.calculate_long_value(&receipt, oracle);
@@ -254,7 +256,7 @@ impl Trade {
         oracle: &Oracle,
         quote_oracle: &Oracle,
         now: Time,
-    ) -> Result<(BalanceChange, Quantity), ()> {
+    ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
 
         self.locked.quote -= receipt.locked;
