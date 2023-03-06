@@ -1,6 +1,6 @@
-use crate::structs::Statement;
 use crate::wasm_wrapper::to_buffer;
 use crate::ZeroCopyDecoder;
+use crate::{core_lib::decimal::Value, structs::Statement};
 use checked_decimal_macro::Decimal;
 use js_sys::Uint8Array;
 use std::ops::{Deref, DerefMut};
@@ -23,6 +23,16 @@ impl Deref for StatementAccount {
 impl DerefMut for StatementAccount {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.account
+    }
+}
+
+#[wasm_bindgen]
+impl VaultsAccount {
+    pub fn max_borrow_for(&self, id: u8, value: u64) -> Result<u64, JsError> {
+        let vault = self.vault_checked(id)?;
+        let value = Value::new(value as u128);
+
+        Ok(vault.oracle()?.calculate_quantity(value).get())
     }
 }
 
