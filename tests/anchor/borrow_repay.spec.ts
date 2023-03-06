@@ -10,7 +10,7 @@ import {
   Transaction
 } from '@solana/web3.js'
 import { assert } from 'chai'
-import { StateAccount, VaultsAccount } from '../../pkg/protocol'
+import { StateAccount, StatementAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import { Oracle } from '../../target/types/oracle'
 import {
@@ -193,10 +193,10 @@ describe('Prepare 2 vault for borrow', () => {
   it('Set lend fee', async () => {
     let sig = await program.methods
       .modifyFeeCurve(0, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
-    .accounts({
-      admin: admin.publicKey,
-      ...state_with_vaults
-    })
+      .accounts({
+        admin: admin.publicKey,
+        ...state_with_vaults
+      })
       .signers([admin])
       .rpc({ skipPreflight: true })
 
@@ -296,6 +296,20 @@ describe('User borrow and repays', () => {
 
     assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
     assert.equal((await getAccount(connection, first_vault_accounts.reserveBase)).amount, 100000n)
+  })
+
+  it('gets borrow position info', async () => {
+    const { state, vaults } = state_with_vaults
+
+    const account_info = (await connection.getAccountInfo(statement_address))?.data
+    const statement_acc = StatementAccount.load(account_info as Buffer)
+    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
+    const vaults_acc = VaultsAccount.load(vaults_acc_info as Buffer)
+
+    const borrow_position = vaults_acc.get_borrow_position_info(0, statement_acc.buffer(), 0)
+
+    assert.equal(borrow_position.owed_quantity, 100000n)
+    assert.equal(borrow_position.borrowed_quantity, 100000n)
   })
 
   it('repays 100000 token units', async () => {

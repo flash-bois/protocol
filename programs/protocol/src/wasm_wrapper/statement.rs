@@ -35,6 +35,7 @@ impl DerefMut for StatementAccount {
 #[wasm_bindgen]
 pub struct BorrowPositionInfo {
     pub vault_id: u8,
+    pub borrowed_quantity: u64,
     pub owed_quantity: u64,
 }
 
@@ -80,6 +81,7 @@ impl VaultsAccount {
 
         Ok(BorrowPositionInfo {
             vault_id: vault_index,
+            borrowed_quantity: found_position.amount().get(),
             owed_quantity: owed_amount.get(),
         })
     }
