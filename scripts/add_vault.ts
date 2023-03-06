@@ -96,7 +96,7 @@ const main = async () => {
         .instruction(),
       await program.methods
         // .forceOverrideOracle(0, true, 200, 1, -2, 42)
-        .forceOverrideOracle(0, true, 50, 1, -2, 42)
+        .forceOverrideOracle(0, true, 500, 4, -3, 42)
         .accountsStrict(accounts)
         .instruction(),
       await program.methods
