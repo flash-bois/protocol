@@ -55,7 +55,7 @@ mod non_zero {
 }
 
 #[cfg(feature = "anchor")]
-pub use zero::FeeCurve;
+pub use zero::Receipt;
 
 #[cfg(not(feature = "anchor"))]
 pub use non_zero::Receipt;
