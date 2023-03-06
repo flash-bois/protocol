@@ -42,11 +42,11 @@ impl Vault {
         };
 
         match user_statement.search_mut(&position_temp) {
-            Some(position) => {
+            Ok(position) => {
                 position.increase_amount(borrow_quantity);
                 position.increase_shares(shares);
             }
-            None => {
+            Err(..) => {
                 user_statement
                     .add_position(position_temp)
                     .map_err(|_| LibErrors::CannotAddPosition)?;
@@ -67,9 +67,7 @@ impl Vault {
             amount: Quantity::new(0),
         };
 
-        let (id, position) = user_statement
-            .search_mut_id(&position_temp)
-            .ok_or(LibErrors::PositionNotFound)?;
+        let (id, position) = user_statement.search_mut_id(&position_temp)?;
 
         let lend = self.lend_service()?;
         let total_locked = lend.locked().base;

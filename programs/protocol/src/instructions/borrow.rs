@@ -45,7 +45,7 @@ impl<'info> Borrow<'info> {
         let amount = Quantity::new(amount);
 
         // //vaults.refresh_all(ctx.remaining_accounts)?;
-        user_statement.statement.refresh(&vaults.arr.elements);
+        user_statement.statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
         let borrow_amount = vault.borrow(&mut user_statement.statement, amount)?;

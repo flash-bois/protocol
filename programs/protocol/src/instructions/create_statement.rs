@@ -8,7 +8,7 @@ pub struct CreateStatement<'info> {
       seeds = [b"statement", payer.key.as_ref()],
       bump,
       payer = payer,
-      space = 8 + 3696
+      space = 8 + std::mem::size_of::<Statement>()
     )]
     pub statement: AccountLoader<'info, Statement>,
     #[account(mut)]

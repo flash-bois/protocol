@@ -1,8 +1,8 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
-import { Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import { Keypair, PublicKey, SIGNATURE_LENGTH_IN_BYTES, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { assert, use } from 'chai'
-import { price_denominator, StateAccount, VaultsAccount } from '../../pkg/protocol'
+import { price_denominator, StateAccount, StatementAccount, VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import {
   createMint,
@@ -44,11 +44,13 @@ describe('User', () => {
   let state: PublicKey
   let vaults: PublicKey
   let accounts: AdminAccounts
+  let vaults_acc: VaultsAccount
+  let statement_acc: StatementAccount
   let protocolAccounts: DotWaveAccounts
   let accountBase: PublicKey
   let accountQuote: PublicKey
 
-  const [statement] = PublicKey.findProgramAddressSync(
+  const [statement, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from(anchor.utils.bytes.utf8.encode(STATEMENT_SEED)), user.publicKey.toBuffer()],
     program.programId
   )
@@ -102,11 +104,20 @@ describe('User', () => {
       .rpc({ skipPreflight: true })
   })
 
+
+  it('calculates deposit', async () => {
+    const account_info = (await connection.getAccountInfo(vaults))?.data
+    vaults_acc = VaultsAccount.load(account_info as Buffer)
+
+    assert.equal(vaults_acc.deposit(0, 0, 200000n, true, 0), 400000n)
+    assert.equal(vaults_acc.deposit(0, 0, 400000n, false, 0), 200000n)
+  })
+
   it('deposit', async () => {
     assert.equal((await getAccount(connection, accountBase)).amount, 1000000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 1000000n)
 
-    await program.methods
+    const sig = await program.methods
       .deposit(0, 0, new BN(200000), true)
       .accountsStrict({
         state,
@@ -122,8 +133,36 @@ describe('User', () => {
       .signers([user])
       .rpc({ skipPreflight: true })
 
+    await waitFor(connection, sig)
+
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
+  })
+
+  it('gets lp position info from statement', async () => {
+    const account_info = (await connection.getAccountInfo(statement))?.data
+    statement_acc = StatementAccount.load(account_info as Buffer)
+    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
+    vaults_acc.reload(vaults_acc_info as Buffer)
+
+    const position_info = vaults_acc.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
+
+    assert.equal(position_info.base_quantity, 200000n)
+    assert.equal(position_info.quote_quantity, 400000n)
+    assert.equal(position_info.position_value, 800000000n)
+  })
+
+  it('gives max borrow user value', async () => {
+    const account_info = (await connection.getAccountInfo(statement))?.data
+    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
+    vaults_acc.reload(vaults_acc_info as Buffer)
+    statement_acc.reload(account_info as Buffer)
+
+    assert.equal(Buffer.from(statement_acc.owner()).toString('hex'), user.publicKey.toBuffer().toString('hex'))
+
+    statement_acc.refresh(vaults_acc.buffer())
+
+    assert.equal(statement_acc.remaining_permitted_debt(), 800000000n)
   })
 
   it('single swap', async () => {

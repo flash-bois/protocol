@@ -119,7 +119,7 @@ mod zero {
 }
 #[cfg(feature = "wasm")]
 mod non_zero {
-    use crate::{core_lib::vault::Vault, wasm_wrapper::to_buffer};
+    use crate::{core_lib::vault::Vault};
     use checked_decimal_macro::num_traits::ToPrimitive;
     use std::{
         ops::Range,

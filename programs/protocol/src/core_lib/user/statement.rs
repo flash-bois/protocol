@@ -1,3 +1,5 @@
+use crate::core_lib::errors::LibErrors;
+
 use super::{
     utils::{CollateralValues, TradeResult},
     *,
@@ -21,15 +23,15 @@ mod zero {
     #[derive(SafeArray, Debug)]
     pub struct Positions {
         pub head: u8,
-        pub elements: [Position; 64],
+        pub elements: [Position; 32],
     }
 
     #[zero_copy]
     #[derive(Default, Debug)]
     #[repr(C)]
     pub struct UserTemporaryValues {
-        pub liabilities: Value,
         pub collateral: CollateralValues,
+        pub liabilities: Value,
         // pub trades: Trades,
     }
 
@@ -47,16 +49,17 @@ mod non_zero {
     use super::*;
 
     #[derive(SafeArray, Clone, Copy, Debug)]
+    #[repr(C)]
     pub struct Positions {
         pub head: u8,
-        pub elements: [Position; 64],
+        pub elements: [Position; 32],
     }
 
     #[derive(Default, Clone, Copy, Debug)]
     #[repr(C)]
     pub struct UserTemporaryValues {
-        pub liabilities: Value,
         pub collateral: CollateralValues,
+        pub liabilities: Value,
         // pub trades: Trades,
     }
 
@@ -79,12 +82,28 @@ impl UserStatement {
         self.positions.add(position)
     }
 
-    pub fn search_mut(&mut self, position_search: &Position) -> Option<&mut Position> {
-        self.positions.find_mut(position_search)
+    pub fn search_mut(&mut self, position_search: &Position) -> Result<&mut Position, LibErrors> {
+        Ok(self
+            .positions
+            .find_mut(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
     }
 
-    pub fn search_mut_id(&mut self, position_search: &Position) -> Option<(usize, &mut Position)> {
-        self.positions.enumerate_find_mut(position_search)
+    pub fn search(&self, position_search: &Position) -> Result<&Position, LibErrors> {
+        Ok(self
+            .positions
+            .find(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
+    }
+
+    pub fn search_mut_id(
+        &mut self,
+        position_search: &Position,
+    ) -> Result<(usize, &mut Position), LibErrors> {
+        Ok(self
+            .positions
+            .enumerate_find_mut(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
     }
 
     pub fn delete_position(&mut self, id: usize) {
@@ -96,26 +115,26 @@ impl UserStatement {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
     }
 
-    fn liabilities_value(&self, vaults: &[Vault]) -> Value {
+    fn liabilities_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_liability())
-                .fold(Value::new(0), |sum, curr| {
-                    sum + curr.liability_value(vaults)
+                .fold(Ok(Value::new(0)), |sum, curr| {
+                    Ok(sum? + curr.liability_value(vaults)?)
                 })
         } else {
-            Value::new(0)
+            Ok(Value::new(0))
         }
     }
 
     /// Vault's oracles should be refreshed before using this function
-    fn collaterals_values(&self, vaults: &[Vault]) -> CollateralValues {
+    fn collaterals_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_collateral())
-                .fold(CollateralValues::default(), |sum, curr| {
-                    sum + curr.collateral_values(vaults)
+                .fold(Ok(CollateralValues::default()), |sum, curr| {
+                    Ok(sum? + curr.collateral_values(vaults)?)
                 })
         } else {
-            CollateralValues::default()
+            Ok(CollateralValues::default())
         }
     }
 
@@ -131,10 +150,11 @@ impl UserStatement {
     }
 
     /// calculates user temporary values for collateral and liabilities positions
-    pub fn refresh(&mut self, vaults: &[Vault]) {
-        self.values.liabilities = self.liabilities_value(vaults);
-        self.values.collateral = self.collaterals_values(vaults);
+    pub fn refresh(&mut self, vaults: &[Vault]) -> Result<(), LibErrors> {
+        self.values.liabilities = self.liabilities_value(vaults)?;
+        self.values.collateral = self.collaterals_values(vaults)?;
 
+        Ok(())
         // TODO: handle trades
     }
 }
@@ -303,13 +323,13 @@ mod position_management {
             })
             .unwrap();
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
 
         vaults[0]
             .borrow(&mut user_statement, Quantity::new(5000000))
             .unwrap();
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
 
         vaults[1]
             .borrow(&mut user_statement, Quantity::new(4000000))
@@ -317,14 +337,14 @@ mod position_management {
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 5);
 
-        user_statement.refresh(&mut vaults);
+        user_statement.refresh(&mut vaults).unwrap();
         assert_eq!(
-            user_statement.collaterals_values(&vaults).exact,
+            user_statement.collaterals_values(&vaults).unwrap().exact,
             Value::new(50000000000)
         );
 
         assert_eq!(
-            user_statement.liabilities_value(&vaults),
+            user_statement.liabilities_value(&vaults).unwrap(),
             Value::new(13000000000)
         )
     }
@@ -333,7 +353,7 @@ mod position_management {
     fn delete_position_in_the_middle() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -387,7 +407,7 @@ mod position_management {
     fn delete_position_in_the_end() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -441,7 +461,7 @@ mod position_management {
     fn delete_position_in_the_beginning() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -495,7 +515,7 @@ mod position_management {
     fn finding_position() {
         let mut user_statement = UserStatement::default();
 
-        let mut search_position = Position::LiquidityProvide {
+        let search_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -558,7 +578,7 @@ mod position_management {
 
         assert!(user_statement
             .search_mut(&modified_non_matching_search_position)
-            .is_none());
+            .is_err());
 
         assert_eq!(
             user_statement
@@ -570,6 +590,6 @@ mod position_management {
 
         assert!(user_statement
             .search_mut_id(&modified_non_matching_search_position)
-            .is_none());
+            .is_err());
     }
 }

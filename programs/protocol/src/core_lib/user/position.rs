@@ -2,7 +2,7 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::core_lib::services::ServiceUpdate;
+use crate::core_lib::{errors::LibErrors, services::ServiceUpdate};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -12,7 +12,7 @@ pub enum Side {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-#[repr(u8)]
+#[repr(C, u8)]
 pub enum Position {
     #[default]
     Empty,
@@ -99,7 +99,7 @@ impl Position {
         }
     }
 
-    pub fn shares(&mut self) -> &mut Shares {
+    fn shares_mut(&mut self) -> &mut Shares {
         match self {
             Position::Borrow { shares, .. } => shares,
             Position::LiquidityProvide { shares, .. } => shares,
@@ -108,7 +108,34 @@ impl Position {
         }
     }
 
-    pub fn amount(&mut self) -> &mut Quantity {
+    fn amount_mut(&mut self) -> &mut Quantity {
+        match self {
+            Position::Borrow { amount, .. } => amount,
+            Position::LiquidityProvide { amount, .. } => amount,
+            Position::Trading { quantity, .. } => quantity,
+            Position::Empty => unreachable!(),
+        }
+    }
+
+    fn amount_quote_mut(&mut self) -> &mut Quantity {
+        match self {
+            Position::Borrow { .. } => unreachable!(),
+            Position::LiquidityProvide { quote_amount, .. } => quote_amount,
+            Position::Trading { .. } => unimplemented!(),
+            Position::Empty => unreachable!(),
+        }
+    }
+
+    pub fn shares(&self) -> &Shares {
+        match self {
+            Position::Borrow { shares, .. } => shares,
+            Position::LiquidityProvide { shares, .. } => shares,
+            Position::Trading { .. } => panic!("trading does not have shares"),
+            Position::Empty => unreachable!(),
+        }
+    }
+
+    pub fn amount(&self) -> &Quantity {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
@@ -118,22 +145,53 @@ impl Position {
     }
 
     pub fn increase_amount(&mut self, amount: Quantity) {
-        *self.amount() += amount
+        *self.amount_mut() += amount
+    }
+
+    pub fn increase_quote_amount(&mut self, amount: Quantity) {
+        *self.amount_quote_mut() += amount
     }
 
     pub fn increase_shares(&mut self, shares: Shares) {
-        *self.shares() += shares
+        *self.shares_mut() += shares
     }
 
     pub fn decrease_amount(&mut self, amount: Quantity) {
-        *self.amount() -= amount
+        *self.amount_mut() -= amount
     }
 
     pub fn decrease_shares(&mut self, shares: Shares) {
-        *self.shares() -= shares
+        *self.shares_mut() -= shares
     }
 
-    pub fn liability_value(&self, vaults: &[Vault]) -> Value {
+    pub fn get_owed_single(&self, shares: &Shares, vault: &Vault) -> Result<Quantity, LibErrors> {
+        let service = vault.lend_service_not_mut()?;
+
+        Ok(service
+            .borrow_shares()
+            .calculate_owed(*shares, service.locked().base))
+    }
+
+    pub fn get_owed_double(
+        &self,
+        strategy_index: u8,
+        shares: &Shares,
+        vault: &Vault,
+    ) -> Result<(Quantity, Quantity), LibErrors> {
+        let strategy = vault.strategies.get_strategy(strategy_index)?;
+
+        let base_quantity = strategy
+            .total_shares()
+            .calculate_earned(*shares, strategy.balance());
+
+        let quote_quantity = strategy
+            .total_shares()
+            .calculate_earned(*shares, strategy.balance_quote());
+
+        Ok((base_quantity, quote_quantity))
+    }
+
+    pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
         match *self {
             Position::Borrow {
                 vault_index,
@@ -141,53 +199,41 @@ impl Position {
                 ..
             } => {
                 let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle().unwrap();
-                let service = vault.lend_service_not_mut().unwrap();
-
-                let amount = service
-                    .borrow_shares()
-                    .calculate_owed(shares, service.locked().base);
-                oracle.calculate_value(amount)
+                let oracle = vault.oracle()?;
+                let amount = self.get_owed_single(&shares, vault)?;
+                Ok(oracle.calculate_value(amount))
             }
             _ => unreachable!("should be called on liability, oopsie"),
         }
     }
 
-    pub fn collateral_values(&self, vaults: &[Vault]) -> CollateralValues {
-        match *self {
+    pub fn collateral_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
+        match self {
             Position::LiquidityProvide {
                 vault_index,
                 strategy_index,
                 shares,
                 ..
             } => {
-                let vault = &vaults[vault_index as usize];
-                let oracle = vault.oracle().unwrap();
-                let quote_oracle = vault.quote_oracle().unwrap();
+                let vault = &vaults[*vault_index as usize];
+                let oracle = vault.oracle()?;
+                let quote_oracle = vault.quote_oracle()?;
 
-                let strategy = vault
-                    .strategies
-                    .get_checked(strategy_index as usize)
-                    .unwrap();
+                let strategy = vault.strategies.get_strategy(*strategy_index)?;
 
-                let base_quantity = strategy
-                    .total_shares()
-                    .calculate_earned(shares, strategy.balance());
-
-                let quote_quantity = strategy
-                    .total_shares()
-                    .calculate_earned(shares, strategy.balance_quote());
+                let (base_quantity, quote_quantity) =
+                    self.get_owed_double(*strategy_index, shares, vault)?;
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
                 let with_collateral_ratio = value * strategy.collateral_ratio();
                 let unhealthy = value * strategy.liquidation_threshold();
 
-                CollateralValues {
+                Ok(CollateralValues {
                     exact: value,
                     with_collateral_ratio,
                     unhealthy,
-                }
+                })
             }
             _ => unreachable!("should be called on collateral, oopsie"),
         }

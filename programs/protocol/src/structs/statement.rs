@@ -27,9 +27,8 @@ mod non_zero {
         pub owner: [u8; 32],
         pub bump: u8,
     }
-    #[automatically_derived]
+
     unsafe impl bytemuck::Pod for Statement {}
-    #[automatically_derived]
     unsafe impl bytemuck::Zeroable for Statement {}
 }
 

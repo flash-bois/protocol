@@ -127,7 +127,7 @@ impl Oracle {
     ) -> Self {
         Self {
             price: price,
-            confidence: confidence,
+            confidence,
             last_update: time,
             max_update_interval: DEFAULT_MAX_ORACLE_AGE,
             use_spread: 0,

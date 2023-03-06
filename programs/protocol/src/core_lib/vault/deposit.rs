@@ -2,7 +2,7 @@ use super::*;
 use crate::core_lib::user::{Position, UserStatement};
 use checked_decimal_macro::Decimal;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Token {
     Base,
@@ -10,7 +10,7 @@ pub enum Token {
 }
 
 impl Vault {
-    pub fn opposite_quantity(
+    pub fn other_quantity_in_ratio(
         &self,
         input_quantity: Quantity,
         input_token: Token,
@@ -41,7 +41,7 @@ impl Vault {
             .ok_or(LibErrors::StrategyMissing)
     }
 
-    fn get_opposite_quantity(
+    pub fn get_opposite_quantity(
         &self,
         opposite_oracle: &Oracle,
         opposite_quantity: Quantity,
@@ -72,8 +72,13 @@ impl Vault {
         let quote_oracle = self.quote_oracle()?;
 
         let strategy = self.strategy(strategy_index)?;
-        let opposite_quantity = self.opposite_quantity(amount, deposit_token, strategy);
+        // get other quantity in ratio based on base token and quote token balances and given input,
+        // if neither of them are greaten than zero returns 0 as marker for further calculations
+        let opposite_quantity = self.other_quantity_in_ratio(amount, deposit_token, strategy);
 
+        // returns quantities, if previously mentioned zero amount case happened,
+        // then calculate worth of known input and get others in 1:1 value to value ratio
+        // from oracles
         let (base_quantity, quote_quantity, input_balance) = match deposit_token {
             Token::Base => {
                 let (base, quote) = self.get_opposite_quantity(
@@ -97,10 +102,7 @@ impl Vault {
             }
         };
 
-        let mut_strategy = self
-            .strategies
-            .get_mut_checked(strategy_index as usize)
-            .ok_or(LibErrors::StrategyMissing)?;
+        let mut_strategy = self.strategies.get_strategy_mut(strategy_index)?;
 
         let shares = mut_strategy.deposit(
             base_quantity,
@@ -119,11 +121,12 @@ impl Vault {
         };
 
         match user_statement.search_mut(&temp_position) {
-            Some(position) => {
+            Ok(position) => {
                 position.increase_amount(amount);
+                position.increase_quote_amount(quote_quantity);
                 position.increase_shares(shares);
             }
-            None => {
+            Err(..) => {
                 user_statement
                     .add_position(temp_position)
                     .map_err(|_| LibErrors::CannotAddPosition)?;
@@ -142,6 +145,25 @@ impl Vault {
 mod tests {
     use super::*;
     use crate::core_lib::Vault;
+
+    #[test]
+    fn deposit_base_and_quote() {
+        let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
+        let user_statement = &mut UserStatement::default();
+
+        assert_eq!(
+            vault
+                .deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0)
+                .unwrap(),
+            Quantity::new(4000000)
+        );
+        assert_eq!(
+            vault
+                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)
+                .unwrap(),
+            Quantity::new(2000000)
+        );
+    }
 
     #[test]
     fn test_deposit() {
