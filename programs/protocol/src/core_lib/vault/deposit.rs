@@ -177,7 +177,3 @@ mod tests {
             .expect("deposit failed");
     }
 }
-
-// var love = "you";
-// var love2 = "me";
-// console.log (love + ' + ' +  love2);
