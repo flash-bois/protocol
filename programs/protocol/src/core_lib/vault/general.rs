@@ -110,7 +110,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn lock(
+    pub fn lock_base(
         &mut self,
         quantity: Quantity,
         total_available: Quantity,
@@ -121,11 +121,26 @@ impl Vault {
             total_available,
             service,
             Strategy::available,
-            Strategy::lock,
+            Strategy::lock_base,
         )
     }
 
-    pub fn unlock(
+    pub fn lock_quote(
+        &mut self,
+        quantity: Quantity,
+        total_available: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_available,
+            service,
+            Strategy::available,
+            Strategy::lock_quote,
+        )
+    }
+
+    pub fn unlock_base(
         &mut self,
         quantity: Quantity,
         total_locked: Quantity,
@@ -136,7 +151,22 @@ impl Vault {
             total_locked,
             service,
             Strategy::locked,
-            Strategy::unlock,
+            Strategy::unlock_base,
+        )
+    }
+
+    pub fn unlock_quote(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked_quote,
+            Strategy::unlock_quote,
         )
     }
 
@@ -173,6 +203,72 @@ impl Vault {
             Strategy::available,
             Strategy::decrease_balance_quote,
             Strategy::increase_balance_base,
+        )
+    }
+
+    pub fn unlock_with_loss_base(
+        &mut self,
+        unlock: Quantity,
+        loss: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.double_split(
+            unlock,
+            loss,
+            total_locked,
+            service,
+            Strategy::locked,
+            Strategy::unlock_base,
+            Strategy::increase_balance_base,
+        )
+    }
+
+    pub fn unlock_with_loss_quote(
+        &mut self,
+        unlock: Quantity,
+        loss: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.double_split(
+            unlock,
+            loss,
+            total_locked,
+            service,
+            Strategy::locked,
+            Strategy::unlock_quote,
+            Strategy::decrease_balance_quote,
+        )
+    }
+
+    pub fn profit_base(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked,
+            Strategy::increase_balance_base,
+        )
+    }
+
+    pub fn profit_quote(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked_quote,
+            Strategy::increase_balance_quote,
         )
     }
 }

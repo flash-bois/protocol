@@ -33,7 +33,7 @@ impl Vault {
             lend.calculate_borrow_quantity(oracle, amount, user_allowed_borrow)?;
 
         let shares = lend.borrow(borrow_quantity)?;
-        self.lock(borrow_quantity, total_available, ServiceType::Lend)?;
+        self.lock_base(borrow_quantity, total_available, ServiceType::Lend)?;
 
         let position_temp = Position::Borrow {
             vault_index: self.id,
@@ -46,11 +46,7 @@ impl Vault {
                 position.increase_amount(borrow_quantity);
                 position.increase_shares(shares);
             }
-            Err(..) => {
-                user_statement
-                    .add_position(position_temp)
-                    .map_err(|_| LibErrors::CannotAddPosition)?;
-            }
+            Err(..) => user_statement.add_position(position_temp)?,
         }
 
         Ok(borrow_quantity)
@@ -75,7 +71,7 @@ impl Vault {
         let (unlock_quantity, burned_shares) =
             lend.repay(repay_quantity, *position.amount(), *position.shares())?;
 
-        self.unlock(unlock_quantity, total_locked, ServiceType::Lend)?;
+        self.unlock_base(unlock_quantity, total_locked, ServiceType::Lend)?;
 
         if burned_shares.ge(&position.shares()) {
             user_statement.delete_position(id)

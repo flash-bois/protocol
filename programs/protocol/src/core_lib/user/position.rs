@@ -2,14 +2,8 @@ use super::{
     utils::{CollateralValues, TradeResult},
     *,
 };
-use crate::core_lib::{errors::LibErrors, services::ServiceUpdate};
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum Side {
-    Long,
-    Short,
-}
+use crate::core_lib::{errors::LibErrors, services::ServiceUpdate, structs::Receipt};
+use checked_decimal_macro::Decimal;
 
 #[derive(Debug, Default, Clone, Copy)]
 #[repr(C, u8)]
@@ -30,11 +24,7 @@ pub enum Position {
     },
     Trading {
         vault_index: u8,
-        side: Side,
-        quantity: Quantity,
-        quote_quantity: Option<Quantity>,
-        open_price: Price,
-        entry_funding: FundingRate,
+        receipt: Receipt,
     },
 }
 
@@ -65,6 +55,18 @@ impl PartialEq for Position {
                     ..
                 },
             ) => vault_index == vault_index_cmp,
+            (
+                Self::Trading {
+                    vault_index,
+                    receipt,
+                    ..
+                },
+                Self::Trading {
+                    vault_index: vault_index_cmp,
+                    receipt: receipt_cmp,
+                    ..
+                },
+            ) => vault_index == vault_index_cmp && receipt.side == receipt_cmp.side,
             (Self::Empty, Self::Empty) => true,
             _ => false,
         }
@@ -112,7 +114,7 @@ impl Position {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
-            Position::Trading { quantity, .. } => quantity,
+            Position::Trading { receipt, .. } => &mut receipt.size,
             Position::Empty => unreachable!(),
         }
     }
@@ -139,8 +141,14 @@ impl Position {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
-            Position::Trading { quantity, .. } => quantity,
-            Position::Empty => unreachable!(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn receipt(&mut self) -> &mut Receipt {
+        match self {
+            Position::Trading { receipt, .. } => receipt,
+            _ => unreachable!(),
         }
     }
 
@@ -239,8 +247,36 @@ impl Position {
         }
     }
 
-    pub fn position_profit(&self, _vaults: &[Vault]) -> TradeResult {
-        TradeResult::None
+    pub fn loss_n_profit(&self, vaults: &[Vault]) -> Result<(Value, CollateralValues), LibErrors> {
+        match *self {
+            Position::Trading {
+                vault_index,
+                receipt,
+                ..
+            } => {
+                let vault = &vaults[vault_index as usize];
+                let trade = vault.services.trade()?;
+                let oracle = vault.oracle()?;
+                let quote_oracle = vault.quote_oracle()?;
+                let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
+
+                let res = match profit_or_loss {
+                    TradeResult::None => unreachable!(),
+                    TradeResult::Profitable(val) => (
+                        Value::new(0),
+                        CollateralValues {
+                            exact: val,
+                            with_collateral_ratio: val * trade.collateral_ratio(),
+                            unhealthy: val * trade.liquidation_threshold(),
+                        },
+                    ),
+                    TradeResult::Loss(val) => (val, CollateralValues::default()),
+                };
+
+                Ok(res)
+            }
+            _ => unreachable!("should be called on trade, oopsie"),
+        }
     }
 }
 

@@ -13,10 +13,20 @@ pub enum DecimalPlaces {
     Nine = 9,
 }
 
+/// Balances of both base and quote tokens
+pub type Balances = Both<Quantity>;
+
 #[cfg(feature = "anchor")]
 mod zero {
     use super::*;
     use anchor_lang::prelude::*;
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct Both<T> {
+        pub base: T,
+        pub quote: T,
+    }
 
     #[zero_copy]
     #[repr(C)]
@@ -113,6 +123,14 @@ mod zero {
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
     use super::*;
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct Both<T> {
+        pub base: T,
+        pub quote: T,
+    }
+
     #[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
     #[repr(C)]
     pub struct Balances {
@@ -244,6 +262,36 @@ impl Quantity {
             .unwrap();
 
         Self { val: res.as_u64() }
+    }
+}
+
+pub enum BalanceChange {
+    Profit(Quantity),
+    Loss(Quantity),
+}
+
+impl Add for BalanceChange {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Profit(a), Self::Profit(b)) => Self::Profit(a + b),
+            (Self::Loss(a), Self::Loss(b)) => Self::Loss(a + b),
+            (Self::Profit(a), Self::Loss(b)) => {
+                if a > b {
+                    Self::Profit(a - b)
+                } else {
+                    Self::Loss(b - a)
+                }
+            }
+            (Self::Loss(a), Self::Profit(b)) => {
+                if a > b {
+                    Self::Loss(a - b)
+                } else {
+                    Self::Profit(b - a)
+                }
+            }
+        }
     }
 }
 

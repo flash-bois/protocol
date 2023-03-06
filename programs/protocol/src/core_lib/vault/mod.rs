@@ -3,6 +3,7 @@ pub mod general;
 pub mod lend;
 pub mod swap;
 pub mod test;
+pub mod trade;
 
 use crate::core_lib::{
     decimal::{DecimalPlaces, Fraction, Price, Quantity, Shares, Time, Utilization},
@@ -54,7 +55,7 @@ pub use zero::Vault;
 #[cfg(not(feature = "anchor"))]
 pub use non_zero::Vault;
 
-use super::errors::LibErrors;
+use super::{errors::LibErrors, services::trading::Trade};
 
 impl Vault {
     pub fn add_strategy(
@@ -180,12 +181,28 @@ impl Vault {
         Ok(())
     }
 
-    pub fn lend_service(&mut self) -> Result<&mut Lend, LibErrors> {
-        self.services.lend_mut()
+    pub fn trade_service(&mut self) -> Result<&mut Trade, LibErrors> {
+        self.services.trade_mut()
     }
 
     pub fn swap_service(&mut self) -> Result<&mut Swap, LibErrors> {
         self.services.swap_mut()
+    }
+
+    pub fn lend_service(&mut self) -> Result<&mut Lend, LibErrors> {
+        self.services.lend_mut()
+    }
+
+    pub fn trade_mut_and_oracles(&mut self) -> Result<(&mut Trade, &Oracle, &Oracle), LibErrors> {
+        let Self { services, .. } = self;
+
+        let oracle = self.oracle.as_ref().ok_or(LibErrors::OracleNone)?;
+        let quote_oracle = self
+            .quote_oracle
+            .as_ref()
+            .ok_or(LibErrors::QuoteOracleNone)?;
+
+        Ok((services.trade_mut()?, oracle, quote_oracle))
     }
 
     pub fn lend_service_not_mut(&self) -> Result<&Lend, LibErrors> {
@@ -295,7 +312,13 @@ impl Vault {
             FeeCurve::default(),
             Fraction::from_scale(1, 1),
         )?;
-        vault.add_strategy(true, true, false, Fraction::from_integer(1), Fraction::from_integer(1))?;
+        vault.add_strategy(
+            true,
+            true,
+            false,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
         Ok(vault)
     }
 }

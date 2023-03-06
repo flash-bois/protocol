@@ -211,6 +211,28 @@ impl Oracle {
                 .div_up(self.price(OraclePriceType::Sell)),
         )
     }
+
+    /// Calculates the value difference between two prices, rounding up.
+    pub fn calculate_value_difference_up(
+        &self,
+        quantity: Quantity,
+        greater: Price,
+        smaller: Price,
+    ) -> Value {
+        let quantity = Value::from_scale_up(quantity.get(), self.decimals as u8);
+        quantity.mul_up(greater - smaller)
+    }
+
+    /// Calculates the value difference between two prices, rounding down.
+    pub fn calculate_value_difference_down(
+        &self,
+        quantity: Quantity,
+        greater: Price,
+        smaller: Price,
+    ) -> Value {
+        let quantity = Value::from_scale(quantity.get(), self.decimals as u8);
+        quantity * (greater - smaller)
+    }
 }
 
 #[cfg(test)]
