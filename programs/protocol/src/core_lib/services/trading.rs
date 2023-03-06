@@ -12,35 +12,85 @@ use crate::core_lib::{
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Trade {
-    /// liquidity available to be locked
-    available: Balances,
-    /// total liquidity locked inside the vault
-    locked: Balances,
-    /// total value at the moment of opening a position
-    open_value: Both<Value>,
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
 
-    /// struct for calculation of position fee
-    borrow_fee: Both<FeeCurve>,
-    funding: Both<FundingRate>,
-    last_fee: Time,
-    funding_multiplier: Fraction,
+    #[zero_copy]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    #[repr(C)]
+    pub struct Trade {
+        /// liquidity available to be locked
+        pub available: Balances,
+        /// total liquidity locked inside the vault
+        pub locked: Balances,
+        /// total value at the moment of opening a position
+        pub open_value: Both<Value>,
 
-    /// fee paid on opening a position
-    open_fee: Fraction,
+        /// struct for calculation of position fee
+        pub borrow_fee: Both<FeeCurve>,
+        pub funding: Both<FundingRate>,
+        pub last_fee: Time,
+        pub funding_multiplier: Fraction,
 
-    /// maximum leverage allowed at the moment of opening a position
-    max_open_leverage: Fraction,
-    /// maximum leverage allowed
-    max_leverage: Fraction,
+        /// fee paid on opening a position
+        pub open_fee: Fraction,
 
-    /// fees waiting to be distributed to liquidity providers
-    accrued_fee: Balances,
+        /// maximum leverage allowed at the moment of opening a position
+        pub max_open_leverage: Fraction,
+        /// maximum leverage allowed
+        pub max_leverage: Fraction,
 
-    collateral_ratio: Fraction,
-    liquidation_threshold: Fraction,
+        /// fees waiting to be distributed to liquidity providers
+        pub accrued_fee: Balances,
+
+        pub collateral_ratio: Fraction,
+        pub liquidation_threshold: Fraction,
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    #[repr(C)]
+    pub struct Trade {
+        /// liquidity available to be locked
+        pub available: Balances,
+        /// total liquidity locked inside the vault
+        pub locked: Balances,
+        /// total value at the moment of opening a position
+        pub open_value: Both<Value>,
+
+        /// struct for calculation of position fee
+        pub borrow_fee: Both<FeeCurve>,
+        pub funding: Both<FundingRate>,
+        pub last_fee: Time,
+        pub funding_multiplier: Fraction,
+
+        /// fee paid on opening a position
+        pub open_fee: Fraction,
+
+        /// maximum leverage allowed at the moment of opening a position
+        pub max_open_leverage: Fraction,
+        /// maximum leverage allowed
+        pub max_leverage: Fraction,
+
+        /// fees waiting to be distributed to liquidity providers
+        pub accrued_fee: Balances,
+
+        pub collateral_ratio: Fraction,
+        pub liquidation_threshold: Fraction,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Trade;
+
+#[cfg(not(feature = "anchor"))]
+pub use non_zero::Trade;
 
 impl ServiceUpdate for Trade {
     fn add_liquidity_base(&mut self, _: Quantity) {

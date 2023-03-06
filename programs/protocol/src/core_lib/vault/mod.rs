@@ -193,12 +193,7 @@ impl Vault {
     }
 
     pub fn trade_mut_and_oracles(&mut self) -> Result<(&mut Trade, &Oracle, &Oracle), LibErrors> {
-        let Self {
-            services,
-            oracle,
-            quote_oracle,
-            ..
-        } = self;
+        let Self { services, .. } = self;
 
         let oracle = self.oracle.as_ref().ok_or(LibErrors::OracleNone)?;
         let quote_oracle = self

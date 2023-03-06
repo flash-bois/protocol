@@ -5,13 +5,6 @@ use super::{
 use crate::core_lib::{errors::LibErrors, services::ServiceUpdate, structs::Receipt};
 use checked_decimal_macro::Decimal;
 
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum Side {
-    Long,
-    Short,
-}
-
 #[derive(Debug, Default, Clone, Copy)]
 #[repr(C, u8)]
 pub enum Position {

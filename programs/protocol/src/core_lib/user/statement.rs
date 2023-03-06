@@ -1,9 +1,6 @@
 use crate::core_lib::errors::LibErrors;
 
-use super::{
-    utils::{CollateralValues, TradeResult},
-    *,
-};
+use super::{utils::CollateralValues, *};
 
 use checked_decimal_macro::num_traits::ToPrimitive;
 use checked_decimal_macro::Decimal;
@@ -118,8 +115,8 @@ impl UserStatement {
     fn liabilities_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_liability())
-                .fold(Ok(Value::new(0)), |sum, curr| {
-                    Ok(sum? + curr.liability_value(vaults)?)
+                .fold(Ok(Value::new(0)), |sum, current| {
+                    Ok(sum? + current.liability_value(vaults)?)
                 })
         } else {
             Ok(Value::new(0))
