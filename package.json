@@ -4,15 +4,22 @@
   "main": "index.ts",
   "author": "fashbois",
   "scripts": {
-    "start-sdk": "ts-node sdk/src/index.ts",
-    "build:wasm:dev": "cd ./programs/wasm && wasm-pack build --target nodejs",
-    "build:wasm:prod": "cd ./programs/wasm && wasm-pack build --target nodejs --out-dir lib --release",
+    "build:wasm:dev": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
+    "build:wasm:prod": "cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
+    "build:wasm:web": "cd ./programs/protocol && wasm-pack build --target bundler --out-dir ../../pkg --release",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "test:sdk": "ts-mocha -t 100000 tests/sdk/*",
-    "test:anchor": "ts-mocha -t 100000 tests/protocol.ts",
-
-    "wasm": "cd ./programs/wasm && wasm-pack build --target nodejs"
+    "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
+    "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
+    "test:anchor": "yarn test:borrow && yarn test:services && yarn test:user && yarn test:state && yarn test:vault && yarn test:oracle && yarn test:statement",
+    "test:wasm": "anchor test --skip-build tests/wasm/*.ts",
+    "test:services": "anchor test --skip-build tests/anchor/services.spec.ts",
+    "test:user": "anchor test --skip-build tests/anchor/user.spec.ts",
+    "test:state": "anchor test --skip-build tests/anchor/create_state.spec.ts",
+    "test:vault": "anchor test --skip-build tests/anchor/init_vault.spec.ts",
+    "test:oracle": "anchor test --skip-build tests/anchor/oracle.spec.ts",
+    "test:statement": "anchor test --skip-build tests/anchor/create_statement.spec.ts",
+    "test:borrow": "anchor test --skip-build tests/anchor/borrow_repay.spec.ts"
   },
   "repository": {
     "type": "git",
@@ -24,7 +31,8 @@
   },
   "homepage": "https://github.com/flash-bois/protocol-v1#readme",
   "dependencies": {
-    "@project-serum/anchor": "^0.26.0",
+    "@coral-xyz/anchor": "^0.26.0",
+    "@solana/spl-token": "^0.3.7",
     "@solana/web3.js": "^1.73.0"
   },
   "devDependencies": {

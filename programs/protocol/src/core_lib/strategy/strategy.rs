@@ -1,31 +1,77 @@
-use crate::decimal::{Balances, Fraction, Quantity, Shares};
-use crate::services::{ServiceType, ServiceUpdate, Services};
+use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
+use crate::core_lib::errors::LibErrors;
+use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
+
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq)]
+    pub struct Strategy {
+        /// Quantity of tokens used in lending (borrowed)
+        pub lent: Option<Quantity>,
+        /// Quantity of tokens used in swapping (swapped for other tokens)
+        pub sold: Option<Balances>,
+        /// Quantity of tokens used in trading (currently locked in a position)
+        pub traded: Option<Balances>,
+
+        /// Quantity of tokens available for use (not used)
+        pub available: Balances,
+        /// Sum of all locked tokens for each of the
+        pub locked: Balances,
+
+        /// Total amount of shares in a strategy
+        pub total_shares: Shares,
+        // fee accrued from services
+        pub accrued_fee: Quantity,
+
+        /// Ratio at which shares in this strategy can be used as a collateral
+        pub collateral_ratio: Fraction,
+        /// Ratio at which value of shares is calculated during liquidation
+        pub liquidation_threshold: Fraction,
+    }
+}
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    pub struct Strategy {
+        /// Quantity of tokens used in lending (borrowed)
+        pub lent: Option<Quantity>,
+        /// Quantity of tokens used in swapping (swapped for other tokens)
+        pub sold: Option<Balances>,
+        /// Quantity of tokens used in trading (currently locked in a position)
+        pub traded: Option<Balances>,
+
+        /// Quantity of tokens available for use (not used)
+        pub available: Balances,
+        /// Sum of all locked tokens for each of the
+        pub locked: Balances,
+
+        /// Total amount of shares in a strategy
+        pub total_shares: Shares,
+        // fee accrued from services
+        pub accrued_fee: Quantity,
+
+        /// Ratio at which shares in this strategy can be used as a collateral
+        pub collateral_ratio: Fraction,
+        /// Ratio at which value of shares is calculated during liquidation
+        pub liquidation_threshold: Fraction,
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::Strategy;
+
+#[cfg(not(feature = "anchor"))]
+pub use non_zero::Strategy;
 
 /// Strategy is where liquidity providers can deposit their tokens
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Strategy {
-    /// Quantity of tokens used in lending (borrowed)
-    lent: Option<Quantity>,
-    /// Quantity of tokens used in swapping (swapped for other tokens)
-    sold: Option<Balances>,
-    /// Quantity of tokens used in trading (currently locked in a position)
-    traded: Option<Balances>,
-
-    /// Quantity of tokens available for use (not used)
-    available: Balances,
-    /// Sum of all locked tokens for each of the
-    locked: Balances,
-
-    /// Total amount of shares in a strategy
-    total_shares: Shares,
-    // fee accrued from services
-    accrued_fee: Quantity,
-
-    /// Ratio at which shares in this strategy can be used as a collateral
-    collateral_ratio: Fraction,
-    /// Ratio at which value of shares is calculated during liquidation
-    liquidation_threshold: Fraction,
-}
 
 #[cfg(test)]
 impl Strategy {
@@ -43,7 +89,7 @@ impl Strategy {
         self.available.quote
     }
 
-    pub fn locked_base(&self) -> Quantity {
+    pub fn locked(&self) -> Quantity {
         self.locked.base
     }
 
@@ -83,16 +129,16 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    fn lent_checked(&self) -> Result<Quantity, ()> {
-        self.lent.as_ref().ok_or(()).copied()
+    fn lent_checked(&self) -> Result<Quantity, LibErrors> {
+        self.lent.as_ref().ok_or(LibErrors::StrategyNoLend).copied()
     }
 
-    fn sold_checked(&self) -> Result<&Balances, ()> {
-        self.sold.as_ref().ok_or(())
+    fn sold_checked(&self) -> Result<&Balances, LibErrors> {
+        self.sold.as_ref().ok_or(LibErrors::StrategyNoSwap)
     }
 
-    fn traded_checked(&self) -> Result<&Balances, ()> {
-        self.traded.as_ref().ok_or(())
+    fn traded_checked(&self) -> Result<&Balances, LibErrors> {
+        self.traded.as_ref().ok_or(LibErrors::StrategyNoTrade)
     }
 
     fn _sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
@@ -103,7 +149,7 @@ impl Strategy {
         self.traded.as_mut().ok_or(())
     }
 
-    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, ()> {
+    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, LibErrors> {
         let quantity_locked = match service {
             ServiceType::Lend => self.lent_checked()?,
             ServiceType::Swap => self.sold_checked()?.base,
@@ -121,7 +167,13 @@ impl Strategy {
         }
     }
 
-    pub fn new(lend: bool, swap: bool, trade: bool) -> Self {
+    pub fn new(
+        lend: bool,
+        swap: bool,
+        trade: bool,
+        collateral_ratio: Fraction,
+        liquidation_threshold: Fraction,
+    ) -> Self {
         let mut strategy = Self::default();
 
         if lend {
@@ -133,6 +185,9 @@ impl Strategy {
         if trade {
             strategy.traded = Some(Balances::default());
         }
+
+        strategy.collateral_ratio = collateral_ratio;
+        strategy.liquidation_threshold = liquidation_threshold;
 
         strategy
     }
@@ -173,7 +228,7 @@ impl Strategy {
         input_quantity: Quantity,
         balance: Quantity,
         services: &mut Services,
-    ) -> Result<Shares, ()> {
+    ) -> Result<Shares, LibErrors> {
         if let Ok(lend) = services.lend_mut() {
             lend.add_available_base(quantity);
         }
@@ -192,8 +247,8 @@ impl Strategy {
         Ok(shares)
     }
 
-    /// Add locked tokens to a specific sub strategy
-    pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), ()> {
+    /// Add locked tokens to a specific substrategy
+    pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), LibErrors> {
         *self.locked_in(sub) += quantity;
         self.accrued_fee += quantity;
         self.locked.base += quantity;
@@ -207,7 +262,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in(sub) += quantity;
         self.locked.base += quantity;
         self.available.base -= quantity;
@@ -227,7 +282,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in_quote(sub) += quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -248,7 +303,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in(sub) -= quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -269,7 +324,7 @@ impl Strategy {
         quantity: Quantity,
         sub: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         *self.locked_in_quote(sub) -= quantity;
 
         if let Ok(swap) = services.swap_mut() {
@@ -287,7 +342,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.base -= quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -305,12 +360,12 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.quote -= quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.remove_available_quote(quantity);
-        }
+        // if let Ok(lend) = services.lend_mut() {
+        //     lend.remove_available_quote(quantity);
+        // }
         if let Ok(swap) = services.swap_mut() {
             swap.remove_liquidity_quote(quantity);
         }
@@ -323,7 +378,7 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.base += quantity;
 
         if let Ok(lend) = services.lend_mut() {
@@ -341,12 +396,12 @@ impl Strategy {
         quantity: Quantity,
         _: ServiceType,
         services: &mut Services,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.available.quote += quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.add_available_quote(quantity);
-        }
+        // if let Ok(lend) = services.lend_mut() {
+        //     lend.add_available_quote(quantity);
+        // }
         if let Ok(swap) = services.swap_mut() {
             swap.add_liquidity_quote(quantity);
         }

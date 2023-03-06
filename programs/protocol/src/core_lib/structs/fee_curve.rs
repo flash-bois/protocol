@@ -1,8 +1,10 @@
-use crate::decimal::*;
+use crate::core_lib::{decimal::*, errors::LibErrors};
 
 const MAX_FEES: usize = 5;
+pub const HOUR_DURATION: u32 = 60 * 60;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum CurveSegment {
     #[default]
     None,
@@ -15,30 +17,59 @@ pub enum CurveSegment {
     },
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FeeCurve {
-    used: usize,
-    bounds: [Fraction; MAX_FEES],
-    values: [CurveSegment; MAX_FEES],
+#[cfg(feature = "anchor")]
+mod zero {
+    use super::*;
+    use anchor_lang::prelude::*;
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Default, Debug, PartialEq, Eq)]
+    pub struct FeeCurve {
+        pub used: u8,
+        pub bounds: [Fraction; MAX_FEES],
+        pub values: [CurveSegment; MAX_FEES],
+    }
 }
+
+#[cfg(not(feature = "anchor"))]
+mod non_zero {
+    use super::*;
+
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    #[repr(C)]
+    pub struct FeeCurve {
+        pub used: u8,
+        pub bounds: [Fraction; MAX_FEES],
+        pub values: [CurveSegment; MAX_FEES],
+    }
+}
+
+#[cfg(feature = "anchor")]
+pub use zero::FeeCurve;
+
+#[cfg(not(feature = "anchor"))]
+pub use non_zero::FeeCurve;
 
 impl FeeCurve {
     fn find_index(&self, utilization: Fraction) -> usize {
-        (0..self.used)
+        (0..self.used as usize)
             .find(|&i| utilization <= self.bounds[i])
             .unwrap_or(0)
     }
 
-    fn find_indexes(&self, smaller: Fraction, greater: Fraction) -> Result<(usize, usize), ()> {
-        let index = (0..self.used)
-            .find(|&i| smaller <= self.bounds[i])
-            .unwrap_or(0);
+    fn find_indexes(
+        &self,
+        smaller: Fraction,
+        greater: Fraction,
+    ) -> Result<(usize, usize), LibErrors> {
+        let index = self.find_index(smaller);
 
         Ok((
             index,
-            (index..self.used)
+            (index..self.used as usize)
                 .find(|&i| greater <= self.bounds[i])
-                .ok_or(())?,
+                .ok_or(LibErrors::ToBeDefined)?,
         ))
     }
 
@@ -57,7 +88,7 @@ impl FeeCurve {
         }
     }
 
-    pub fn get_mean(&self, before: Fraction, after: Fraction) -> Result<Fraction, ()> {
+    pub fn get_mean(&self, before: Fraction, after: Fraction) -> Result<Fraction, LibErrors> {
         let (smaller, greater) = if before < after {
             (before, after)
         } else {
@@ -117,16 +148,16 @@ impl FeeCurve {
     }
 
     fn add_segment(&mut self, curve: CurveSegment, bound: Fraction) {
-        self.bounds[self.used] = bound;
-        self.values[self.used] = curve;
+        self.bounds[self.used as usize] = bound;
+        self.values[self.used as usize] = curve;
         self.used += 1;
 
-        self.bounds[..self.used].sort();
+        self.bounds[..self.used as usize].sort();
     }
 
     pub fn compounded_fee(&self, utilization: Fraction, time: Time) -> Precise {
         if let CurveSegment::Constant { c } = self.get_value(utilization) {
-            let fee = Precise::from_decimal(c);
+            let fee = Precise::from_decimal(c).div_up(Quantity::new(HOUR_DURATION as u64));
             (Precise::from_integer(1) + fee).big_pow_up(time) - Precise::from_integer(1)
         } else {
             panic!("compounded_fee: invalid function");
@@ -152,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn test() -> Result<(), ()> {
+    fn test() -> Result<(), LibErrors> {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
         fee.add_constant_fee(Fraction::new(2), Fraction::new(2));
@@ -181,23 +212,24 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_static() {
+    fn test_calculate_compounded() {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(5, 1));
         fee.add_constant_fee(Fraction::from_scale(2, 2), Fraction::from_integer(1));
 
         assert_eq!(
-            fee.compounded_fee(Fraction::from_scale(2, 1), 1),
-            Precise::from_scale(1, 2)
+            fee.compounded_fee(Fraction::from_scale(2, 1), HOUR_DURATION),
+            Precise::new(10050153055719590731686) // 1005015305571959072853
         );
+
         assert_eq!(
-            fee.compounded_fee(Fraction::from_scale(6, 1), 2),
-            Precise::from_scale(404, 4)
+            fee.compounded_fee(Fraction::from_scale(6, 1), 60),
+            Precise::new(333387968831054398543) // 33338796883105439847515487389689
         );
     }
 
     #[test]
-    fn test_get_mean() -> Result<(), ()> {
+    fn test_get_mean() -> Result<(), LibErrors> {
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::from_scale(1, 2), Fraction::from_scale(5, 1));
         fee.add_constant_fee(Fraction::from_scale(2, 2), Fraction::from_integer(1));

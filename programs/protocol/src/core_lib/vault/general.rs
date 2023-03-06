@@ -1,8 +1,10 @@
-use crate::{
+use crate::core_lib::{
     decimal::Quantity,
+    errors::LibErrors,
     services::{ServiceType, Services},
     strategy::Strategy,
 };
+use checked_decimal_macro::Decimal;
 
 use super::Vault;
 
@@ -11,7 +13,7 @@ type ActionFn = fn(
     quantity: Quantity,
     service: ServiceType,
     services: &mut Services,
-) -> Result<(), ()>;
+) -> Result<(), LibErrors>;
 
 impl Vault {
     fn split(
@@ -21,8 +23,8 @@ impl Vault {
         service: ServiceType,
         part: fn(&Strategy) -> Quantity,
         action: ActionFn,
-    ) -> Result<(), ()> {
-        let mut processed = Quantity(0);
+    ) -> Result<(), LibErrors> {
+        let mut processed = Quantity::new(0);
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
@@ -58,9 +60,9 @@ impl Vault {
         part: fn(&Strategy) -> Quantity,
         action_a: ActionFn,
         action_b: ActionFn,
-    ) -> Result<(), ()> {
-        let mut processed_a = Quantity(0);
-        let mut processed_b = Quantity(0);
+    ) -> Result<(), LibErrors> {
+        let mut processed_a = Quantity::new(0);
+        let mut processed_b = Quantity::new(0);
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
@@ -113,7 +115,7 @@ impl Vault {
         quantity: Quantity,
         total_available: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_available,
@@ -128,7 +130,7 @@ impl Vault {
         quantity: Quantity,
         total_available: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_available,
@@ -143,12 +145,12 @@ impl Vault {
         quantity: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_locked,
             service,
-            Strategy::locked_base,
+            Strategy::locked,
             Strategy::unlock_base,
         )
     }
@@ -158,7 +160,7 @@ impl Vault {
         quantity: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_locked,
@@ -174,7 +176,7 @@ impl Vault {
         bought: Quantity,
         total_available_base: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.double_split(
             sold,
             bought,
@@ -192,7 +194,7 @@ impl Vault {
         bought: Quantity,
         total_available_quote: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.double_split(
             sold,
             bought,
@@ -210,13 +212,13 @@ impl Vault {
         loss: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.double_split(
             unlock,
             loss,
             total_locked,
             service,
-            Strategy::locked_base,
+            Strategy::locked,
             Strategy::unlock_base,
             Strategy::increase_balance_base,
         )
@@ -228,13 +230,13 @@ impl Vault {
         loss: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.double_split(
             unlock,
             loss,
             total_locked,
             service,
-            Strategy::locked_base,
+            Strategy::locked,
             Strategy::unlock_quote,
             Strategy::decrease_balance_quote,
         )
@@ -245,12 +247,12 @@ impl Vault {
         quantity: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_locked,
             service,
-            Strategy::locked_base,
+            Strategy::locked,
             Strategy::increase_balance_base,
         )
     }
@@ -260,7 +262,7 @@ impl Vault {
         quantity: Quantity,
         total_locked: Quantity,
         service: ServiceType,
-    ) -> Result<(), ()> {
+    ) -> Result<(), LibErrors> {
         self.split(
             quantity,
             total_locked,

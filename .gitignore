@@ -6,3 +6,4 @@ node_modules
 scripts/logs
 test-ledger
 Cargo.lock
+.vscode

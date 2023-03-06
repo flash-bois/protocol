@@ -1,4 +1,4 @@
-use checked_decimal_macro::{BetweenDecimals, Factories, Others};
+use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 use std::cmp::min;
 
 use crate::core_lib::{
@@ -12,7 +12,7 @@ use crate::core_lib::{
 
 use super::ServiceUpdate;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Trade {
     /// liquidity available to be locked
     available: Balances,
@@ -359,7 +359,7 @@ impl Trade {
         let fee = self.calculate_fee(now);
         let funding = match self.calculate_funding(oracle, quote_oracle) {
             (funding, Side::Long) => FundingRate::from_decimal(funding),
-            (funding, Side::Short) => FundingRate(0) - FundingRate::from_decimal(funding),
+            (funding, Side::Short) => FundingRate::new(0) - FundingRate::from_decimal(funding),
         };
 
         self.funding.base += fee.base - funding;

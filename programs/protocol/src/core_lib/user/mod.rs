@@ -2,8 +2,8 @@ mod position;
 mod statement;
 mod utils;
 
-use crate::{
-    decimal::{Quantity, Shares, Value},
+use crate::core_lib::{
+    decimal::{FundingRate, Price, Quantity, Shares, Value},
     vault::Vault,
 };
 

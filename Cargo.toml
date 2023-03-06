@@ -1,12 +1,14 @@
 [workspace]
 members = [
-    "programs/*"
+    "programs/protocol",
+    "programs/oracle"
 ]
 
 [profile.release]
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+opt-level = "z"
 
 [profile.release.build-override]
 opt-level = 3

@@ -1,4 +1,4 @@
-use crate::decimal::*;
+use crate::core_lib::decimal::*;
 
 pub trait ServiceUpdate {
     /// Increases both balance and available liquidity.
