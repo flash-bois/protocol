@@ -58,11 +58,14 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn get_borrow_position_info(
-        &self,
+        &mut self,
         vault_index: u8,
         statement: &Uint8Array,
+        current_time: u32,
     ) -> Result<BorrowPositionInfo, JsError> {
-        let vault = self.vault_checked(vault_index)?;
+        let vault = self.vault_checked_mut(vault_index)?;
+        vault.refresh(current_time)?;
+
         let statement_account = StatementAccount::load(statement);
 
         // Search by vault index (PartialEq depended implementation)
@@ -83,12 +86,15 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn get_lp_position_info(
-        &self,
+        &mut self,
         vault_index: u8,
         strategy_index: u8,
         statement: &Uint8Array,
+        current_time: u32,
     ) -> Result<LpPositionInfo, JsError> {
-        let vault = self.vault_checked(vault_index)?;
+        let vault = self.vault_checked_mut(vault_index)?;
+        vault.refresh(current_time)?;
+
         let statement_account = StatementAccount::load(statement);
 
         // Search by vault index (PartialEq depended implementation)
