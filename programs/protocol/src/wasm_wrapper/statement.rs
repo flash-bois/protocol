@@ -52,6 +52,10 @@ impl StatementAccount {
         self.account.clone_from(&account)
     }
 
+    pub fn buffer(&self) -> Uint8Array {
+        to_buffer(ZeroCopyDecoder::encode(&self.account))
+    }
+
     #[wasm_bindgen]
     pub fn get_bump(&self) -> u8 {
         self.bump
