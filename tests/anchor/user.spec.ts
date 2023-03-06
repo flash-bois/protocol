@@ -109,16 +109,14 @@ describe('User', () => {
     const account_info = (await connection.getAccountInfo(vaults))?.data
     vaults_acc = VaultsAccount.load(account_info as Buffer)
 
-    assert.equal(vaults_acc.deposit(0, 0, 200000n, true, 0).val, 400000n)
-    assert.equal(vaults_acc.deposit(0, 0, 400000n, false, 0).val, 200000n)
+    assert.equal(vaults_acc.deposit(0, 0, 200000n, true, 0), 400000n)
+    assert.equal(vaults_acc.deposit(0, 0, 400000n, false, 0), 200000n)
   })
 
   it('deposit', async () => {
     assert.equal((await getAccount(connection, accountBase)).amount, 1000000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 1000000n)
 
-    const account_info = (await connection.getAccountInfo(statement))?.data
-    console.log(account_info);
     const sig = await program.methods
       .deposit(0, 0, new BN(200000), true)
       .accountsStrict({
@@ -143,19 +141,15 @@ describe('User', () => {
 
   it('gives max borrow user value', async () => {
     const account_info = (await connection.getAccountInfo(statement))?.data
+    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
+    vaults_acc.reload(vaults_acc_info as Buffer)
+    statement_acc = StatementAccount.load(account_info as Buffer)
 
-    if (account_info) {
-      console.log(account_info)
-      statement_acc = StatementAccount.load(account_info)
-      console.log(bump)
-      Buffer.from(statement_acc.owner()).toString('hex')
-      console.log(statement_acc.get_bump())
-      console.log(statement_acc.refresh(vaults_acc))
-      console.log(statement_acc.statement_len());
-  
-      console.log(statement_acc.max_allowed_borrow_value())
-    }
+    assert.equal(Buffer.from(statement_acc.owner()).toString('hex'), user.publicKey.toBuffer().toString('hex'))
 
+    statement_acc.refresh(vaults_acc.buffer())
+
+    assert.equal(statement_acc.max_allowed_borrow_value(), 800000000n)
   })
 
   it('single swap', async () => {
