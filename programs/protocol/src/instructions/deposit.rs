@@ -43,7 +43,7 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-impl Deposit<'_> {
+impl<'info> Deposit<'info> {
     pub fn handler(
         &mut self,
         vault: u8,
@@ -70,27 +70,31 @@ impl Deposit<'_> {
             (other_quantity.get(), quantity)
         };
 
-        let take_base_ctx = CpiContext::new(
+        transfer(self.take_base(), base_amount)?;
+        transfer(self.take_quote(), quote_amount)?;
+
+        Ok(())
+    }
+
+    fn take_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: self.account_base.to_account_info(),
                 to: self.reserve_base.to_account_info(),
                 authority: self.signer.to_account_info(),
             },
-        );
+        )
+    }
 
-        let take_quote_ctx = CpiContext::new(
+    fn take_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: self.account_quote.to_account_info(),
                 to: self.reserve_quote.to_account_info(),
                 authority: self.signer.to_account_info(),
             },
-        );
-
-        transfer(take_base_ctx, base_amount)?;
-        transfer(take_quote_ctx, quote_amount)?;
-
-        Ok(())
+        )
     }
 }
