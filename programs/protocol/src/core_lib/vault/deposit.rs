@@ -124,11 +124,11 @@ impl Vault {
         };
 
         match user_statement.search_mut(&temp_position) {
-            Some(position) => {
+            Ok(position) => {
                 position.increase_amount(amount);
                 position.increase_shares(shares);
             }
-            None => {
+            Err(..) => {
                 user_statement
                     .add_position(temp_position)
                     .map_err(|_| LibErrors::CannotAddPosition)?;

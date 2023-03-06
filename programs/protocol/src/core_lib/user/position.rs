@@ -99,7 +99,7 @@ impl Position {
         }
     }
 
-    pub fn shares(&mut self) -> &mut Shares {
+    fn shares_mut(&mut self) -> &mut Shares {
         match self {
             Position::Borrow { shares, .. } => shares,
             Position::LiquidityProvide { shares, .. } => shares,
@@ -108,7 +108,25 @@ impl Position {
         }
     }
 
-    pub fn amount(&mut self) -> &mut Quantity {
+    fn amount_mut(&mut self) -> &mut Quantity {
+        match self {
+            Position::Borrow { amount, .. } => amount,
+            Position::LiquidityProvide { amount, .. } => amount,
+            Position::Trading { quantity, .. } => quantity,
+            Position::Empty => unreachable!(),
+        }
+    }
+
+    pub fn shares(&self) -> &Shares {
+        match self {
+            Position::Borrow { shares, .. } => shares,
+            Position::LiquidityProvide { shares, .. } => shares,
+            Position::Trading { .. } => panic!("trading does not have shares"),
+            Position::Empty => unreachable!(),
+        }
+    }
+
+    pub fn amount(&self) -> &Quantity {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
@@ -118,19 +136,27 @@ impl Position {
     }
 
     pub fn increase_amount(&mut self, amount: Quantity) {
-        *self.amount() += amount
+        *self.amount_mut() += amount
     }
 
     pub fn increase_shares(&mut self, shares: Shares) {
-        *self.shares() += shares
+        *self.shares_mut() += shares
     }
 
     pub fn decrease_amount(&mut self, amount: Quantity) {
-        *self.amount() -= amount
+        *self.amount_mut() -= amount
     }
 
     pub fn decrease_shares(&mut self, shares: Shares) {
-        *self.shares() -= shares
+        *self.shares_mut() -= shares
+    }
+
+    pub fn get_owed(&self, shares: &Shares, vault: &Vault) -> Result<Quantity, LibErrors> {
+        let service = vault.lend_service_not_mut()?;
+
+        Ok(service
+            .borrow_shares()
+            .calculate_owed(*shares, service.locked().base))
     }
 
     pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
@@ -142,11 +168,7 @@ impl Position {
             } => {
                 let vault = &vaults[vault_index as usize];
                 let oracle = vault.oracle()?;
-                let service = vault.lend_service_not_mut()?;
-
-                let amount = service
-                    .borrow_shares()
-                    .calculate_owed(shares, service.locked().base);
+                let amount = self.get_owed(&shares, vault)?;
                 Ok(oracle.calculate_value(amount))
             }
             _ => unreachable!("should be called on liability, oopsie"),

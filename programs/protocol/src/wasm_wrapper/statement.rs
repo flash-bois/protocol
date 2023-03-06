@@ -1,6 +1,12 @@
-use crate::wasm_wrapper::to_buffer;
-use crate::ZeroCopyDecoder;
-use crate::{core_lib::decimal::Value, structs::Statement};
+use crate::{
+    core_lib::{
+        decimal::{Quantity, Shares, Value},
+        user::Position,
+    },
+    structs::Statement,
+    wasm_wrapper::to_buffer,
+    ZeroCopyDecoder,
+};
 use checked_decimal_macro::Decimal;
 use js_sys::Uint8Array;
 use std::ops::{Deref, DerefMut};
@@ -27,12 +33,43 @@ impl DerefMut for StatementAccount {
 }
 
 #[wasm_bindgen]
+pub struct BorrowPosition {
+    pub vault_id: u8,
+    pub owed: u64,
+}
+
+#[wasm_bindgen]
 impl VaultsAccount {
     pub fn max_borrow_for(&self, id: u8, value: u64) -> Result<u64, JsError> {
         let vault = self.vault_checked(id)?;
         let value = Value::new(value as u128);
 
         Ok(vault.oracle()?.calculate_quantity(value).get())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_borrow_position(
+        &self,
+        vault_index: u8,
+        statement: &Uint8Array,
+    ) -> Result<BorrowPosition, JsError> {
+        let vault = self.vault_checked(vault_index)?;
+        let statement_account = StatementAccount::load(statement);
+
+        // Search by vault index (PartialEq depended implementation)
+        let position_search = Position::Borrow {
+            vault_index,
+            shares: Shares::new(0),
+            amount: Quantity::new(0),
+        };
+
+        let found_position = statement_account.statement.search(&position_search)?;
+        let owed_amount = found_position.get_owed(found_position.shares(), vault)?;
+
+        Ok(BorrowPosition {
+            vault_id: vault_index,
+            owed: owed_amount.get(),
+        })
     }
 }
 
@@ -69,7 +106,7 @@ impl StatementAccount {
     }
 
     #[wasm_bindgen]
-    pub fn statement_len(&self) -> u8 {
+    pub fn positions_len(&self) -> u8 {
         self.statement.positions.head
     }
 
@@ -79,7 +116,7 @@ impl StatementAccount {
     }
 
     #[wasm_bindgen]
-    pub fn max_allowed_borrow_value(&self) -> u64 {
+    pub fn remaining_permitted_debt(&self) -> u64 {
         self.statement.permitted_debt().get() as u64
     }
 }

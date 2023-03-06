@@ -82,12 +82,28 @@ impl UserStatement {
         self.positions.add(position)
     }
 
-    pub fn search_mut(&mut self, position_search: &Position) -> Option<&mut Position> {
-        self.positions.find_mut(position_search)
+    pub fn search_mut(&mut self, position_search: &Position) -> Result<&mut Position, LibErrors> {
+        Ok(self
+            .positions
+            .find_mut(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
     }
 
-    pub fn search_mut_id(&mut self, position_search: &Position) -> Option<(usize, &mut Position)> {
-        self.positions.enumerate_find_mut(position_search)
+    pub fn search(&self, position_search: &Position) -> Result<&Position, LibErrors> {
+        Ok(self
+            .positions
+            .find(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
+    }
+
+    pub fn search_mut_id(
+        &mut self,
+        position_search: &Position,
+    ) -> Result<(usize, &mut Position), LibErrors> {
+        Ok(self
+            .positions
+            .enumerate_find_mut(position_search)
+            .ok_or(LibErrors::PositionNotFound)?)
     }
 
     pub fn delete_position(&mut self, id: usize) {
@@ -337,7 +353,7 @@ mod position_management {
     fn delete_position_in_the_middle() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -391,7 +407,7 @@ mod position_management {
     fn delete_position_in_the_end() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -445,7 +461,7 @@ mod position_management {
     fn delete_position_in_the_beginning() {
         let mut user_statement = UserStatement::default();
 
-        let mut new_position = Position::LiquidityProvide {
+        let new_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -499,7 +515,7 @@ mod position_management {
     fn finding_position() {
         let mut user_statement = UserStatement::default();
 
-        let mut search_position = Position::LiquidityProvide {
+        let search_position = Position::LiquidityProvide {
             vault_index: 0,
             strategy_index: 1,
             shares: Shares::new(1516),
@@ -562,7 +578,7 @@ mod position_management {
 
         assert!(user_statement
             .search_mut(&modified_non_matching_search_position)
-            .is_none());
+            .is_err());
 
         assert_eq!(
             user_statement
@@ -574,6 +590,6 @@ mod position_management {
 
         assert!(user_statement
             .search_mut_id(&modified_non_matching_search_position)
-            .is_none());
+            .is_err());
     }
 }

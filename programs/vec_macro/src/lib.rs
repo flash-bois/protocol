@@ -108,6 +108,14 @@ pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
                 None
             }
 
+            pub fn find(&self, search: &#el_type) -> Option<&#el_type> {
+                if let Some(mut iter) = self.iter() {
+                    return iter.find(|el| *search == **el);
+                }
+
+                None
+            }
+
             pub fn enumerate_find_mut(&mut self, search: &#el_type) -> Option<(usize, &mut #el_type)> {
                 if let Some(iter) = self.iter_mut() {
                     return iter.enumerate().find(|(_id, pos)| *search == **pos);
@@ -115,6 +123,15 @@ pub fn fixed_derive(tokens: TokenStream) -> TokenStream {
 
                 None
             }
+
+            pub fn enumerate_find(&self, search: &#el_type) -> Option<(usize, &#el_type)> {
+                if let Some(iter) = self.iter() {
+                    return iter.enumerate().find(|(_id, pos)| *search == **pos);
+                }
+
+                None
+            }
+
 
             pub fn delete(&mut self, id: usize) {
                 // checks if id is before vector head
