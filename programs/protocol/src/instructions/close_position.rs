@@ -44,11 +44,11 @@ pub struct ClosePosition<'info> {
 }
 
 impl<'info> ClosePosition<'info> {
-    pub fn handler(&mut self, vault: u8, long: bool) -> anchor_lang::Result<()> {
+    pub fn handler(ctx: Context<ClosePosition>, vault: u8, long: bool) -> anchor_lang::Result<()> {
         msg!("DotWave: Close position");
 
-        let user_statement = &mut self.statement.load_mut()?.statement;
-        let vaults = &mut self.vaults.load_mut()?;
+        let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
 
         let mut vaults_indexes = vec![vault];
         if let Some(indexes_to_refresh) = user_statement.get_vaults_indexes() {
@@ -60,28 +60,29 @@ impl<'info> ClosePosition<'info> {
         user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
-
         let current_timestamp = Clock::get()?.unix_timestamp as u32;
         let side = if long { Side::Long } else { Side::Short };
-
         let balance_change = vault.close_position(user_statement, side, current_timestamp)?;
 
         match balance_change {
             BalanceChange::Profit(profit_amount) => {
-                let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
+                let seeds = &[
+                    b"state".as_ref(),
+                    &[ctx.accounts.state.load().unwrap().bump],
+                ];
                 let signer = &[&seeds[..]];
 
                 let send_ctx = match side {
-                    Side::Long => self.send_base(),
-                    Side::Short => self.send_quote(),
+                    Side::Long => ctx.accounts.send_base(),
+                    Side::Short => ctx.accounts.send_quote(),
                 };
 
                 transfer(send_ctx.with_signer(signer), profit_amount.get())?;
             }
             BalanceChange::Loss(loss_amount) => {
                 let take_ctx = match side {
-                    Side::Long => self.take_base(),
-                    Side::Short => self.take_quote(),
+                    Side::Long => ctx.accounts.take_base(),
+                    Side::Short => ctx.accounts.take_quote(),
                 };
 
                 transfer(take_ctx, loss_amount.get())?;

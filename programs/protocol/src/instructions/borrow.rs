@@ -33,11 +33,7 @@ pub struct Borrow<'info> {
 }
 
 impl<'info> Borrow<'info> {
-    pub fn handler(
-        ctx: Context<'_, '_, '_, 'info, Borrow<'info>>,
-        vault: u8,
-        amount: u64,
-    ) -> anchor_lang::Result<()> {
+    pub fn handler(ctx: Context<Borrow>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
         msg!("DotWave: Borrow");
 
         let vaults = &mut ctx.accounts.vaults.load_mut()?;

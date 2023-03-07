@@ -44,11 +44,16 @@ pub struct OpenPosition<'info> {
 }
 
 impl<'info> OpenPosition<'info> {
-    pub fn handler(&mut self, vault: u8, amount: u64, long: bool) -> anchor_lang::Result<()> {
+    pub fn handler(
+        ctx: Context<OpenPosition>,
+        vault: u8,
+        amount: u64,
+        long: bool,
+    ) -> anchor_lang::Result<()> {
         msg!("DotWave: Open position");
 
-        let user_statement = &mut self.statement.load_mut()?.statement;
-        let vaults = &mut self.vaults.load_mut()?;
+        let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
 
         let mut vaults_indexes = vec![vault];
         if let Some(indexes_to_refresh) = user_statement.get_vaults_indexes() {
@@ -60,12 +65,9 @@ impl<'info> OpenPosition<'info> {
         user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
-
-        let current_timestamp = Clock::get()?.unix_timestamp as u32;
         let quantity = Quantity::new(amount);
         let side = if long { Side::Long } else { Side::Short };
-
-        vault.open_position(user_statement, quantity, side, current_timestamp)?;
+        vault.open_position(user_statement, quantity, side)?;
 
         Ok(())
     }
