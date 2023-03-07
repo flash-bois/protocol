@@ -45,23 +45,20 @@ pub struct Deposit<'info> {
 
 impl<'info> Deposit<'info> {
     pub fn handler(
-        &mut self,
+        ctx: Context<Deposit>,
         vault: u8,
         strategy: u8,
         quantity: u64,
         base: bool,
     ) -> anchor_lang::Result<()> {
-        let timestamp = Clock::get()?.unix_timestamp as u32;
-        let vaults = &mut self.vaults.load_mut()?;
-        let vault = vaults.vault_checked_mut(vault)?;
-        let statement = &mut self.statement.load_mut()?;
-        let user_statement = &mut statement.statement;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
+        let statement = &mut ctx.accounts.statement.load_mut()?.statement;
+        vaults.refresh(&[vault], ctx.remaining_accounts)?;
 
-        // refresh strategies that have lends
-        vault.refresh(timestamp)?;
+        let vault = vaults.vault_checked_mut(vault)?;
 
         let other_quantity = vault.deposit(
-            user_statement,
+            statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
             strategy,
@@ -73,8 +70,8 @@ impl<'info> Deposit<'info> {
             (other_quantity.get(), quantity)
         };
 
-        transfer(self.take_base(), base_amount)?;
-        transfer(self.take_quote(), quote_amount)?;
+        transfer(ctx.accounts.take_base(), base_amount)?;
+        transfer(ctx.accounts.take_quote(), quote_amount)?;
 
         Ok(())
     }

@@ -46,6 +46,15 @@ impl<'info> Borrow<'info> {
             vaults_indexes.dedup()
         }
 
+        msg!(
+            "{} {}",
+            vaults
+                .vault_checked_mut(vault)?
+                .lend_service()?
+                .last_fee_paid,
+            Clock::get()?.unix_timestamp
+        );
+
         vaults.refresh(&vaults_indexes, ctx.remaining_accounts)?;
         user_statement.refresh(&vaults.arr.elements)?;
 

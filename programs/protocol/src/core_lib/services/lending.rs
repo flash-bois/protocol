@@ -147,12 +147,14 @@ impl Lend {
         max_utilization: Utilization,
         borrow_limit: Quantity,
         initial_fee_time: Time,
+        last_fee_paid: Time,
     ) -> Self {
         Lend {
             max_utilization,
             fee,
             borrow_limit,
             initial_fee_time,
+            last_fee_paid,
             ..Default::default()
         }
     }
@@ -381,7 +383,7 @@ mod shares_tests {
         let max_utilization = Utilization::from_scale(80, 2);
         let mut fee = FeeCurve::default();
         fee.add_constant_fee(Fraction::new(1), Fraction::new(1));
-        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0);
+        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0, 0);
 
         lending.add_available_base(Quantity::new(2_000_000));
         lending.accrue_interest_rate(current_time);
@@ -471,7 +473,7 @@ mod shares_tests {
         fee.add_constant_fee(Fraction::new(10000), Fraction::from_scale(80, 2)); // 1% 100 basis point
         fee.add_constant_fee(Fraction::new(20000), Fraction::from_scale(100, 2)); // 2% 200 basis point
 
-        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0);
+        let mut lending = Lend::new(fee, max_utilization, Quantity::new(u64::MAX), 0, 0);
 
         lending.add_available_base(Quantity::new(736796576003955192));
 

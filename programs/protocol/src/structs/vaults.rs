@@ -64,6 +64,7 @@ mod zero {
             key: &Pubkey,
             current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
+            msg!("{}", key.to_string());
             let acc = accounts
                 .iter()
                 .find(|acc| *acc.key == *key)

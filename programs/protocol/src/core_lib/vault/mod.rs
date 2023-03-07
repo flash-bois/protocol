@@ -141,6 +141,7 @@ impl Vault {
         max_utilization: Utilization,
         borrow_limit: Quantity,
         initial_fee_time: Time,
+        last_fee_paid: Time,
     ) -> Result<(), LibErrors> {
         if self.services.lend_mut().is_ok() {
             return Err(LibErrors::LendServiceNone);
@@ -155,6 +156,7 @@ impl Vault {
             max_utilization,
             borrow_limit,
             initial_fee_time,
+            last_fee_paid,
         ));
 
         Ok(())
@@ -265,6 +267,7 @@ impl Vault {
             FeeCurve::default(),
             Utilization::from_integer(1),
             Quantity::new(u64::MAX),
+            0,
             0,
         )?;
         vault.enable_swapping(

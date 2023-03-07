@@ -62,9 +62,15 @@ pub mod protocol {
         max_utilization: u32,
         max_total_borrow: u64,
         initial_fee_time: u32,
+        last_fee_paid: u32,
     ) -> Result<()> {
-        ctx.accounts
-            .enable_lending(index, max_utilization, max_total_borrow, initial_fee_time)?;
+        ctx.accounts.enable_lending(
+            index,
+            max_utilization,
+            max_total_borrow,
+            initial_fee_time,
+            last_fee_paid,
+        )?;
         Ok(())
     }
 
@@ -102,7 +108,7 @@ pub mod protocol {
         quantity: u64,
         base: bool,
     ) -> Result<()> {
-        ctx.accounts.handler(vault, strategy, quantity, base)
+        Deposit::handler(ctx, vault, strategy, quantity, base)
     }
 
     pub fn single_swap(

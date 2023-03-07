@@ -249,6 +249,7 @@ mod position_management {
                 Utilization::from_scale(8, 1),
                 Quantity::new(u64::MAX),
                 0,
+                0,
             )
             .unwrap();
 
@@ -289,6 +290,7 @@ mod position_management {
                 FeeCurve::default(),
                 Utilization::from_scale(8, 1),
                 Quantity::new(u64::MAX),
+                0,
                 0,
             )
             .unwrap();
