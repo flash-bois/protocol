@@ -162,6 +162,8 @@ mod zero {
 
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
+    use crate::core_lib::structs::FeeCurve;
+
     use super::*;
 
     // #[repr(C)]
