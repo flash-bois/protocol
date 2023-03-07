@@ -2,7 +2,10 @@ use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 use std::cmp::min;
 
 use crate::core_lib::{
-    decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value},
+    decimal::{
+        BalanceChange, Balances, BothFeeCurves, BothFractions, BothFundingRates, BothValues,
+        Fraction, FundingRate, Quantity, Time, Value,
+    },
     errors::LibErrors,
     structs::{
         oracle::{Oracle, OraclePriceType},
@@ -15,6 +18,8 @@ use super::ServiceUpdate;
 
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::core_lib::decimal::{BothFeeCurves, BothFundingRates, BothValues};
+
     use super::*;
     use anchor_lang::prelude::*;
 
@@ -27,12 +32,12 @@ mod zero {
         /// total liquidity locked inside the vault
         pub locked: Balances,
         /// total value at the moment of opening a position
-        pub open_value: Both<Value>,
+        pub open_value: BothValues,
 
         /// struct for calculation of position fee
-        pub borrow_fee: Both<FeeCurve>,
-        pub funding: Both<FundingRate>,
-        pub last_fee: Time,
+        pub borrow_fee: BothFeeCurves,
+        pub funding: BothFundingRates,
+        pub last_fee: u32,
         pub funding_multiplier: Fraction,
 
         /// fee paid on opening a position
@@ -53,6 +58,8 @@ mod zero {
 
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
+    use crate::core_lib::decimal::{BothFeeCurves, BothFundingRates, BothValues};
+
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -63,12 +70,12 @@ mod non_zero {
         /// total liquidity locked inside the vault
         pub locked: Balances,
         /// total value at the moment of opening a position
-        pub open_value: Both<Value>,
+        pub open_value: BothValues,
 
         /// struct for calculation of position fee
-        pub borrow_fee: Both<FeeCurve>,
-        pub funding: Both<FundingRate>,
-        pub last_fee: Time,
+        pub borrow_fee: BothFeeCurves,
+        pub funding: BothFundingRates,
+        pub last_fee: u32,
         pub funding_multiplier: Fraction,
 
         /// fee paid on opening a position
@@ -157,9 +164,9 @@ impl Trade {
         Self {
             available: Balances::default(),
             locked: Balances::default(),
-            open_value: Both::<Value>::default(),
-            borrow_fee: Both::<FeeCurve>::default(),
-            funding: Both::<FundingRate>::default(),
+            open_value: BothValues::default(),
+            borrow_fee: BothFeeCurves::default(),
+            funding: BothFundingRates::default(),
             funding_multiplier: Fraction::from_integer(1),
             last_fee: start_time,
             open_fee,
@@ -353,8 +360,8 @@ impl Trade {
         }
     }
 
-    fn utilization(&self) -> Both<Fraction> {
-        Both::<Fraction> {
+    fn utilization(&self) -> BothFractions {
+        BothFractions {
             base: Fraction::from_decimal(self.locked.base)
                 / Fraction::from_decimal(self.available.base + self.locked.base),
             quote: Fraction::from_decimal(self.locked.quote)
@@ -362,7 +369,7 @@ impl Trade {
         }
     }
 
-    fn calculate_fee(&self, current_time: Time) -> Both<FundingRate> {
+    fn calculate_fee(&self, current_time: Time) -> BothFundingRates {
         if current_time > self.last_fee {
             let time_period = current_time - self.last_fee;
 
@@ -377,12 +384,12 @@ impl Trade {
                 .quote
                 .compounded_fee(utilization.quote, time_period);
 
-            Both {
+            BothFundingRates {
                 base: FundingRate::from_decimal(base_fee),
                 quote: FundingRate::from_decimal(quote_fee),
             }
         } else {
-            Both::default()
+            BothFundingRates::default()
         }
     }
 

@@ -13,19 +13,59 @@ pub enum DecimalPlaces {
     Nine = 9,
 }
 
-/// Balances of both base and quote tokens
-pub type Balances = Both<Quantity>;
-
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::core_lib::structs::FeeCurve;
+
     use super::*;
     use anchor_lang::prelude::*;
+
+    // #[zero_copy]
+    // #[repr(C)]
+    // #[derive(Debug, Default, PartialEq, Eq)]
+    // pub struct Both<T> {
+    //     pub base: T,
+    //     pub quote: T,
+    // }
+
     #[zero_copy]
     #[repr(C)]
     #[derive(Debug, Default, PartialEq, Eq)]
-    pub struct Both<T> {
-        pub base: T,
-        pub quote: T,
+    pub struct BothValues {
+        pub base: Value,
+        pub quote: Value,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct BothQuantities {
+        pub base: Quantity,
+        pub quote: Quantity,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct BothFractions {
+        pub base: Fraction,
+        pub quote: Fraction,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct BothFeeCurves {
+        pub base: FeeCurve,
+        pub quote: FeeCurve,
+    }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, Default, PartialEq, Eq)]
+    pub struct BothFundingRates {
+        pub base: FundingRate,
+        pub quote: FundingRate,
     }
 
     #[zero_copy]
@@ -122,13 +162,50 @@ mod zero {
 
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
+    use crate::core_lib::structs::FeeCurve;
+
     use super::*;
+
+    // #[repr(C)]
+    // #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    // pub struct Both<T> {
+    //     pub base: T,
+    //     pub quote: T,
+    // }
 
     #[repr(C)]
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-    pub struct Both<T> {
-        pub base: T,
-        pub quote: T,
+    pub struct BothValues {
+        pub base: Value,
+        pub quote: Value,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct BothQuantities {
+        pub base: Quantity,
+        pub quote: Quantity,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct BothFractions {
+        pub base: Fraction,
+        pub quote: Fraction,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct BothFeeCurves {
+        pub base: FeeCurve,
+        pub quote: FeeCurve,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct BothFundingRates {
+        pub base: FundingRate,
+        pub quote: FundingRate,
     }
 
     #[derive(Debug, Clone, Default, PartialEq, Eq, Copy)]
