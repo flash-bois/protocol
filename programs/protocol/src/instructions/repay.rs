@@ -35,7 +35,7 @@ pub struct Repay<'info> {
 impl<'info> Repay<'info> {
     pub fn handler(ctx: Context<Repay>, vault: u8, amount: u64) -> anchor_lang::Result<()> {
         msg!("DotWave: Repay");
-
+        let current_timestamp = Clock::get()?.unix_timestamp;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
         let amount = Quantity::new(amount);
@@ -46,7 +46,7 @@ impl<'info> Repay<'info> {
             vaults_indexes.dedup()
         }
 
-        vaults.refresh(&vaults_indexes, ctx.remaining_accounts)?;
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
         user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;

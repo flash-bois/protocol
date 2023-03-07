@@ -51,9 +51,10 @@ impl<'info> Deposit<'info> {
         quantity: u64,
         base: bool,
     ) -> anchor_lang::Result<()> {
+        let current_timestamp = Clock::get()?.unix_timestamp;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let statement = &mut ctx.accounts.statement.load_mut()?.statement;
-        vaults.refresh(&[vault], ctx.remaining_accounts)?;
+        vaults.refresh(&[vault], ctx.remaining_accounts, current_timestamp)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
 

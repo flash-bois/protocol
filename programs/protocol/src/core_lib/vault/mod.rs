@@ -217,8 +217,9 @@ impl Vault {
 
     pub fn refresh(&mut self, current_time: Time) -> Result<(), LibErrors> {
         if let Ok(lend) = self.lend_service() {
+            lend.accrue_interest_rate(current_time);
+
             if lend.locked().base > Quantity::new(0) {
-                lend.accrue_interest_rate(current_time);
                 // accrue_fee in lend also adds it to the borrowed
                 let accrued_fees = lend.accrue_fee().base;
 

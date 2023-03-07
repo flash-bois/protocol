@@ -161,9 +161,9 @@ describe('Prepare 2 vault for borrow', () => {
 
   it('Enables lend without open fee', async () => {
     const { state, vaults } = state_with_vaults
-    let timestamp = Math.floor(Date.now() / 1000);
+
     let sig = await program.methods
-      .enableLending(0, 800000, new BN(10_000_000_000), 0, timestamp)
+      .enableLending(0, 800000, new BN(10_000_000_000), 0)
       .accounts({
         admin: admin.publicKey,
         ...state_with_vaults

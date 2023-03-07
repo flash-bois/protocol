@@ -77,7 +77,6 @@ impl Admin<'_> {
         max_utilization: u32,
         max_total_borrow: u64,
         initial_fee_time: u32,
-        last_fee_paid: u32,
     ) -> anchor_lang::Result<()> {
         msg!("DotWave: Enabling lending");
 
@@ -89,7 +88,7 @@ impl Admin<'_> {
             Utilization::from_decimal(Fraction::new(max_utilization as u64)),
             Quantity::new(max_total_borrow),
             initial_fee_time,
-            last_fee_paid,
+            Clock::get()?.unix_timestamp as u32,
         )?;
 
         Ok(())

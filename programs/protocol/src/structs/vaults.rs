@@ -77,9 +77,8 @@ mod zero {
             &mut self,
             vaults: &[u8],
             accounts: &[AccountInfo],
+            current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
-            let current_timestamp = Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
-
             for index in vaults {
                 let (vault, vault_keys) = self.vault_with_keys(*index)?;
 

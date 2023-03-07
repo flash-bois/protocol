@@ -120,7 +120,6 @@ export async function createBasicVault(
     vaults: result.vaults,
     admin: admin.publicKey
   }
-
   const i = index
   await enableOracles(program, i, accounts, admin)
   await program.methods

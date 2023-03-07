@@ -51,7 +51,7 @@ impl<'info> OpenPosition<'info> {
         long: bool,
     ) -> anchor_lang::Result<()> {
         msg!("DotWave: Open position");
-
+        let current_timestamp = Clock::get()?.unix_timestamp;
         let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
 
@@ -61,7 +61,7 @@ impl<'info> OpenPosition<'info> {
             vaults_indexes.dedup()
         }
 
-        vaults.refresh(&vaults_indexes, ctx.remaining_accounts)?;
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
         user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;

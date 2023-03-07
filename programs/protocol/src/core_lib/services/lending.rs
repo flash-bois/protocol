@@ -278,12 +278,15 @@ impl Lend {
     ///
     /// * `current_time` - current unix timestamp
     pub fn accrue_interest_rate(&mut self, current_time: Time) {
-        let fee_whole = self
-            .borrowed
-            .big_mul_up(self.calculate_fee(current_time, Fraction::from_decimal(self.utilization)));
+        if self.borrowed > Quantity::new(0) {
+            let fee_whole = self.borrowed.big_mul_up(
+                self.calculate_fee(current_time, Fraction::from_decimal(self.utilization)),
+            );
+            self.unclaimed_fee += fee_whole;
+            self.total_fee += fee_whole;
+        }
+
         self.last_fee_paid = current_time;
-        self.unclaimed_fee += fee_whole;
-        self.total_fee += fee_whole;
     }
 
     pub fn fee_curve(&mut self) -> &mut FeeCurve {
