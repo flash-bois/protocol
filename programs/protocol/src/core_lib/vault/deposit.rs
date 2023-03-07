@@ -65,10 +65,7 @@ impl Vault {
         deposit_token: Token,
         amount: Quantity,
         strategy_index: u8,
-        current_time: Time,
     ) -> Result<Quantity, LibErrors> {
-        self.refresh(current_time)?;
-
         let base_oracle = self.oracle()?;
         let quote_oracle = self.quote_oracle()?;
 
@@ -150,13 +147,13 @@ mod tests {
 
         assert_eq!(
             vault
-                .deposit(user_statement, Token::Base, Quantity::new(2000000), 0, 0)
+                .deposit(user_statement, Token::Base, Quantity::new(2000000), 0)
                 .unwrap(),
             Quantity::new(4000000)
         );
         assert_eq!(
             vault
-                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0, 0)
+                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0)
                 .unwrap(),
             Quantity::new(2000000)
         );
@@ -168,7 +165,7 @@ mod tests {
         let user_statement = &mut UserStatement::default();
 
         vault
-            .deposit(user_statement, Token::Base, Quantity::new(100), 0, 1000)
+            .deposit(user_statement, Token::Base, Quantity::new(100), 0)
             .expect("deposit failed");
     }
 }

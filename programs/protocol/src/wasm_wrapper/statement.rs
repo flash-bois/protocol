@@ -1,6 +1,7 @@
 use crate::{
     core_lib::{
         decimal::{Quantity, Shares, Value},
+        errors::LibErrors,
         user::Position,
     },
     structs::Statement,
@@ -8,7 +9,7 @@ use crate::{
     ZeroCopyDecoder,
 };
 use checked_decimal_macro::Decimal;
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
 use std::ops::{Deref, DerefMut};
 use wasm_bindgen::prelude::*;
 
@@ -50,6 +51,7 @@ pub struct LpPositionInfo {
 
 #[wasm_bindgen]
 impl VaultsAccount {
+    #[wasm_bindgen]
     pub fn max_borrow_for(&self, id: u8, value: u64) -> Result<u64, JsError> {
         let vault = self.vault_checked(id)?;
         let value = Value::new(value as u128);
@@ -152,6 +154,21 @@ impl StatementAccount {
     #[wasm_bindgen]
     pub fn get_bump(&self) -> u8 {
         self.bump
+    }
+
+    #[wasm_bindgen]
+    pub fn vaults_to_refresh(&self) -> Result<Array, JsError> {
+        let arr = Array::new();
+
+        self.statement
+            .get_vaults_indexes()
+            .ok_or(LibErrors::NoVaultsToRefresh)?
+            .iter()
+            .for_each(|id| {
+                arr.push(&JsValue::from(*id));
+            });
+
+        Ok(arr)
     }
 
     #[wasm_bindgen]

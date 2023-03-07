@@ -51,17 +51,20 @@ impl<'info> Deposit<'info> {
         quantity: u64,
         base: bool,
     ) -> anchor_lang::Result<()> {
+        let timestamp = Clock::get()?.unix_timestamp as u32;
         let vaults = &mut self.vaults.load_mut()?;
         let vault = vaults.vault_checked_mut(vault)?;
         let statement = &mut self.statement.load_mut()?;
         let user_statement = &mut statement.statement;
+
+        // refresh strategies that have lends
+        vault.refresh(timestamp)?;
 
         let other_quantity = vault.deposit(
             user_statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
             strategy,
-            Clock::get()?.unix_timestamp as u32,
         )?;
 
         let (base_amount, quote_amount) = if base {

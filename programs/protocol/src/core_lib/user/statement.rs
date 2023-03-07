@@ -75,6 +75,13 @@ pub use zero::*;
 pub use non_zero::*;
 
 impl UserStatement {
+    pub fn get_vaults_indexes(&self) -> Option<Vec<u8>> {
+        Some(self.positions.iter()?.fold(vec![], |mut val, el| {
+            val.push(*el.vault_index());
+            val
+        }))
+    }
+
     pub fn add_position(&mut self, position: Position) -> Result<(), LibErrors> {
         self.positions
             .add(position)
@@ -299,23 +306,11 @@ mod position_management {
         let mut vaults = [first_vault, second_vault];
 
         vaults[0]
-            .deposit(
-                &mut user_statement,
-                Token::Base,
-                Quantity::new(10000000),
-                0,
-                0,
-            )
+            .deposit(&mut user_statement, Token::Base, Quantity::new(10000000), 0)
             .unwrap();
 
         vaults[1]
-            .deposit(
-                &mut user_statement,
-                Token::Base,
-                Quantity::new(5000000),
-                0,
-                0,
-            )
+            .deposit(&mut user_statement, Token::Base, Quantity::new(5000000), 0)
             .unwrap();
 
         user_statement

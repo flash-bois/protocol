@@ -1,6 +1,7 @@
 use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::core_lib::errors::LibErrors;
 use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
+use checked_decimal_macro::Decimal;
 
 #[cfg(feature = "anchor")]
 mod zero {
@@ -129,34 +130,12 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    fn lent_checked(&self) -> Result<Quantity, LibErrors> {
-        self.lent.as_ref().ok_or(LibErrors::StrategyNoLend).copied()
-    }
-
-    fn sold_checked(&self) -> Result<&Balances, LibErrors> {
-        self.sold.as_ref().ok_or(LibErrors::StrategyNoSwap)
-    }
-
-    fn traded_checked(&self) -> Result<&Balances, LibErrors> {
-        self.traded.as_ref().ok_or(LibErrors::StrategyNoTrade)
-    }
-
-    fn _sold_checked_mut(&mut self) -> Result<&mut Balances, ()> {
-        self.sold.as_mut().ok_or(())
-    }
-
-    fn _traded_checked_mut(&mut self) -> Result<&mut Balances, ()> {
-        self.traded.as_mut().ok_or(())
-    }
-
-    pub fn locked_by(&self, service: ServiceType) -> Result<Quantity, LibErrors> {
-        let quantity_locked = match service {
-            ServiceType::Lend => self.lent_checked()?,
-            ServiceType::Swap => self.sold_checked()?.base,
-            ServiceType::Trade => self.traded_checked()?.base,
-        };
-
-        Ok(quantity_locked)
+    pub fn locked_lent(&self) -> Quantity {
+        if let Some(res) = self.lent {
+            res
+        } else {
+            Quantity::new(0)
+        }
     }
 
     pub fn uses(&self, service: ServiceType) -> bool {
@@ -247,11 +226,21 @@ impl Strategy {
         Ok(shares)
     }
 
-    /// Add locked tokens to a specific substrategy
-    pub fn accrue_fee(&mut self, quantity: Quantity, sub: ServiceType) -> Result<(), LibErrors> {
+    /// Add locked tokens to a specific sub strategy
+    pub fn accrue_lend_fee(
+        &mut self,
+        quantity: Quantity,
+        sub: ServiceType,
+        services: &mut Services,
+    ) -> Result<(), LibErrors> {
         *self.locked_in(sub) += quantity;
         self.accrued_fee += quantity;
         self.locked.base += quantity;
+
+        if let Ok(swap) = services.swap_mut() {
+            swap.add_liquidity_base(quantity);
+            swap.remove_available_base(quantity);
+        }
 
         Ok(())
     }
@@ -270,9 +259,15 @@ impl Strategy {
         if let Ok(lend) = services.lend_mut() {
             lend.remove_available_base(quantity);
         }
+
         if let Ok(swap) = services.swap_mut() {
             swap.remove_available_base(quantity);
         }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.remove_available_base(quantity);
+        }
+
         Ok(())
     }
 
@@ -284,16 +279,16 @@ impl Strategy {
         services: &mut Services,
     ) -> Result<(), LibErrors> {
         *self.locked_in_quote(sub) += quantity;
+        self.locked.quote += quantity;
+        self.available.quote -= quantity;
 
-        if let Ok(lend) = services.lend_mut() {
-            lend.remove_available_quote(quantity);
-        }
         if let Ok(swap) = services.swap_mut() {
             swap.remove_available_quote(quantity);
         }
 
-        self.locked.quote += quantity;
-        self.available.quote -= quantity;
+        if let Ok(trade) = services.trade_mut() {
+            trade.remove_available_quote(quantity);
+        }
 
         Ok(())
     }
@@ -305,16 +300,20 @@ impl Strategy {
         services: &mut Services,
     ) -> Result<(), LibErrors> {
         *self.locked_in(sub) -= quantity;
+        self.locked.base -= quantity;
+        self.available.base += quantity;
 
         if let Ok(lend) = services.lend_mut() {
             lend.add_available_base(quantity);
         }
+
         if let Ok(swap) = services.swap_mut() {
             swap.add_available_base(quantity);
         }
 
-        self.locked.base -= quantity;
-        self.available.base += quantity;
+        if let Ok(trade) = services.trade_mut() {
+            trade.add_available_base(quantity);
+        }
 
         Ok(())
     }
@@ -326,13 +325,16 @@ impl Strategy {
         services: &mut Services,
     ) -> Result<(), LibErrors> {
         *self.locked_in_quote(sub) -= quantity;
+        self.locked.quote -= quantity;
+        self.available.quote += quantity;
 
         if let Ok(swap) = services.swap_mut() {
             swap.add_available_quote(quantity);
         }
 
-        self.locked.quote -= quantity;
-        self.available.quote += quantity;
+        if let Ok(trade) = services.trade_mut() {
+            trade.add_available_quote(quantity);
+        }
 
         Ok(())
     }
@@ -348,8 +350,13 @@ impl Strategy {
         if let Ok(lend) = services.lend_mut() {
             lend.remove_available_base(quantity);
         }
+
         if let Ok(swap) = services.swap_mut() {
             swap.remove_liquidity_base(quantity);
+        }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.remove_available_base(quantity);
         }
 
         Ok(())
@@ -363,11 +370,12 @@ impl Strategy {
     ) -> Result<(), LibErrors> {
         self.available.quote -= quantity;
 
-        // if let Ok(lend) = services.lend_mut() {
-        //     lend.remove_available_quote(quantity);
-        // }
         if let Ok(swap) = services.swap_mut() {
             swap.remove_liquidity_quote(quantity);
+        }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.remove_available_quote(quantity);
         }
 
         Ok(())
@@ -384,8 +392,13 @@ impl Strategy {
         if let Ok(lend) = services.lend_mut() {
             lend.add_available_base(quantity);
         }
+
         if let Ok(swap) = services.swap_mut() {
             swap.add_liquidity_base(quantity);
+        }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.add_available_base(quantity);
         }
 
         Ok(())
@@ -399,11 +412,12 @@ impl Strategy {
     ) -> Result<(), LibErrors> {
         self.available.quote += quantity;
 
-        // if let Ok(lend) = services.lend_mut() {
-        //     lend.add_available_quote(quantity);
-        // }
         if let Ok(swap) = services.swap_mut() {
             swap.add_liquidity_quote(quantity);
+        }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.add_available_quote(quantity);
         }
 
         Ok(())

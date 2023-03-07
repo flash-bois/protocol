@@ -41,14 +41,20 @@ impl<'info> Borrow<'info> {
         msg!("DotWave: Borrow");
 
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
-        let user_statement = &mut ctx.accounts.statement.load_mut()?;
+        let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
         let amount = Quantity::new(amount);
 
-        // //vaults.refresh_all(ctx.remaining_accounts)?;
-        user_statement.statement.refresh(&vaults.arr.elements)?;
+        let mut vaults_indexes = vec![vault];
+        if let Some(indexes_to_refresh) = user_statement.get_vaults_indexes() {
+            vaults_indexes.extend(indexes_to_refresh.iter());
+            vaults_indexes.dedup()
+        }
+
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts)?;
+        user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
-        let borrow_amount = vault.borrow(&mut user_statement.statement, amount)?;
+        let borrow_amount = vault.borrow(user_statement, amount)?;
 
         let seeds = &[
             b"state".as_ref(),

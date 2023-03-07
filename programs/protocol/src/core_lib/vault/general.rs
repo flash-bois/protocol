@@ -28,10 +28,7 @@ impl Vault {
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
-            let strategy = self
-                .strategies
-                .get_mut_checked(i)
-                .ok_or_else(|| unreachable!())?;
+            let strategy = self.strategies.get_strategy_mut(i as u8)?;
 
             if strategy.uses(service) {
                 last_index = i;
@@ -124,6 +121,21 @@ impl Vault {
             service,
             Strategy::available,
             Strategy::lock_quote,
+        )
+    }
+
+    pub fn settle_lend_fees(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked_lent,
+            Strategy::accrue_lend_fee,
         )
     }
 

@@ -128,6 +128,15 @@ impl Position {
         }
     }
 
+    pub fn vault_index(&self) -> &u8 {
+        match self {
+            Position::Borrow { vault_index, .. } => vault_index,
+            Position::LiquidityProvide { vault_index, .. } => vault_index,
+            Position::Trading { vault_index, .. } => vault_index,
+            Position::Empty => unreachable!(),
+        }
+    }
+
     pub fn shares(&self) -> &Shares {
         match self {
             Position::Borrow { shares, .. } => shares,

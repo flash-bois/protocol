@@ -14,20 +14,19 @@ impl Vault {
         user_statement: &mut UserStatement,
         quantity: Quantity,
         side: Side,
-        now: Time,
     ) -> Result<(), LibErrors> {
         let collateral = user_statement.permitted_debt();
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
         let receipt = match side {
             Side::Long => {
-                let receipt = trade.open_long(quantity, collateral, oracle, now)?;
+                let receipt = trade.open_long(quantity, collateral, oracle)?;
                 let base_available = trade.available().base;
                 self.lock_base(receipt.locked, base_available, ServiceType::Trade)?;
                 receipt
             }
             Side::Short => {
-                let receipt = trade.open_short(quantity, collateral, oracle, quote_oracle, now)?;
+                let receipt = trade.open_short(quantity, collateral, oracle, quote_oracle)?;
 
                 let total_available = trade.available().quote;
                 self.lock_quote(receipt.locked, total_available, ServiceType::Trade)?;
