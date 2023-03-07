@@ -241,7 +241,7 @@ impl Trade {
         let funding_fee = self.calculate_funding_fee(&receipt);
 
         let position_change = self.calculate_long_value(&receipt, oracle);
-        let open_fee = receipt.size * self.open_fee;
+        let open_fee = receipt.locked * self.open_fee;
         let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
         self.open_value.base -= receipt.open_value;
@@ -257,14 +257,23 @@ impl Trade {
         quote_oracle: &Oracle,
         now: Time,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
-        let funding_fee = self.calculate_funding_fee(&receipt);
+        let funding_fee = match self.calculate_funding_fee(&receipt) {
+            BalanceChange::Profit(profit) => {
+                let value = oracle.calculate_value(profit);
+                BalanceChange::Profit(quote_oracle.calculate_quantity(value))
+            }
+            BalanceChange::Loss(loss) => {
+                let value = oracle.calculate_needed_value(loss);
+                BalanceChange::Loss(quote_oracle.calculate_needed_quantity(value))
+            }
+        };
 
         self.locked.quote -= receipt.locked;
         self.open_value.quote -= receipt.open_value;
 
         let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
 
-        let open_fee = receipt.size * self.open_fee;
+        let open_fee = receipt.locked * self.open_fee;
         let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
         Ok((change, receipt.locked))
