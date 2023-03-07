@@ -16,8 +16,6 @@ impl Vault {
         side: Side,
         now: Time,
     ) -> Result<(), LibErrors> {
-        self.refresh(now)?;
-
         let collateral = user_statement.permitted_debt();
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 

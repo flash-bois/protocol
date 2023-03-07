@@ -68,6 +68,7 @@ impl Vault {
         current_time: Time,
     ) -> Result<Quantity, LibErrors> {
         self.refresh(current_time)?;
+
         let base_oracle = self.oracle()?;
         let quote_oracle = self.quote_oracle()?;
 

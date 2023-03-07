@@ -45,8 +45,14 @@ pub struct OpenPosition<'info> {
 
 impl<'info> OpenPosition<'info> {
     pub fn handler(&mut self, vault: u8, amount: u64, long: bool) -> anchor_lang::Result<()> {
+        msg!("DotWave: Open position");
+
         let user_statement = &mut self.statement.load_mut()?.statement;
         let vaults = &mut self.vaults.load_mut()?;
+
+        // //vaults.refresh_all(ctx.remaining_accounts)?;
+        user_statement.refresh(&vaults.arr.elements)?;
+
         let vault = vaults.vault_checked_mut(vault)?;
 
         let current_timestamp = Clock::get()?.unix_timestamp as u32;
