@@ -45,8 +45,10 @@ pub struct LpPositionInfo {
     pub vault_id: u8,
     pub strategy_id: u8,
     pub position_value: u64,
-    pub base_quantity: u64,
-    pub quote_quantity: u64,
+    pub deposited_base_quantity: u64,
+    pub deposited_quote_quantity: u64,
+    pub earned_base_quantity: u64,
+    pub earned_quote_quantity: u64,
 }
 
 #[wasm_bindgen]
@@ -113,7 +115,7 @@ impl VaultsAccount {
         let found_position = statement_account.statement.search(&position_search)?;
 
         let (base_quantity, quote_quantity) =
-            found_position.get_owed_double(strategy_index, found_position.shares(), vault)?;
+            found_position.get_earned_double(strategy_index, found_position.shares(), vault)?;
 
         let oracle = vault.oracle()?;
         let quote_oracle = vault.quote_oracle()?;
@@ -125,8 +127,10 @@ impl VaultsAccount {
             vault_id: vault_index,
             strategy_id: strategy_index,
             position_value: value.get() as u64,
-            base_quantity: base_quantity.get(),
-            quote_quantity: quote_quantity.get(),
+            earned_base_quantity: base_quantity.get(),
+            earned_quote_quantity: quote_quantity.get(),
+            deposited_base_quantity: found_position.amount().get(),
+            deposited_quote_quantity: found_position.quote_amount().get(),
         })
     }
 }
