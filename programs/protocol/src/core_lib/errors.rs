@@ -85,6 +85,8 @@ mod anchor_one {
         CollateralizationTooLow,
         #[msg("Statement does not contain any vault to refresh")]
         NoVaultsToRefresh,
+        #[msg("Given service was enabled before")]
+        ServiceAlreadyExists,
     }
 }
 
@@ -175,6 +177,8 @@ mod anchor_none {
         CollateralizationTooLow,
         #[error("Statement does not contain any vault to refresh")]
         NoVaultsToRefresh,
+        #[error("Given service was enabled before")]
+        ServiceAlreadyExists,
     }
 }
 

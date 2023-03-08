@@ -50,7 +50,6 @@ export interface ICreateStrategy extends IProtocolCallable, IStateWithVaults, IS
   vault: number
 }
 
-
 export interface ISwappingInfo {
   kept_fee: number
   max_total_sold: BN
@@ -91,20 +90,24 @@ export interface ICreateAndEnableOracle
   vault: number
 }
 
-export interface IAddVault extends IProtocolCallable, IStateWithVaults {
+export interface IAddVaultInfo {
+  base_mint?: PublicKey,
+  quote_mint?: PublicKey
+}
+
+export interface IAddVault extends IProtocolCallable, IStateWithVaults, IAddVaultInfo {
   minter: PublicKey
 }
 
-export interface IVaultInfo {
+export interface IVaultInfo extends IAddVaultInfo {
   quote_oracle?: ILocalOracleInfo
   base_oracle?: ILocalOracleInfo
   lending?: ILendingInfo
   swapping?: ISwappingInfo
   strategies?: [IStrategyInfo]
 }
-export interface ICreateTestEnvironment
-  extends IProtocolWithOracleCallable {
-  minter: PublicKey,
+export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
+  minter: PublicKey
   vaults_infos: IVaultInfo[]
 }
 
@@ -118,12 +121,11 @@ export interface IVaultAccounts {
   base_oracle?: OracleKey
   quote_oracle?: OracleKey
   remaining_accounts?: {
-    isSigner: boolean;
-    isWritable: boolean;
-    pubkey: anchor.web3.PublicKey;
+    isSigner: boolean
+    isWritable: boolean
+    pubkey: anchor.web3.PublicKey
   }[]
 }
-
 
 export interface TestEnvironment extends IStateWithVaults {
   vaults_data: IVaultAccounts[]
@@ -534,40 +536,41 @@ export async function createStateWithVaults(params: IProtocolCallable): Promise<
   return { vaults: vaults.publicKey, state }
 }
 
-export async function createTestEnvironment({ vaults_infos, ...params }: ICreateTestEnvironment): Promise<TestEnvironment> {
+export async function createTestEnvironment({
+  vaults_infos,
+  ...params
+}: ICreateTestEnvironment): Promise<TestEnvironment> {
   const state_with_vault = await createStateWithVaults(params)
   const vaults_data: IVaultAccounts[] = []
 
   for (const id of vaults_infos.keys()) {
-    const {
-      base_oracle,
-      quote_oracle,
-      lending,
-      swapping,
-      strategies
-    }: IVaultInfo = vaults_infos[id]
+    const { base_oracle, quote_oracle, lending, swapping, strategies, ...vault_info }: IVaultInfo =
+      vaults_infos[id]
 
-    const vault_accounts = await addVault({ ...state_with_vault, ...params })
+    const vault_accounts = await addVault({ ...state_with_vault, ...params, ...vault_info })
 
-    const base_oracle_key = base_oracle ? await createAndEnableOracle({ vault: id, ...base_oracle, ...params, ...state_with_vault, }) : undefined
-    const quote_oracle_key = quote_oracle ? await createAndEnableOracle({ vault: id, ...quote_oracle, ...params, ...state_with_vault, }) : undefined
+    const base_oracle_key = base_oracle
+      ? await createAndEnableOracle({ vault: id, ...base_oracle, ...params, ...state_with_vault })
+      : undefined
+    const quote_oracle_key = quote_oracle
+      ? await createAndEnableOracle({ vault: id, ...quote_oracle, ...params, ...state_with_vault })
+      : undefined
 
     if (lending != undefined) {
       await enableLending({ vault: id, ...lending, ...params, ...state_with_vault })
     }
 
     if (swapping != undefined) {
-      await enableSwapping({ vault: id, ...swapping, ...params, ...state_with_vault, })
+      await enableSwapping({ vault: id, ...swapping, ...params, ...state_with_vault })
     }
 
     if (strategies != undefined) {
-      for (const id of strategies.keys()) {
-        const strategy = strategies[id]
-        await createStrategy({ vault: id, ...strategy, ...params, ...state_with_vault, })
+      for (const strategy of strategies) {
+        await createStrategy({ vault: id, ...strategy, ...params, ...state_with_vault })
       }
     }
 
-    let remaining_accounts: { isSigner: false, isWritable: false, pubkey: PublicKey }[] = []
+    let remaining_accounts: { isSigner: false; isWritable: false; pubkey: PublicKey }[] = []
 
     if (base_oracle) {
       remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: base_oracle_key! })
@@ -577,15 +580,13 @@ export async function createTestEnvironment({ vaults_infos, ...params }: ICreate
       remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: quote_oracle_key! })
     }
 
-
-    vaults_data.push(
-      {
-        ...vault_accounts, base_oracle: base_oracle_key, quote_oracle: quote_oracle_key, remaining_accounts
-      }
-    )
+    vaults_data.push({
+      ...vault_accounts,
+      base_oracle: base_oracle_key,
+      quote_oracle: quote_oracle_key,
+      remaining_accounts
+    })
   }
-
-
 
   return { ...state_with_vault, vaults_data }
 }
@@ -594,11 +595,14 @@ export async function addVault({
   admin,
   minter,
   program,
+  base_mint,
+  quote_mint,
   ...common_accounts
 }: IAddVault): Promise<IVaultAccounts> {
   const connection = program.provider.connection
-  const base = await createMint(connection, admin, minter, null, 6)
-  const quote = await createMint(connection, admin, minter, null, 6)
+  const base = base_mint ?? await createMint(connection, admin, minter, null, 6)
+  const quote = quote_mint ?? await createMint(connection, admin, minter, null, 6)
+
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 

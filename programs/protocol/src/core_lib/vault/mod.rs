@@ -143,12 +143,12 @@ impl Vault {
         initial_fee_time: Time,
         last_fee_paid: Time,
     ) -> Result<(), LibErrors> {
-        if self.services.lend_mut().is_ok() {
-            return Err(LibErrors::LendServiceNone);
-        }
-
         if self.oracle.is_none() {
             return Err(LibErrors::OracleNone);
+        }
+
+        if self.services.lend_mut().is_ok() {
+            return Err(LibErrors::ServiceAlreadyExists);
         }
 
         self.services.lend = Some(Lend::new(
@@ -172,10 +172,12 @@ impl Vault {
             return Err(LibErrors::OracleNone);
         }
 
-        // check for quote oracle? TODO:
+        if self.oracle.is_none() {
+            return Err(LibErrors::QuoteOracleNone);
+        }
 
         if self.services.swap_mut().is_ok() {
-            return Err(LibErrors::SwapServiceNone);
+            return Err(LibErrors::ServiceAlreadyExists);
         }
 
         self.services.swap = Some(Swap::new(selling_fee, buying_fee, kept_fee));

@@ -204,6 +204,20 @@ describe('Borrow tests', function () {
     assert.equal((await getAccount(connection, vault0.reserveQuote)).amount, 400000n)
   })
 
+  it('gives max borrow value for user', async () => {
+    const statement_data = (await connection.getAccountInfo(statement_address))?.data
+    statement_account = StatementAccount.load(statement_data as Buffer)
+
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+    vaults_account.reload(vaults_data as Buffer)
+
+    statement_account.refresh(vaults_account.buffer())
+    assert.equal(statement_account.remaining_permitted_debt(), 800000000n)
+  })
+
+  it('gives max borrow for user in token quantity', async () => {
+    assert.equal(vaults_account.max_borrow_for(0, statement_account.remaining_permitted_debt()), 400000n)
+  })
 
   it('borrows 100000 token units', async () => {
     const remaining_accounts = vault0.remaining_accounts;
@@ -230,7 +244,7 @@ describe('Borrow tests', function () {
 
   it('gets borrow position info', async () => {
     const statement_data = (await connection.getAccountInfo(statement_address))?.data
-    statement_account = StatementAccount.load(statement_data as Buffer)
+    statement_account.reload(statement_data as Buffer)
 
     const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
     vaults_account.reload(vaults_data as Buffer)
