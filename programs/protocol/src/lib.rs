@@ -101,6 +101,7 @@ pub mod protocol {
         index: u8,
         lending: bool,
         swapping: bool,
+        trading: bool,
         collateral_ratio: u64,
         liquidation_threshold: u64,
     ) -> Result<()> {
@@ -108,6 +109,7 @@ pub mod protocol {
             index,
             lending,
             swapping,
+            trading,
             collateral_ratio,
             liquidation_threshold,
         )
@@ -131,8 +133,7 @@ pub mod protocol {
         from_base: bool,
         by_amount_out: bool,
     ) -> Result<()> {
-        ctx.accounts
-            .handler(vault, amount, min_expected, from_base, by_amount_out)
+        SingleSwap::handler(ctx, vault, amount, min_expected, from_base, by_amount_out)
     }
 
     pub fn double_swap(
@@ -143,8 +144,14 @@ pub mod protocol {
         min_expected: u64,
         by_amount_out: bool,
     ) -> Result<()> {
-        ctx.accounts
-            .handler(vault_in, vault_out, amount, min_expected, by_amount_out)
+        DoubleSwap::handler(
+            ctx,
+            vault_in,
+            vault_out,
+            amount,
+            min_expected,
+            by_amount_out,
+        )
     }
 
     pub fn modify_fee_curve(

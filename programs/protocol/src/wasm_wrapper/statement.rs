@@ -162,17 +162,13 @@ impl StatementAccount {
 
     #[wasm_bindgen]
     pub fn vaults_to_refresh(&self) -> Result<Array, JsError> {
-        let arr = Array::new();
-
-        self.statement
+        Ok(self
+            .statement
             .get_vaults_indexes()
             .ok_or(LibErrors::NoVaultsToRefresh)?
             .iter()
-            .for_each(|id| {
-                arr.push(&JsValue::from(*id));
-            });
-
-        Ok(arr)
+            .map(|x| JsValue::from(*x))
+            .collect::<Array>())
     }
 
     #[wasm_bindgen]

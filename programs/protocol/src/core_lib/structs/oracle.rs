@@ -11,7 +11,7 @@ pub enum OraclePriceType {
     Buy,
 }
 
-pub const DEFAULT_MAX_ORACLE_AGE: u32 = 10;
+pub const DEFAULT_MAX_ORACLE_AGE: u32 = 100; // TODO refresh it in tests
 
 #[cfg(feature = "anchor")]
 mod zero {

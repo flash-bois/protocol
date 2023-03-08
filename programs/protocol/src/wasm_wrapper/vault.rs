@@ -167,6 +167,11 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
+    pub fn has_trading(&mut self, index: u8) -> Result<bool, JsError> {
+        Ok(self.vault_checked_mut(index)?.trade_service().is_ok())
+    }
+
+    #[wasm_bindgen]
     pub fn refresh(&mut self, index: u8, current_time: u32) -> Result<(), JsError> {
         Ok(self.vault_checked_mut(index)?.refresh(current_time)?)
     }
