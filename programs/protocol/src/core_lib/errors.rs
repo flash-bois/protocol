@@ -83,6 +83,8 @@ mod anchor_one {
         PositionMismatch,
         #[msg("Collateralization is lower than max allowed leverage")]
         CollateralizationTooLow,
+        #[msg("Statement does not contain any vault to refresh")]
+        NoVaultsToRefresh,
     }
 }
 
@@ -171,6 +173,8 @@ mod anchor_none {
         PositionMismatch,
         #[error("Collateralization is lower than max allowed leverage")]
         CollateralizationTooLow,
+        #[error("Statement does not contain any vault to refresh")]
+        NoVaultsToRefresh,
     }
 }
 

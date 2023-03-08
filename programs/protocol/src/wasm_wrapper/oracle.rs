@@ -28,6 +28,16 @@ impl VaultsAccount {
 #[wasm_bindgen]
 impl VaultsAccount {
     #[wasm_bindgen]
+    pub fn timestamp(&self, index: u8) -> Result<u32, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .services
+            .lend
+            .unwrap()
+            .last_fee_paid)
+    }
+
+    #[wasm_bindgen]
     pub fn get_price(&self, index: u8) -> Result<u64, JsError> {
         Ok(self.oracle(index)?.price.get())
     }

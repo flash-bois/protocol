@@ -46,8 +46,8 @@ const oracle_program = anchor.workspace.Oracle as Program<Oracle>
 const minter = Keypair.generate()
 const admin = Keypair.generate()
 const user = Keypair.generate()
-const base_oracle = Keypair.generate()
-const quote_oracle = Keypair.generate()
+let base_oracle: PublicKey
+let quote_oracle: PublicKey
 const connection = program.provider.connection
 
 let state_with_vaults: StateWithVaults
@@ -95,7 +95,7 @@ describe('Prepare 2 vault for borrow', () => {
   it('create local oracle and enable it as base one', async () => {
     const { state, vaults } = state_with_vaults
 
-    const base_oracle = await enableOracle({
+    base_oracle = await enableOracle({
       vault: 0,
       base: true,
       decimals: 6,
@@ -129,7 +129,7 @@ describe('Prepare 2 vault for borrow', () => {
   it('create local oracle and enable it as quote one', async () => {
     const { state, vaults } = state_with_vaults
 
-    const quote_oracle = await enableOracle({
+    quote_oracle = await enableOracle({
       vault: 0,
       base: false,
       decimals: 6,
@@ -258,6 +258,15 @@ describe('Prepare user for borrow ', () => {
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
+      .remainingAccounts([{
+        isSigner: false,
+        isWritable: false,
+        pubkey: base_oracle
+      }, {
+        isSigner: false,
+        isWritable: false,
+        pubkey: quote_oracle
+      }])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
@@ -272,6 +281,7 @@ describe('Prepare user for borrow ', () => {
 describe('User borrow and repays', () => {
   it('borrows 100000 token units', async () => {
     const { state, vaults } = state_with_vaults
+
 
     let sig = await program.methods
       .borrow(0, new BN(100000))
@@ -288,7 +298,15 @@ describe('User borrow and repays', () => {
         ComputeBudgetProgram.setComputeUnitLimit({
           units: 1000000
         })
-      ])
+      ]).remainingAccounts([{
+        isSigner: false,
+        isWritable: false,
+        pubkey: base_oracle
+      }, {
+        isSigner: false,
+        isWritable: false,
+        pubkey: quote_oracle
+      }])
       .signers([user])
       .rpc({ skipPreflight: true })
 
@@ -331,6 +349,15 @@ describe('User borrow and repays', () => {
           units: 1000000
         })
       ])
+      .remainingAccounts([{
+        isSigner: false,
+        isWritable: false,
+        pubkey: base_oracle
+      }, {
+        isSigner: false,
+        isWritable: false,
+        pubkey: quote_oracle
+      }])
       .signers([user])
       .rpc({ skipPreflight: true })
 

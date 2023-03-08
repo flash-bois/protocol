@@ -2,7 +2,10 @@ use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 use std::cmp::min;
 
 use crate::core_lib::{
-    decimal::{BalanceChange, Balances, Both, Fraction, FundingRate, Quantity, Time, Value},
+    decimal::{
+        BalanceChange, Balances, BothFeeCurves, BothFractions, BothFundingRates, BothValues,
+        Fraction, FundingRate, Quantity, Time, Value,
+    },
     errors::LibErrors,
     structs::{
         oracle::{Oracle, OraclePriceType},
@@ -15,6 +18,8 @@ use super::ServiceUpdate;
 
 #[cfg(feature = "anchor")]
 mod zero {
+    use crate::core_lib::decimal::{BothFeeCurves, BothFundingRates, BothValues};
+
     use super::*;
     use anchor_lang::prelude::*;
 
@@ -27,12 +32,12 @@ mod zero {
         /// total liquidity locked inside the vault
         pub locked: Balances,
         /// total value at the moment of opening a position
-        pub open_value: Both<Value>,
+        pub open_value: BothValues,
 
         /// struct for calculation of position fee
-        pub borrow_fee: Both<FeeCurve>,
-        pub funding: Both<FundingRate>,
-        pub last_fee: Time,
+        pub borrow_fee: BothFeeCurves,
+        pub funding: BothFundingRates,
+        pub last_fee: u32,
         pub funding_multiplier: Fraction,
 
         /// fee paid on opening a position
@@ -53,6 +58,8 @@ mod zero {
 
 #[cfg(not(feature = "anchor"))]
 mod non_zero {
+    use crate::core_lib::decimal::{BothFeeCurves, BothFundingRates, BothValues};
+
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -63,12 +70,12 @@ mod non_zero {
         /// total liquidity locked inside the vault
         pub locked: Balances,
         /// total value at the moment of opening a position
-        pub open_value: Both<Value>,
+        pub open_value: BothValues,
 
         /// struct for calculation of position fee
-        pub borrow_fee: Both<FeeCurve>,
-        pub funding: Both<FundingRate>,
-        pub last_fee: Time,
+        pub borrow_fee: BothFeeCurves,
+        pub funding: BothFundingRates,
+        pub last_fee: u32,
         pub funding_multiplier: Fraction,
 
         /// fee paid on opening a position
@@ -157,9 +164,9 @@ impl Trade {
         Self {
             available: Balances::default(),
             locked: Balances::default(),
-            open_value: Both::<Value>::default(),
-            borrow_fee: Both::<FeeCurve>::default(),
-            funding: Both::<FundingRate>::default(),
+            open_value: BothValues::default(),
+            borrow_fee: BothFeeCurves::default(),
+            funding: BothFundingRates::default(),
             funding_multiplier: Fraction::from_integer(1),
             last_fee: start_time,
             open_fee,
@@ -177,7 +184,6 @@ impl Trade {
         quantity: Quantity,
         collateral: Value,
         oracle: &Oracle,
-        current_time: Time,
     ) -> Result<Receipt, LibErrors> {
         let position_value = oracle.calculate_needed_value(quantity);
         let collateralization = Fraction::from_decimal_up(position_value.div_up(collateral));
@@ -210,7 +216,6 @@ impl Trade {
         collateral: Value,
         oracle: &Oracle,
         quote_oracle: &Oracle,
-        current_time: Time,
     ) -> Result<Receipt, LibErrors> {
         let position_value = oracle.calculate_value(quantity);
         let quote_quantity = quote_oracle.calculate_needed_quantity(position_value);
@@ -239,9 +244,9 @@ impl Trade {
         oracle: &Oracle,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
+        let open_fee = receipt.locked * self.open_fee;
 
         let position_change = self.calculate_long_value(&receipt, oracle);
-        let open_fee = receipt.size * self.open_fee;
         let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
         self.open_value.base -= receipt.open_value;
@@ -257,15 +262,14 @@ impl Trade {
         quote_oracle: &Oracle,
         now: Time,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
-        let funding_fee = self.calculate_funding_fee(&receipt);
+        let funding_fee = self.calculate_quote_funding_fee(&receipt, oracle, quote_oracle);
+        let open_fee = receipt.locked * self.open_fee;
+
+        let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
+        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
         self.locked.quote -= receipt.locked;
         self.open_value.quote -= receipt.open_value;
-
-        let position_change = self.calculate_short_change(&receipt, oracle, quote_oracle);
-
-        let open_fee = receipt.size * self.open_fee;
-        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
 
         Ok((change, receipt.locked))
     }
@@ -276,8 +280,11 @@ impl Trade {
         oracle: &Oracle,
         quote_oracle: &Oracle,
     ) -> TradeResult {
-        let fee =
-            self.calculate_funding_fee(receipt) + BalanceChange::Loss(receipt.size * self.open_fee);
+        let funding_fee = match receipt.side {
+            Side::Long => self.calculate_funding_fee(receipt),
+            Side::Short => self.calculate_quote_funding_fee(receipt, oracle, quote_oracle),
+        };
+        let fee = funding_fee + BalanceChange::Loss(receipt.locked * self.open_fee);
 
         match receipt.side {
             Side::Long => match self.calculate_long_value(receipt, oracle) + fee {
@@ -353,8 +360,8 @@ impl Trade {
         }
     }
 
-    fn utilization(&self) -> Both<Fraction> {
-        Both::<Fraction> {
+    fn utilization(&self) -> BothFractions {
+        BothFractions {
             base: Fraction::from_decimal(self.locked.base)
                 / Fraction::from_decimal(self.available.base + self.locked.base),
             quote: Fraction::from_decimal(self.locked.quote)
@@ -362,7 +369,7 @@ impl Trade {
         }
     }
 
-    fn calculate_fee(&self, current_time: Time) -> Both<FundingRate> {
+    fn calculate_fee(&self, current_time: Time) -> BothFundingRates {
         if current_time > self.last_fee {
             let time_period = current_time - self.last_fee;
 
@@ -377,12 +384,12 @@ impl Trade {
                 .quote
                 .compounded_fee(utilization.quote, time_period);
 
-            Both {
+            BothFundingRates {
                 base: FundingRate::from_decimal(base_fee),
                 quote: FundingRate::from_decimal(quote_fee),
             }
         } else {
-            Both::default()
+            BothFundingRates::default()
         }
     }
 
@@ -418,6 +425,24 @@ impl Trade {
         self.funding.quote += fee.quote + funding;
 
         FundingRate::from_decimal(fee.base);
+    }
+
+    fn calculate_quote_funding_fee(
+        &self,
+        receipt: &Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+    ) -> BalanceChange {
+        match self.calculate_funding_fee(receipt) {
+            BalanceChange::Profit(profit) => {
+                let value = oracle.calculate_value(profit);
+                BalanceChange::Profit(quote_oracle.calculate_quantity(value))
+            }
+            BalanceChange::Loss(loss) => {
+                let value = oracle.calculate_needed_value(loss);
+                BalanceChange::Loss(quote_oracle.calculate_needed_quantity(value))
+            }
+        }
     }
 
     fn calculate_funding_fee(&self, receipt: &Receipt) -> BalanceChange {

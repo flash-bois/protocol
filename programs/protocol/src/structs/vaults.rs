@@ -64,6 +64,7 @@ mod zero {
             key: &Pubkey,
             current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
+            msg!("{}", key.to_string());
             let acc = accounts
                 .iter()
                 .find(|acc| *acc.key == *key)
@@ -72,20 +73,16 @@ mod zero {
             Ok(oracle.update_from_acc(acc, current_timestamp)?)
         }
 
-        pub fn refresh_all(
+        pub fn refresh(
             &mut self,
+            vaults: &[u8],
             accounts: &[AccountInfo],
+            current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
-            let indexes = self.arr.indexes();
-            let current_timestamp = Clock::get().map_err(|_| LibErrors::TimeGet)?.unix_timestamp;
-            let current_timestamp_u32: u32 = current_timestamp
-                .try_into()
-                .map_err(|_| LibErrors::ParseError)?;
+            for index in vaults {
+                let (vault, vault_keys) = self.vault_with_keys(*index)?;
 
-            for index in indexes {
-                let (vault, vault_keys) = self.vault_with_keys(index as u8)?;
-
-                vault.refresh(current_timestamp_u32)?;
+                vault.refresh(current_timestamp as u32)?;
 
                 if let Some(ref mut base_oracle) = vault.oracle {
                     Self::update_oracle_from_accs(

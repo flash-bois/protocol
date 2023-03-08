@@ -88,6 +88,7 @@ impl Admin<'_> {
             Utilization::from_decimal(Fraction::new(max_utilization as u64)),
             Quantity::new(max_total_borrow),
             initial_fee_time,
+            Clock::get()?.unix_timestamp as u32,
         )?;
 
         Ok(())
