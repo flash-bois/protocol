@@ -66,6 +66,11 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
+    pub fn does_trade(&self, vault: u8, strategy: u8) -> Result<bool, JsError> {
+        Ok(self.strategy(vault, strategy)?.is_trading_enabled())
+    }
+
+    #[wasm_bindgen]
     pub fn balance_base(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
         Ok(self.strategy(vault, strategy)?.balance().get())
     }

@@ -190,8 +190,8 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn max_leverage(&self, index: u8) -> Result<u64, JsError> {
         Ok(self
-            .vault_checked_mut(index)?
-            .trade_service()?
+            .vault_checked(index)?
+            .trade_service_not_mut()?
             .max_open_leverage()
             .get())
     }
@@ -199,8 +199,8 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn trading_open_fee(&self, index: u8) -> Result<u64, JsError> {
         Ok(self
-            .vault_checked_mut(index)?
-            .trade_service()?
+            .vault_checked(index)?
+            .trade_service_not_mut()?
             .open_fee()
             .get())
     }
@@ -208,8 +208,8 @@ impl VaultsAccount {
     #[wasm_bindgen]
     pub fn trading_fee(&self, index: u8, long: bool) -> Result<u64, JsError> {
         Ok(self
-            .vault_checked_mut(index)?
-            .trade_service()?
+            .vault_checked(index)?
+            .trade_service_not_mut()?
             .borrow_fee(if long { Side::Long } else { Side::Short })?
             .get())
     }
