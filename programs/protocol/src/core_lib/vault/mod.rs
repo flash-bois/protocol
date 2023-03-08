@@ -213,6 +213,10 @@ impl Vault {
         self.services.swap()
     }
 
+    pub fn trade_service_not_mut(&self) -> Result<&Swap, LibErrors> {
+        self.services.trade()
+    }
+
     fn settle_fees(&mut self, service: ServiceType) -> Result<(), LibErrors> {
         let (service_updatable, service_accrued_fees): (&mut dyn ServiceUpdate, Quantity) =
             match service {
