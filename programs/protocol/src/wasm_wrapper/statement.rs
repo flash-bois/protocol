@@ -148,7 +148,7 @@ impl StatementAccount {
         let v = account_info.to_vec();
         let account = *ZeroCopyDecoder::decode::<Statement>(&v);
 
-        self.account.clone_from(&account)
+        self.account = account
     }
 
     pub fn buffer(&self) -> Uint8Array {
@@ -162,17 +162,13 @@ impl StatementAccount {
 
     #[wasm_bindgen]
     pub fn vaults_to_refresh(&self) -> Result<Array, JsError> {
-        let arr = Array::new();
-
-        self.statement
+        Ok(self
+            .statement
             .get_vaults_indexes()
             .ok_or(LibErrors::NoVaultsToRefresh)?
             .iter()
-            .for_each(|id| {
-                arr.push(&JsValue::from(*id));
-            });
-
-        Ok(arr)
+            .map(|x| JsValue::from(*x))
+            .collect::<Array>())
     }
 
     #[wasm_bindgen]

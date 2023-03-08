@@ -44,15 +44,18 @@ pub struct SingleSwap<'info> {
 
 impl<'info> SingleSwap<'info> {
     pub fn handler(
-        &mut self,
+        ctx: Context<SingleSwap<'info>>,
         vault: u8,
         amount: u64,
         min_expected: u64,
         from_base: bool,
         by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
-        //let now = Clock::get()?.unix_timestamp as u32;
-        let vaults = &mut self.vaults.load_mut()?;
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
+
+        vaults.refresh(&[vault], ctx.remaining_accounts, current_timestamp)?;
+
         let vault = vaults.vault_checked_mut(vault)?;
         let quantity = Quantity::new(amount);
 
@@ -71,13 +74,16 @@ impl<'info> SingleSwap<'info> {
             return Err(LibErrors::NoMinAmountOut.into());
         }
 
-        let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
+        let seeds = &[
+            b"state".as_ref(),
+            &[ctx.accounts.state.load().unwrap().bump],
+        ];
         let signer = &[&seeds[..]];
 
         let (take, send) = if from_base {
-            (self.take_base(), self.send_quote())
+            (ctx.accounts.take_base(), ctx.accounts.send_quote())
         } else {
-            (self.take_quote(), self.send_base())
+            (ctx.accounts.take_quote(), ctx.accounts.send_base())
         };
 
         transfer(take, amount)?;

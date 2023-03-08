@@ -114,6 +114,30 @@ impl Admin<'_> {
         Ok(())
     }
 
+    pub fn enable_trading(
+        &mut self,
+        index: u8,
+        open_fee: u32,
+        max_leverage: u32,
+        collateral_ratio: u32,
+        liquidation_threshold: u32,
+    ) -> anchor_lang::Result<()> {
+        msg!("DotWave: Enabling trading");
+
+        let vaults = &mut self.vaults.load_mut()?;
+        let vault = vaults.vault_checked_mut(index)?;
+
+        vault.enable_trading(
+            Fraction::new(open_fee as u64),
+            Fraction::new(max_leverage as u64),
+            Fraction::new(collateral_ratio as u64),
+            Fraction::new(liquidation_threshold as u64),
+            Clock::get()?.unix_timestamp as u32,
+        )?;
+
+        Ok(())
+    }
+
     pub fn modify_fee_curve(
         &self,
         vault: u8,
