@@ -91,6 +91,7 @@ export interface IEnableOracleInfo {
   base: boolean
   decimals: number
   skip_init: boolean
+  max_update_interval: number
 }
 
 export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
@@ -375,14 +376,14 @@ export async function enableOracles(
   const priceFeed = Keypair.generate().publicKey
   const { state, vaults, admin: adminKey } = accounts
   await program.methods
-    .enableOracle(index, 6, true, true)
+    .enableOracle(index, 6, true, true, 10)
     .accountsStrict({
       ...accounts,
       priceFeed
     })
     .postInstructions([
       await program.methods
-        .enableOracle(index, 6, false, true)
+        .enableOracle(index, 6, false, true, 10)
         .accountsStrict({
           ...accounts,
           priceFeed
@@ -487,7 +488,7 @@ export async function createAndEnableOracle({
     price,
     decimals,
     skip_init,
-
+    max_update_interval,
     ...common_accounts
   } = params
 
@@ -513,7 +514,7 @@ export async function createAndEnableOracle({
   await waitFor(oracle_connection, create_sig)
 
   const enable_sig = await program.methods
-    .enableOracle(vault, decimals, base, skip_init)
+    .enableOracle(vault, decimals, base, skip_init, max_update_interval)
     .accounts({
       priceFeed: oracle.publicKey,
       admin: admin.publicKey,

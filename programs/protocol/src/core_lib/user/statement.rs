@@ -232,6 +232,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Base,
+                0,
             )
             .unwrap();
 
@@ -243,6 +244,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Quote,
+                0,
             )
             .unwrap();
 
@@ -274,6 +276,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Base,
+                0,
             )
             .unwrap();
 
@@ -285,6 +288,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Quote,
+                0,
             )
             .unwrap();
 

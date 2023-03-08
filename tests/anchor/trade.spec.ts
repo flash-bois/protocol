@@ -46,7 +46,7 @@ const [statement_address, bump] = PublicKey.findProgramAddressSync(
   program.programId
 )
 
-describe('Borrow tests', function () {
+describe('Trading tests', function () {
 
   before(async function () {
     const admin_sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
@@ -69,29 +69,14 @@ describe('Borrow tests', function () {
           base: false, decimals: 6, skip_init: false,
           price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
         },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000,
+        trading: {
+          collateral_ratio: 1000000,
+          liquidation_threshold: 1000000,
+          max_leverage: 5000000,
+          open_fee: 2000
         },
         strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: false, trade: false }
-        ]
-      }, {
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
-        },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: false, trade: false }
+          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: false, swap: false, trade: true }
         ]
       }]
     })

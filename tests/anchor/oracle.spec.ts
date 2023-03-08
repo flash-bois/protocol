@@ -79,7 +79,7 @@ describe('Enable Oracle', () => {
   it('enable base oracle', async () => {
 
     const sig = await program.methods
-      .enableOracle(0, 6, true, false)
+      .enableOracle(0, 6, true, false, 10)
       .accounts({
         state,
         vaults,
@@ -123,7 +123,7 @@ describe('Enable Oracle', () => {
     // const quotePriceFeed = Keypair.generate().publicKey
 
     const otherSig = await program.methods
-      .enableOracle(0, 6, false, false)
+      .enableOracle(0, 6, false, false, 10)
       .accounts({
         state,
         vaults,

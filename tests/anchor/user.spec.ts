@@ -77,10 +77,10 @@ describe('User', () => {
         quote_mint,
         base_oracle: {
           base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000)
+          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
         }, quote_oracle: {
           base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000)
+          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
         },
         lending: {
           initial_fee_time: 0,
@@ -98,10 +98,10 @@ describe('User', () => {
         quote_mint,
         base_oracle: {
           base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000)
+          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
         }, quote_oracle: {
           base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000)
+          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
         },
         lending: {
           initial_fee_time: 0,

@@ -39,8 +39,10 @@ pub mod protocol {
         decimals: u8,
         base: bool,
         skip_init: bool,
+        max_update_interval: u32,
     ) -> Result<()> {
-        ctx.accounts.handler(index, decimals, base, skip_init)
+        ctx.accounts
+            .handler(index, decimals, base, skip_init, max_update_interval)
     }
 
     pub fn force_override_oracle(
