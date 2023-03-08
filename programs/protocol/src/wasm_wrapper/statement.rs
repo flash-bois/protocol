@@ -148,7 +148,7 @@ impl StatementAccount {
         let v = account_info.to_vec();
         let account = *ZeroCopyDecoder::decode::<Statement>(&v);
 
-        self.account.clone_from(&account)
+        self.account = account
     }
 
     pub fn buffer(&self) -> Uint8Array {

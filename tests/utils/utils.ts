@@ -21,68 +21,113 @@ import { Protocol } from '../../target/types/protocol'
 import { STATE_SEED } from '../../microSdk'
 import { Oracle } from '../../target/types/oracle'
 
-export type StateWithVaults = {
-  state: PublicKey
-  vaults: PublicKey
-}
-
-export interface ICreateStateWithVaults {
+export interface IProtocolCallable {
   program: Program<Protocol>
   admin: Keypair
 }
 
-export interface IAddVault {
-  program: Program<Protocol>
-  state: PublicKey
-  vaults: PublicKey
-  minter: PublicKey
-  admin: Keypair
-}
-
-export type VaultAccounts = {
-  base: PublicKey
-  quote: PublicKey
-  reserveBase: PublicKey
-  reserveQuote: PublicKey
-}
-
-export interface IEnableOracle {
-  program: Program<Protocol>
+export interface IOracleCallable {
   oracle_program: Program<Oracle>
-  vault: number
-  base: boolean
-  decimals: number
-  skip_init: boolean
   admin: Keypair
+}
+
+export interface IProtocolWithOracleCallable extends IProtocolCallable, IOracleCallable { }
+
+export interface IStateWithVaults {
+  state: PublicKey
+  vaults: PublicKey
+}
+
+export interface IStrategyInfo {
+  lend: boolean
+  swap: boolean
+  trade: boolean
+  collateral_ratio: BN
+  liquidation_threshold: BN
+}
+
+export interface ICreateStrategy extends IProtocolCallable, IStateWithVaults, IStrategyInfo {
+  vault: number
+}
+
+
+export interface ISwappingInfo {
+  kept_fee: number
+  max_total_sold: BN
+}
+
+export interface IEnableSwapping extends IProtocolCallable, IStateWithVaults, ISwappingInfo {
+  vault: number
+}
+
+export interface ILendingInfo {
+  initial_fee_time: number
+  max_utilization: number
+  max_borrow: BN
+}
+
+export interface IEnableLending extends IProtocolCallable, IStateWithVaults, ILendingInfo {
+  vault: number
+}
+
+export interface ICreateOracleInfo {
   price: BN
   conf: BN
   exp: number
-  state: PublicKey
-  vaults: PublicKey
+}
+
+export interface IEnableOracleInfo {
+  base: boolean
+  decimals: number
+  skip_init: boolean
+}
+
+export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
+
+export interface ICreateAndEnableOracle
+  extends IProtocolWithOracleCallable,
+  IStateWithVaults,
+  ILocalOracleInfo {
+  vault: number
+}
+
+export interface IAddVault extends IProtocolCallable, IStateWithVaults {
+  minter: PublicKey
+}
+
+export interface IVaultInfo {
+  quote_oracle?: ILocalOracleInfo
+  base_oracle?: ILocalOracleInfo
+  lending?: ILendingInfo
+  swapping?: ISwappingInfo
+  strategies?: [IStrategyInfo]
+}
+export interface ICreateTestEnvironment
+  extends IProtocolWithOracleCallable {
+  minter: PublicKey,
+  vaults_infos: IVaultInfo[]
 }
 
 export type OracleKey = PublicKey
 
-export type OracleKeys = {
-  base_oracle: PublicKey
-  quote_oracle: PublicKey
+export interface IVaultAccounts {
+  base: PublicKey
+  quote: PublicKey
+  reserveBase: PublicKey
+  reserveQuote: PublicKey
+  base_oracle?: OracleKey
+  quote_oracle?: OracleKey
+  remaining_accounts?: {
+    isSigner: boolean;
+    isWritable: boolean;
+    pubkey: anchor.web3.PublicKey;
+  }[]
 }
 
-export type VaultAccountsWithOracles = VaultAccounts & OracleKeys
 
-export interface ICreateStrategy {
-  program: Program<Protocol>
-  vault: number
-  lend: boolean
-  swap: boolean
-  collateral_ratio: BN
-  liquidation_threshold: BN
-  admin: Keypair
-  state: PublicKey
-  vaults: PublicKey
+export interface TestEnvironment extends IStateWithVaults {
+  vaults_data: IVaultAccounts[]
 }
-
-/// MEINE
 
 export interface DotWaveAccounts {
   state: PublicKey
@@ -341,55 +386,93 @@ export async function enableOracles(
     .rpc({ skipPreflight: true })
 }
 
-export async function createStrategy(params: ICreateStrategy) {
-  const {
-    admin,
-    collateral_ratio,
-    lend,
-    liquidation_threshold,
-    program,
-    state,
-    swap,
-    vault,
-    vaults
-  } = params
+export async function enableSwapping({ program, admin, ...params }: IEnableSwapping) {
+  const { vault, kept_fee, max_total_sold, ...common_accounts } = params
 
   const sig = await program.methods
-    .addStrategy(vault, lend, swap, collateral_ratio, liquidation_threshold)
-    .accounts({ admin: admin.publicKey, state, vaults })
+    .enableSwapping(vault, kept_fee, max_total_sold)
+    .accounts({
+      admin: admin.publicKey,
+      ...common_accounts
+    })
     .signers([admin])
     .rpc({ skipPreflight: true })
 
   await waitFor(program.provider.connection, sig)
 }
 
-export async function enableOracle(params: IEnableOracle): Promise<OracleKey> {
+export async function enableLending({ program, admin, ...params }: IEnableLending) {
+  const { vault, initial_fee_time, max_borrow, max_utilization, ...common_accounts } = params
+
+  const sig = await program.methods
+    .enableLending(vault, max_utilization, max_borrow, initial_fee_time)
+    .accounts({
+      admin: admin.publicKey,
+      ...common_accounts
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
+export async function createStrategy({
+  vault,
+  program,
+  admin,
+
+  ...params
+}: ICreateStrategy) {
   const {
-    admin,
-    vaults,
-    state,
-    base,
-    decimals,
-    skip_init,
+    lend,
+    swap,
+    trade,
+    collateral_ratio,
+    liquidation_threshold,
+
+    ...common_accounts
+  } = params
+
+  const sig = await program.methods
+    .addStrategy(vault, lend, swap, collateral_ratio, liquidation_threshold)
+    .accounts({ admin: admin.publicKey, ...common_accounts })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
+export async function createAndEnableOracle({
+  oracle_program,
+  program,
+  admin,
+
+  ...params
+}: ICreateAndEnableOracle): Promise<OracleKey> {
+  const {
     vault,
-    oracle_program,
-    program,
+    base,
     conf,
     exp,
-    price
+    price,
+    decimals,
+    skip_init,
+
+    ...common_accounts
   } = params
+
   const oracle = Keypair.generate()
-  const o_connection = oracle_program.provider.connection
+  const oracle_connection = oracle_program.provider.connection
   const connection = program.provider.connection
 
-  const sig = await oracle_program.methods
+  const create_sig = await oracle_program.methods
     .set(price, exp, conf)
     .preInstructions([
       SystemProgram.createAccount({
         fromPubkey: admin.publicKey,
         newAccountPubkey: oracle.publicKey,
         space: 3312,
-        lamports: await o_connection.getMinimumBalanceForRentExemption(3312),
+        lamports: await oracle_connection.getMinimumBalanceForRentExemption(3312),
         programId: oracle_program.programId
       })
     ])
@@ -397,15 +480,14 @@ export async function enableOracle(params: IEnableOracle): Promise<OracleKey> {
     .signers([oracle, admin])
     .rpc({ skipPreflight: true })
 
-  await waitFor(o_connection, sig)
+  await waitFor(oracle_connection, create_sig)
 
   const enable_sig = await program.methods
     .enableOracle(vault, decimals, base, skip_init)
     .accounts({
       priceFeed: oracle.publicKey,
       admin: admin.publicKey,
-      state,
-      vaults
+      ...common_accounts
     })
     .signers([admin])
     .rpc({ skipPreflight: true })
@@ -415,9 +497,7 @@ export async function enableOracle(params: IEnableOracle): Promise<OracleKey> {
   return oracle.publicKey
 }
 
-export async function createStateWithVaults(
-  params: ICreateStateWithVaults
-): Promise<StateWithVaults> {
+export async function createStateWithVaults(params: IProtocolCallable): Promise<IStateWithVaults> {
   const { admin, program } = params
 
   const vaults = Keypair.generate()
@@ -454,9 +534,68 @@ export async function createStateWithVaults(
   return { vaults: vaults.publicKey, state }
 }
 
-export async function addVault(params: IAddVault): Promise<VaultAccounts> {
-  const { admin, minter, program, state, vaults } = params
+export async function createTestEnvironment({ vaults_infos, ...params }: ICreateTestEnvironment): Promise<TestEnvironment> {
+  const state_with_vault = await createStateWithVaults(params)
+  const vaults_data: IVaultAccounts[] = []
 
+  for (const id of vaults_infos.keys()) {
+    const {
+      base_oracle,
+      quote_oracle,
+      lending,
+      swapping,
+      strategies
+    }: IVaultInfo = vaults_infos[id]
+
+    const vault_accounts = await addVault({ ...state_with_vault, ...params })
+
+    const base_oracle_key = base_oracle ? await createAndEnableOracle({ vault: id, ...base_oracle, ...params, ...state_with_vault, }) : undefined
+    const quote_oracle_key = quote_oracle ? await createAndEnableOracle({ vault: id, ...quote_oracle, ...params, ...state_with_vault, }) : undefined
+
+    if (lending != undefined) {
+      await enableLending({ vault: id, ...lending, ...params, ...state_with_vault })
+    }
+
+    if (swapping != undefined) {
+      await enableSwapping({ vault: id, ...swapping, ...params, ...state_with_vault, })
+    }
+
+    if (strategies != undefined) {
+      for (const id of strategies.keys()) {
+        const strategy = strategies[id]
+        await createStrategy({ vault: id, ...strategy, ...params, ...state_with_vault, })
+      }
+    }
+
+    let remaining_accounts: { isSigner: false, isWritable: false, pubkey: PublicKey }[] = []
+
+    if (base_oracle) {
+      remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: base_oracle_key! })
+    }
+
+    if (quote_oracle) {
+      remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: quote_oracle_key! })
+    }
+
+
+    vaults_data.push(
+      {
+        ...vault_accounts, base_oracle: base_oracle_key, quote_oracle: quote_oracle_key, remaining_accounts
+      }
+    )
+  }
+
+
+
+  return { ...state_with_vault, vaults_data }
+}
+
+export async function addVault({
+  admin,
+  minter,
+  program,
+  ...common_accounts
+}: IAddVault): Promise<IVaultAccounts> {
   const connection = program.provider.connection
   const base = await createMint(connection, admin, minter, null, 6)
   const quote = await createMint(connection, admin, minter, null, 6)
@@ -466,8 +605,7 @@ export async function addVault(params: IAddVault): Promise<VaultAccounts> {
   const sig = await program.methods
     .initVault()
     .accounts({
-      state,
-      vaults,
+      ...common_accounts,
       base,
       quote,
       reserveBase: reserveBase.publicKey,

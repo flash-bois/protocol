@@ -80,7 +80,7 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn vaults_len(&self) -> u8 {
-        self.account.arr.head
+        self.arr.head
     }
 
     #[wasm_bindgen]
