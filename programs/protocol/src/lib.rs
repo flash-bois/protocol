@@ -78,6 +78,24 @@ pub mod protocol {
             .enable_swapping(index, kept_fee, max_total_sold)
     }
 
+    pub fn enable_trading(
+        ctx: Context<Admin>,
+        index: u8,
+        open_fee: u32,
+        max_leverage: u32,
+        collateral_ratio: u32,
+        liquidation_threshold: u32,
+    ) -> Result<()> {
+        ctx.accounts.enable_trading(
+            index,
+            open_fee,
+            max_leverage,
+            collateral_ratio,
+            liquidation_threshold,
+        )?;
+        Ok(())
+    }
+
     pub fn add_strategy(
         ctx: Context<AddStrategy>,
         index: u8,

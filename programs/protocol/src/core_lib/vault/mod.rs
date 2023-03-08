@@ -162,6 +162,37 @@ impl Vault {
         Ok(())
     }
 
+    pub fn enable_trading(
+        &mut self,
+        open_fee: Fraction,
+        max_leverage: Fraction,
+        collateral_ratio: Fraction,
+        liquidation_threshold: Fraction,
+        start_time: Time,
+    ) -> Result<(), LibErrors> {
+        if self.oracle.is_none() {
+            return Err(LibErrors::OracleNone);
+        }
+
+        if self.oracle.is_none() {
+            return Err(LibErrors::QuoteOracleNone);
+        }
+
+        if self.services.trade_mut().is_ok() {
+            return Err(LibErrors::ServiceAlreadyExists);
+        }
+
+        self.services.trade = Some(Trade::new(
+            open_fee,
+            max_leverage,
+            start_time,
+            collateral_ratio,
+            liquidation_threshold,
+        ));
+
+        Ok(())
+    }
+
     pub fn enable_swapping(
         &mut self,
         selling_fee: FeeCurve,
