@@ -17,7 +17,8 @@ import {
   waitFor,
   enableOracles,
   AdminAccounts,
-  tryFetch
+  tryFetch,
+  enableTrading
 } from '../utils/utils'
 import { BN } from 'bn.js'
 
@@ -64,11 +65,13 @@ describe('Services', () => {
 
     let data = (await connection.getAccountInfo(vaults))?.data
     assert.notEqual(data, undefined)
+
     if (data) {
       const vaultsAccount = VaultsAccount.load(data)
       assert.equal(vaultsAccount.vaults_len(), 1)
       assert.equal(vaultsAccount.has_lending(0), true)
       assert.equal(vaultsAccount.has_swap(0), false)
+      assert.equal(vaultsAccount.has_trading(0), false)
     }
   })
 
@@ -81,9 +84,29 @@ describe('Services', () => {
 
     const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
 
-    assert.equal(vaultsAccount.vaults_len(), 1)
     assert.equal(vaultsAccount.has_lending(0), true)
     assert.equal(vaultsAccount.has_swap(0), true)
+    assert.equal(vaultsAccount.has_trading(0), false)
+  })
+
+  it('enable trade', async () => {
+    await enableTrading({
+      program,
+      admin,
+      state: accounts.state,
+      vaults: accounts.vaults,
+      vault: 0,
+      collateral_ratio: 100000,
+      liquidation_threshold: 1000000,
+      max_leverage: 3000000,
+      open_fee: 20000,
+    })
+
+    const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
+
+    assert.equal(vaultsAccount.has_lending(0), true)
+    assert.equal(vaultsAccount.has_swap(0), true)
+    assert.equal(vaultsAccount.has_trading(0), true)
   })
 
   it('set swap fee', async () => {
@@ -101,7 +124,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.has_swap(0), true)
 
     await program.methods
-      .addStrategy(0, true, false, new BN(1000000), new BN(1000000))
+      .addStrategy(0, true, false, false, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -112,7 +135,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.strategy_info(0, 0).has_swap, false)
 
     await program.methods
-      .addStrategy(0, false, true, new BN(1000000), new BN(1000000))
+      .addStrategy(0, false, true, false, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -122,7 +145,7 @@ describe('Services', () => {
     assert.equal(vaultsAccount.strategy_info(0, 1).has_swap, true)
 
     await program.methods
-      .addStrategy(0, true, true, new BN(1000000), new BN(1000000))
+      .addStrategy(0, true, true, false, new BN(1000000), new BN(1000000))
       .accounts(accounts)
       .signers([admin])
       .rpc({ skipPreflight: true })
