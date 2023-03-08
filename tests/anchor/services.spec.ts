@@ -108,8 +108,8 @@ describe('Services', () => {
 
     vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
 
-    assert.equal(vaultsAccount.does_lend(0, 0), true)
-    assert.equal(vaultsAccount.does_swap(0, 0), false)
+    assert.equal(vaultsAccount.strategy_info(0, 0).has_lend, true)
+    assert.equal(vaultsAccount.strategy_info(0, 0).has_swap, false)
 
     await program.methods
       .addStrategy(0, false, true, new BN(1000000), new BN(1000000))
@@ -118,8 +118,8 @@ describe('Services', () => {
       .rpc({ skipPreflight: true })
     vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
 
-    assert.equal(vaultsAccount.does_lend(0, 1), false)
-    assert.equal(vaultsAccount.does_swap(0, 1), true)
+    assert.equal(vaultsAccount.strategy_info(0, 1).has_lend, false)
+    assert.equal(vaultsAccount.strategy_info(0, 1).has_swap, true)
 
     await program.methods
       .addStrategy(0, true, true, new BN(1000000), new BN(1000000))
@@ -128,7 +128,7 @@ describe('Services', () => {
       .rpc({ skipPreflight: true })
     vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
 
-    assert.equal(vaultsAccount.does_lend(0, 2), true)
-    assert.equal(vaultsAccount.does_swap(0, 2), true)
+    assert.equal(vaultsAccount.strategy_info(0, 2).has_swap, true)
+    assert.equal(vaultsAccount.strategy_info(0, 2).has_swap, true)
   })
 })

@@ -199,8 +199,8 @@ describe('User', () => {
 
     const position_info = vaults_account.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
 
-    assert.equal(position_info.base_quantity, 200000n)
-    assert.equal(position_info.quote_quantity, 400000n)
+    assert.equal(position_info.earned_base_quantity, 200000n)
+    assert.equal(position_info.earned_quote_quantity, 400000n)
     assert.equal(position_info.position_value, 800000000n)
   })
 
