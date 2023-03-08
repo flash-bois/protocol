@@ -217,6 +217,11 @@ impl Strategy {
             swap.add_liquidity_quote(quote_quantity);
         }
 
+        if let Ok(trade) = services.trade_mut() {
+            trade.add_available_base(quantity);
+            trade.add_available_quote(quantity);
+        }
+
         let shares = self.total_shares.get_change_down(input_quantity, balance);
 
         self.available.base += quantity;
