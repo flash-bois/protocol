@@ -57,20 +57,26 @@ pub struct DoubleSwap<'info> {
 
 impl<'info> DoubleSwap<'info> {
     pub fn handler(
-        &mut self,
+        ctx: Context<DoubleSwap<'info>>,
         vault_in: u8,
         vault_out: u8,
         amount: u64,
         min_expected: u64,
         by_amount_out: bool,
     ) -> anchor_lang::Result<()> {
-        //let now = Clock::get()?.unix_timestamp as u32;
-        let vaults = &mut self.vaults.load_mut()?;
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let quantity = Quantity::new(amount);
 
         if by_amount_out {
             unimplemented!("swaps by amount out are not yet implemented")
         }
+
+        vaults.refresh(
+            &[vault_in, vault_out],
+            ctx.remaining_accounts,
+            current_timestamp,
+        )?;
 
         let vault_in = vaults.vault_checked_mut(vault_in)?;
         let quote_quantity = vault_in.sell(quantity)?;
@@ -78,19 +84,27 @@ impl<'info> DoubleSwap<'info> {
 
         let vault_out = vaults.vault_checked_mut(vault_out)?;
         let quantity_out = vault_out.buy(quote_quantity)?;
-
         msg!("quantity out: {}", quantity_out);
 
         if quantity_out < Quantity::new(min_expected) {
             return Err(LibErrors::NoMinAmountOut.into());
         }
 
-        let seeds = &[b"state".as_ref(), &[self.state.load().unwrap().bump]];
+        let seeds = &[
+            b"state".as_ref(),
+            &[ctx.accounts.state.load().unwrap().bump],
+        ];
         let signer = &[&seeds[..]];
 
-        transfer(self.take_in(), amount)?;
-        transfer(self.move_quote().with_signer(signer), quote_quantity.get())?;
-        transfer(self.send_out().with_signer(signer), quantity_out.get())?;
+        transfer(ctx.accounts.take_in(), amount)?;
+        transfer(
+            ctx.accounts.move_quote().with_signer(signer),
+            quote_quantity.get(),
+        )?;
+        transfer(
+            ctx.accounts.send_out().with_signer(signer),
+            quantity_out.get(),
+        )?;
 
         Ok(())
     }

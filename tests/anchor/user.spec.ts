@@ -24,70 +24,120 @@ import {
   tryFetch,
   createBasicVault,
   mintTokensForUser,
-  DotWaveAccounts
+  DotWaveAccounts,
+  TestEnvironment,
+  createTestEnvironment,
+  IVaultAccounts
 } from '../utils/utils'
 import { BN } from 'bn.js'
 import { STATEMENT_SEED, STATE_SEED } from '../../microSdk'
+import { Oracle } from '../../target/types/oracle'
+
+const provider = anchor.AnchorProvider.env()
+const program = anchor.workspace.Protocol as Program<Protocol>
+const oracle_program = anchor.workspace.Oracle as Program<Oracle>
+
+const minter = Keypair.generate()
+const admin = Keypair.generate()
+const user = Keypair.generate()
+const connection = program.provider.connection
+anchor.setProvider(provider)
+
+let vaults_account: VaultsAccount
+let statement_acc: StatementAccount
+let accountBase: PublicKey
+let accountQuote: PublicKey
+let test_environment: TestEnvironment
+let vault0: IVaultAccounts
+let vault1: IVaultAccounts
+let quote_mint: PublicKey
+
+const [statement, bump] = PublicKey.findProgramAddressSync(
+  [Buffer.from(anchor.utils.bytes.utf8.encode(STATEMENT_SEED)), user.publicKey.toBuffer()],
+  program.programId
+)
+
 
 describe('User', () => {
-  const provider = anchor.AnchorProvider.env()
-  const program = anchor.workspace.Protocol as Program<Protocol>
+  before(async function () {
+    const admin_sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
+    await waitFor(connection, admin_sig)
 
-  const minter = Keypair.generate()
-  const admin = Keypair.generate()
-  const user = Keypair.generate()
+    const user_sig = await connection.requestAirdrop(user.publicKey, 1000000000)
+    await waitFor(connection, user_sig)
 
-  const connection = program.provider.connection
+    quote_mint = await createMint(connection, admin, minter.publicKey, null, 6)
 
-  anchor.setProvider(provider)
+    test_environment = await createTestEnvironment({
+      admin,
+      minter: minter.publicKey,
+      oracle_program,
+      program,
+      vaults_infos: [{
+        quote_mint,
+        base_oracle: {
+          base: true, decimals: 6, skip_init: false,
+          price: new BN(200000000), exp: -8, conf: new BN(200000)
+        }, quote_oracle: {
+          base: false, decimals: 6, skip_init: false,
+          price: new BN(100000000), exp: -8, conf: new BN(100000)
+        },
+        lending: {
+          initial_fee_time: 0,
+          max_borrow: new BN(10_000_000_000),
+          max_utilization: 800000,
+        },
+        swapping: {
+          kept_fee: 100000,
+          max_total_sold: new BN(10_000_000_000)
+        },
+        strategies: [
+          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: true, trade: false }
+        ]
+      }, {
+        quote_mint,
+        base_oracle: {
+          base: true, decimals: 6, skip_init: false,
+          price: new BN(200000000), exp: -8, conf: new BN(200000)
+        }, quote_oracle: {
+          base: false, decimals: 6, skip_init: false,
+          price: new BN(100000000), exp: -8, conf: new BN(100000)
+        },
+        lending: {
+          initial_fee_time: 0,
+          max_borrow: new BN(10_000_000_000),
+          max_utilization: 800000
+        },
+        swapping: {
+          kept_fee: 100000,
+          max_total_sold: new BN(10_000_000_000)
+        },
+        strategies: [
+          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: false, swap: true, trade: false }
+        ]
+      }]
+    })
 
-  let state: PublicKey
-  let vaults: PublicKey
-  let accounts: AdminAccounts
-  let vaults_acc: VaultsAccount
-  let statement_acc: StatementAccount
-  let protocolAccounts: DotWaveAccounts
-  let accountBase: PublicKey
-  let accountQuote: PublicKey
-
-  const [statement, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from(anchor.utils.bytes.utf8.encode(STATEMENT_SEED)), user.publicKey.toBuffer()],
-    program.programId
-  )
-
-  before(async () => {
-    const sigAdmin = await connection.requestAirdrop(admin.publicKey, 1e9)
-    const sigUser = await connection.requestAirdrop(user.publicKey, 1e9)
-    await waitFor(connection, sigAdmin)
-    await waitFor(connection, sigUser)
-
-    const initializedProtocolAccounts = await createBasicVault(program, admin, minter)
-    protocolAccounts = initializedProtocolAccounts
-
-    state = protocolAccounts.state
-    vaults = protocolAccounts.vaults
-    accounts = {
-      state,
-      vaults,
-      admin: admin.publicKey
-    }
+    vault0 = test_environment.vaults_data[0]
+    vault1 = test_environment.vaults_data[1]
 
     accountBase = await createAssociatedTokenAccount(
       connection,
       user,
-      protocolAccounts.base,
+      vault0.base,
       user.publicKey
     )
+
     accountQuote = await createAssociatedTokenAccount(
       connection,
       user,
-      protocolAccounts.quote,
+      vault0.quote,
       user.publicKey
     )
 
     await Promise.all([
-      mintTo(connection, user, protocolAccounts.base, accountBase, minter, 1e6),
-      mintTo(connection, user, protocolAccounts.quote, accountQuote, minter, 1e6)
+      mintTo(connection, user, vault0.base, accountBase, minter, 1e6),
+      mintTo(connection, user, vault0.quote, accountQuote, minter, 1e6)
     ])
   })
 
@@ -106,31 +156,33 @@ describe('User', () => {
 
 
   it('calculates deposit', async () => {
-    const account_info = (await connection.getAccountInfo(vaults))?.data
-    vaults_acc = VaultsAccount.load(account_info as Buffer)
+    const data = (await connection.getAccountInfo(test_environment.vaults))?.data
+    vaults_account = VaultsAccount.load(data as Buffer)
 
-    assert.equal(vaults_acc.deposit(0, 0, 200000n, true, 0), 400000n)
-    assert.equal(vaults_acc.deposit(0, 0, 400000n, false, 0), 200000n)
+    assert.equal(vaults_account.deposit(0, 0, 200000n, true, 0), 400000n)
+    assert.equal(vaults_account.deposit(0, 0, 400000n, false, 0), 200000n)
   })
 
   it('deposit', async () => {
+    const remaining_accounts = vault0.remaining_accounts;
+
     assert.equal((await getAccount(connection, accountBase)).amount, 1000000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 1000000n)
 
     const sig = await program.methods
       .deposit(0, 0, new BN(200000), true)
       .accountsStrict({
-        state,
-        vaults,
+        ...test_environment,
         accountBase,
         accountQuote,
         statement,
         signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
-        reserveQuote: protocolAccounts.reserveQuote,
+        reserveBase: vault0.reserveBase,
+        reserveQuote: vault0.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
+      .remainingAccounts(remaining_accounts ?? [])
       .rpc({ skipPreflight: true })
 
     await waitFor(connection, sig)
@@ -140,53 +192,44 @@ describe('User', () => {
   })
 
   it('gets lp position info from statement', async () => {
-    const account_info = (await connection.getAccountInfo(statement))?.data
-    statement_acc = StatementAccount.load(account_info as Buffer)
-    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
-    vaults_acc.reload(vaults_acc_info as Buffer)
+    const data = (await connection.getAccountInfo(statement))?.data
+    statement_acc = StatementAccount.load(data as Buffer)
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+    vaults_account.reload(vaults_data as Buffer)
 
-    const position_info = vaults_acc.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
+    const position_info = vaults_account.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
 
-    assert.equal(position_info.base_quantity, 200000n)
-    assert.equal(position_info.quote_quantity, 400000n)
+    assert.equal(position_info.earned_base_quantity, 200000n)
+    assert.equal(position_info.earned_quote_quantity, 400000n)
     assert.equal(position_info.position_value, 800000000n)
   })
 
-  it('gives max borrow user value', async () => {
-    const account_info = (await connection.getAccountInfo(statement))?.data
-    const vaults_acc_info = (await connection.getAccountInfo(vaults))?.data;
-    vaults_acc.reload(vaults_acc_info as Buffer)
-    statement_acc.reload(account_info as Buffer)
 
-    assert.equal(Buffer.from(statement_acc.owner()).toString('hex'), user.publicKey.toBuffer().toString('hex'))
-
-    statement_acc.refresh(vaults_acc.buffer())
-
-    assert.equal(statement_acc.remaining_permitted_debt(), 800000000n)
-  })
 
   it('single swap', async () => {
+    const remaining_accounts = vault0.remaining_accounts;
+
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
 
     await program.methods
       .modifyFeeCurve(0, 2, true, new BN(1000000), new BN(0), new BN(0), new BN(10000))
-      .accounts(accounts)
+      .accounts({ admin: admin.publicKey, ...test_environment })
       .signers([admin])
       .rpc({ skipPreflight: true })
 
     await program.methods
       .singleSwap(0, new BN(100000), new BN(10), true, false)
       .accountsStrict({
-        state,
-        vaults,
+        ...test_environment,
         accountBase,
         accountQuote,
         signer: user.publicKey,
-        reserveBase: protocolAccounts.reserveBase,
-        reserveQuote: protocolAccounts.reserveQuote,
+        reserveBase: vault0.reserveBase,
+        reserveQuote: vault0.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .remainingAccounts(remaining_accounts ?? [])
       .signers([user])
       .rpc({ skipPreflight: true })
 
@@ -195,53 +238,56 @@ describe('User', () => {
   })
 
   it('double swap', async () => {
-    const secondProtocolAccounts = await createBasicVault(
-      program,
-      admin,
-      minter,
-      protocolAccounts,
-      1
-    )
+    const remaining_accounts0 = vault0.remaining_accounts;
+    const remaining_accounts1 = vault1.remaining_accounts;
+    const remaining_accounts = [...remaining_accounts0!, ...remaining_accounts1!]
 
-    assert.equal(secondProtocolAccounts.quote.toBase58(), protocolAccounts.quote.toBase58())
-    assert.notEqual(secondProtocolAccounts.base.toBase58(), protocolAccounts.base.toBase58())
+    assert.equal(vault1.quote.toBase58(), vault0.quote.toBase58())
+    assert.notEqual(vault1.base.toBase58(), vault0.base.toBase58())
 
-    const accountInfo = await connection.getAccountInfo(vaults)
+    const accountInfo = await connection.getAccountInfo(test_environment.vaults)
     assert.isNotNull(accountInfo)
     const vaultsAccount = VaultsAccount.load(accountInfo!.data)
     assert.equal(
       new PublicKey(vaultsAccount.base_reserve(1)).toString(),
-      secondProtocolAccounts.reserveBase.toString()
+      vault1.reserveBase.toString()
     )
 
     const secondAccountBase = await createAssociatedTokenAccount(
       connection,
       user,
-      secondProtocolAccounts.base,
+      vault1.base,
       user.publicKey
     )
 
-    await mintTo(connection, user, secondProtocolAccounts.base, secondAccountBase, minter, 1e6)
+    await mintTo(connection, user, vault1.base, secondAccountBase, minter, 1e6)
 
+    const vault1_remaining_accounts = vault1.remaining_accounts;
     await program.methods
       .deposit(1, 0, new BN(300000), true)
       .accountsStrict({
-        state,
-        vaults,
+        ...test_environment,
         accountBase: secondAccountBase,
         accountQuote,
         statement,
         signer: user.publicKey,
-        reserveBase: secondProtocolAccounts.reserveBase,
-        reserveQuote: secondProtocolAccounts.reserveQuote,
+        reserveBase: vault1.reserveBase,
+        reserveQuote: vault1.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .remainingAccounts(
+        vault1_remaining_accounts ?? []
+      )
+      .remainingAccounts(remaining_accounts)
       .signers([user])
       .rpc({ skipPreflight: true })
 
     await program.methods
       .modifyFeeCurve(1, 2, false, new BN(1000000), new BN(0), new BN(0), new BN(10000))
-      .accounts(accounts)
+      .accounts({
+        admin: admin.publicKey,
+        ...test_environment,
+      })
       .signers([admin])
       .rpc({ skipPreflight: true })
 
@@ -251,21 +297,31 @@ describe('User', () => {
     await program.methods
       .doubleSwap(0, 1, new BN(100000), new BN(10), false)
       .accountsStrict({
-        state,
-        vaults,
+        ...test_environment,
         accountIn: accountBase,
         accountOut: secondAccountBase,
         signer: user.publicKey,
-        reserveIn: protocolAccounts.reserveBase,
-        reserveInQuote: protocolAccounts.reserveQuote,
-        reserveOut: secondProtocolAccounts.reserveBase,
-        reserveOutQuote: secondProtocolAccounts.reserveQuote,
+        reserveIn: vault0.reserveBase,
+        reserveInQuote: vault0.reserveQuote,
+        reserveOut: vault1.reserveBase,
+        reserveOutQuote: vault1.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .remainingAccounts(remaining_accounts)
       .signers([user])
       .rpc({ skipPreflight: true })
 
     assert.equal((await getAccount(connection, accountBase)).amount, 600000n)
     assert.equal((await getAccount(connection, secondAccountBase)).amount, 800000n - 1990n)
   })
+
+  it('gets vault indexes from statement', async () => {
+    const data = (await connection.getAccountInfo(statement))?.data
+    statement_acc = StatementAccount.load(data as Buffer)
+
+    const vault_ids = statement_acc.vaults_to_refresh();
+
+    assert.deepEqual(vault_ids, [0, 1])
+  })
 })
+

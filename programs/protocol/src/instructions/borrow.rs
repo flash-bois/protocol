@@ -43,7 +43,6 @@ impl<'info> Borrow<'info> {
         let mut vaults_indexes = vec![vault];
         if let Some(indexes_to_refresh) = user_statement.get_vaults_indexes() {
             vaults_indexes.extend(indexes_to_refresh.iter());
-            vaults_indexes.dedup()
         }
 
         vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;

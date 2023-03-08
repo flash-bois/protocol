@@ -77,7 +77,10 @@ pub use non_zero::*;
 impl UserStatement {
     pub fn get_vaults_indexes(&self) -> Option<Vec<u8>> {
         Some(self.positions.iter()?.fold(vec![], |mut val, el| {
-            val.push(*el.vault_index());
+            if !val.contains(el.vault_index()) {
+                val.push(*el.vault_index());
+            }
+
             val
         }))
     }

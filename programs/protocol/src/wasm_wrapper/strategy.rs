@@ -39,14 +39,14 @@ impl VaultsAccount {
             utilization_base: Utilization::get_utilization(strategy.locked(), strategy.balance())
                 .get()
                 .try_into()
-                .unwrap(),
+                .map_err(|_| LibErrors::ParseError)?,
             utilization_quote: Utilization::get_utilization(
                 strategy.locked_quote(),
                 strategy.balance_quote(),
             )
             .get()
             .try_into()
-            .unwrap(),
+            .map_err(|_| LibErrors::ParseError)?,
         })
     }
 

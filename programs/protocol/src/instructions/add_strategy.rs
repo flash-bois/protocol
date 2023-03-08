@@ -21,6 +21,7 @@ impl AddStrategy<'_> {
         index: u8,
         lending: bool,
         swapping: bool,
+        trading: bool,
         collateral_ratio: u64,
         liquidation_threshold: u64,
     ) -> anchor_lang::Result<()> {
@@ -30,15 +31,16 @@ impl AddStrategy<'_> {
         let vault = vaults.vault_checked_mut(index)?;
 
         msg!(
-            "here {} {}",
+            "lend {} swap {} trade {}",
             vault.lend_service().is_ok(),
-            vault.swap_service().is_ok()
+            vault.swap_service().is_ok(),
+            vault.trade_service().is_ok()
         );
 
         vault.add_strategy(
             lending,
             swapping,
-            false,
+            trading,
             Fraction::new(collateral_ratio),
             Fraction::new(liquidation_threshold),
         )?;
