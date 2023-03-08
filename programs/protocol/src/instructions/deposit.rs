@@ -43,25 +43,26 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, token::Token>,
 }
 
-impl Deposit<'_> {
+impl<'info> Deposit<'info> {
     pub fn handler(
-        &mut self,
+        ctx: Context<Deposit>,
         vault: u8,
         strategy: u8,
         quantity: u64,
         base: bool,
     ) -> anchor_lang::Result<()> {
-        let vaults = &mut self.vaults.load_mut()?;
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        let vaults = &mut ctx.accounts.vaults.load_mut()?;
+        let statement = &mut ctx.accounts.statement.load_mut()?.statement;
+        vaults.refresh(&[vault], ctx.remaining_accounts, current_timestamp)?;
+
         let vault = vaults.vault_checked_mut(vault)?;
-        let statement = &mut self.statement.load_mut()?;
-        let user_statement = &mut statement.statement;
 
         let other_quantity = vault.deposit(
-            user_statement,
+            statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
             strategy,
-            Clock::get()?.unix_timestamp as u32,
         )?;
 
         let (base_amount, quote_amount) = if base {
@@ -70,27 +71,31 @@ impl Deposit<'_> {
             (other_quantity.get(), quantity)
         };
 
-        let take_base_ctx = CpiContext::new(
+        transfer(ctx.accounts.take_base(), base_amount)?;
+        transfer(ctx.accounts.take_quote(), quote_amount)?;
+
+        Ok(())
+    }
+
+    fn take_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: self.account_base.to_account_info(),
                 to: self.reserve_base.to_account_info(),
                 authority: self.signer.to_account_info(),
             },
-        );
+        )
+    }
 
-        let take_quote_ctx = CpiContext::new(
+    fn take_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: self.account_quote.to_account_info(),
                 to: self.reserve_quote.to_account_info(),
                 authority: self.signer.to_account_info(),
             },
-        );
-
-        transfer(take_base_ctx, base_amount)?;
-        transfer(take_quote_ctx, quote_amount)?;
-
-        Ok(())
+        )
     }
 }

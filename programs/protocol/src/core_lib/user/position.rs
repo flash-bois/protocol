@@ -128,6 +128,15 @@ impl Position {
         }
     }
 
+    pub fn vault_index(&self) -> &u8 {
+        match self {
+            Position::Borrow { vault_index, .. } => vault_index,
+            Position::LiquidityProvide { vault_index, .. } => vault_index,
+            Position::Trading { vault_index, .. } => vault_index,
+            Position::Empty => unreachable!(),
+        }
+    }
+
     pub fn shares(&self) -> &Shares {
         match self {
             Position::Borrow { shares, .. } => shares,
@@ -141,6 +150,13 @@ impl Position {
         match self {
             Position::Borrow { amount, .. } => amount,
             Position::LiquidityProvide { amount, .. } => amount,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn quote_amount(&self) -> &Quantity {
+        match self {
+            Position::LiquidityProvide { quote_amount, .. } => quote_amount,
             _ => unreachable!(),
         }
     }
@@ -180,7 +196,7 @@ impl Position {
             .calculate_owed(*shares, service.locked().base))
     }
 
-    pub fn get_owed_double(
+    pub fn get_earned_double(
         &self,
         strategy_index: u8,
         shares: &Shares,
@@ -230,7 +246,7 @@ impl Position {
                 let strategy = vault.strategies.get_strategy(*strategy_index)?;
 
                 let (base_quantity, quote_quantity) =
-                    self.get_owed_double(*strategy_index, shares, vault)?;
+                    self.get_earned_double(*strategy_index, shares, vault)?;
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);

@@ -27,13 +27,8 @@ impl VaultsAccount {
             Token::Quote
         };
 
-        let out = vault.deposit(
-            &mut temp_user_statement,
-            deposit_token,
-            amount,
-            strategy,
-            current_time,
-        )?;
+        vault.refresh(current_time)?;
+        let out = vault.deposit(&mut temp_user_statement, deposit_token, amount, strategy)?;
 
         Ok(out.get())
     }

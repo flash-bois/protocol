@@ -28,10 +28,7 @@ impl Vault {
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
-            let strategy = self
-                .strategies
-                .get_mut_checked(i)
-                .ok_or_else(|| unreachable!())?;
+            let strategy = self.strategies.get_strategy_mut(i as u8)?;
 
             if strategy.uses(service) {
                 last_index = i;
@@ -42,10 +39,7 @@ impl Vault {
         }
 
         if processed < quantity {
-            let strategy = self
-                .strategies
-                .get_mut_checked(last_index)
-                .ok_or_else(|| unreachable!())?;
+            let strategy = self.strategies.get_strategy_mut(last_index as u8)?;
             action(strategy, quantity - processed, service, &mut self.services)?;
         }
         Ok(())
@@ -66,11 +60,7 @@ impl Vault {
         let mut last_index = 0;
 
         for i in self.strategies.indexes() {
-            let strategy = self
-                .strategies
-                .get_mut_checked(i)
-                .ok_or_else(|| unreachable!())?;
-
+            let strategy = self.strategies.get_strategy_mut(i as u8)?;
             if strategy.uses(service) {
                 last_index = i;
                 let to_lock_a = quantity_a.big_mul_div(part(&strategy), total);
@@ -83,10 +73,7 @@ impl Vault {
         }
 
         if processed_a < quantity_a {
-            let strategy = self
-                .strategies
-                .get_mut_checked(last_index)
-                .ok_or_else(|| unreachable!())?;
+            let strategy = self.strategies.get_strategy_mut(last_index as u8)?;
             action_a(
                 strategy,
                 quantity_a - processed_a,
@@ -96,10 +83,7 @@ impl Vault {
         }
 
         if processed_b < quantity_b {
-            let strategy = self
-                .strategies
-                .get_mut_checked(last_index)
-                .ok_or_else(|| unreachable!())?;
+            let strategy = self.strategies.get_strategy_mut(last_index as u8)?;
             action_b(
                 strategy,
                 quantity_b - processed_b,
@@ -137,6 +121,21 @@ impl Vault {
             service,
             Strategy::available,
             Strategy::lock_quote,
+        )
+    }
+
+    pub fn settle_lend_fees(
+        &mut self,
+        quantity: Quantity,
+        total_locked: Quantity,
+        service: ServiceType,
+    ) -> Result<(), LibErrors> {
+        self.split(
+            quantity,
+            total_locked,
+            service,
+            Strategy::locked_lent,
+            Strategy::accrue_lend_fee,
         )
     }
 

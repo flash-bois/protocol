@@ -1,6 +1,7 @@
 use crate::{
     core_lib::{
         decimal::{Quantity, Shares, Value},
+        errors::LibErrors,
         user::Position,
     },
     structs::Statement,
@@ -8,7 +9,7 @@ use crate::{
     ZeroCopyDecoder,
 };
 use checked_decimal_macro::Decimal;
-use js_sys::Uint8Array;
+use js_sys::{Array, Uint8Array};
 use std::ops::{Deref, DerefMut};
 use wasm_bindgen::prelude::*;
 
@@ -44,12 +45,15 @@ pub struct LpPositionInfo {
     pub vault_id: u8,
     pub strategy_id: u8,
     pub position_value: u64,
-    pub base_quantity: u64,
-    pub quote_quantity: u64,
+    pub deposited_base_quantity: u64,
+    pub deposited_quote_quantity: u64,
+    pub earned_base_quantity: u64,
+    pub earned_quote_quantity: u64,
 }
 
 #[wasm_bindgen]
 impl VaultsAccount {
+    #[wasm_bindgen]
     pub fn max_borrow_for(&self, id: u8, value: u64) -> Result<u64, JsError> {
         let vault = self.vault_checked(id)?;
         let value = Value::new(value as u128);
@@ -111,7 +115,7 @@ impl VaultsAccount {
         let found_position = statement_account.statement.search(&position_search)?;
 
         let (base_quantity, quote_quantity) =
-            found_position.get_owed_double(strategy_index, found_position.shares(), vault)?;
+            found_position.get_earned_double(strategy_index, found_position.shares(), vault)?;
 
         let oracle = vault.oracle()?;
         let quote_oracle = vault.quote_oracle()?;
@@ -123,8 +127,10 @@ impl VaultsAccount {
             vault_id: vault_index,
             strategy_id: strategy_index,
             position_value: value.get() as u64,
-            base_quantity: base_quantity.get(),
-            quote_quantity: quote_quantity.get(),
+            earned_base_quantity: base_quantity.get(),
+            earned_quote_quantity: quote_quantity.get(),
+            deposited_base_quantity: found_position.amount().get(),
+            deposited_quote_quantity: found_position.quote_amount().get(),
         })
     }
 }
@@ -152,6 +158,21 @@ impl StatementAccount {
     #[wasm_bindgen]
     pub fn get_bump(&self) -> u8 {
         self.bump
+    }
+
+    #[wasm_bindgen]
+    pub fn vaults_to_refresh(&self) -> Result<Array, JsError> {
+        let arr = Array::new();
+
+        self.statement
+            .get_vaults_indexes()
+            .ok_or(LibErrors::NoVaultsToRefresh)?
+            .iter()
+            .for_each(|id| {
+                arr.push(&JsValue::from(*id));
+            });
+
+        Ok(arr)
     }
 
     #[wasm_bindgen]

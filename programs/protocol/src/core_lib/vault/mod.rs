@@ -141,6 +141,7 @@ impl Vault {
         max_utilization: Utilization,
         borrow_limit: Quantity,
         initial_fee_time: Time,
+        last_fee_paid: Time,
     ) -> Result<(), LibErrors> {
         if self.services.lend_mut().is_ok() {
             return Err(LibErrors::LendServiceNone);
@@ -155,6 +156,7 @@ impl Vault {
             max_utilization,
             borrow_limit,
             initial_fee_time,
+            last_fee_paid,
         ));
 
         Ok(())
@@ -213,69 +215,30 @@ impl Vault {
         self.services.swap()
     }
 
-    fn settle_fees(&mut self, service: ServiceType) -> Result<(), LibErrors> {
-        let (service_updatable, service_accrued_fees): (&mut dyn ServiceUpdate, Quantity) =
-            match service {
-                ServiceType::Lend => {
-                    let service = self.lend_service()?;
-                    let fees = service.accrue_fee();
-                    (service, fees.base)
-                }
-                _ => unimplemented!(),
-            };
-
-        let locked = service_updatable.locked().base;
-        let service_locked_global = locked - service_accrued_fees;
-
-        if service_accrued_fees.is_zero() {
-            return Ok(());
-        }
-
-        let mut distributed_so_far = Quantity::new(0);
-        let mut last_index = 0;
-
-        for i in self.strategies.indexes() {
-            let strategy = self
-                .strategies
-                .get_mut_checked(i)
-                .ok_or(LibErrors::StrategyMissing)?;
-            if strategy.uses(service) {
-                last_index = i;
-
-                let sub_strategy_locked = strategy.locked_by(service)?;
-
-                let to_distribute =
-                    service_accrued_fees.big_mul_div(sub_strategy_locked, service_locked_global);
-
-                distributed_so_far += to_distribute;
-                strategy.accrue_fee(to_distribute, service)?;
-            }
-        }
-
-        if distributed_so_far < service_accrued_fees {
-            let strategy = self
-                .strategies
-                .get_mut_checked(last_index)
-                .ok_or(LibErrors::StrategyMissing)?;
-            strategy.accrue_fee(service_accrued_fees - distributed_so_far, service)?;
-        }
-
-        Ok(())
-    }
-
     pub fn refresh(&mut self, current_time: Time) -> Result<(), LibErrors> {
-        // TODO check oracle if it is refreshed
-
         if let Ok(lend) = self.lend_service() {
+            lend.accrue_interest_rate(current_time);
+
             if lend.locked().base > Quantity::new(0) {
-                lend.accrue_interest_rate(current_time);
-                self.settle_fees(ServiceType::Lend)?;
+                // accrue_fee in lend also adds it to the borrowed
+                let accrued_fees = lend.accrue_fee().base;
+
+                let locked = lend.locked().base;
+
+                //locked without accrued fees in previous call to accrue_fee
+                let locked_without_current_fees = locked - accrued_fees;
+
+                if accrued_fees.is_zero() {
+                    return Ok(());
+                }
+
+                self.settle_lend_fees(
+                    accrued_fees,
+                    locked_without_current_fees,
+                    ServiceType::Lend,
+                )?;
             }
         }
-
-        // if self.services.swap.is_some() {
-        //     self.settle_fees(ServiceType::Swap)?
-        // }
 
         Ok(())
     }
@@ -305,6 +268,7 @@ impl Vault {
             FeeCurve::default(),
             Utilization::from_integer(1),
             Quantity::new(u64::MAX),
+            0,
             0,
         )?;
         vault.enable_swapping(

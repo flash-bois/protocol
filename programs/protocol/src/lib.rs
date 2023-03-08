@@ -102,7 +102,7 @@ pub mod protocol {
         quantity: u64,
         base: bool,
     ) -> Result<()> {
-        ctx.accounts.handler(vault, strategy, quantity, base)
+        Deposit::handler(ctx, vault, strategy, quantity, base)
     }
 
     pub fn single_swap(
@@ -143,16 +143,25 @@ pub mod protocol {
             .modify_fee_curve(vault, service, base, bound, a, b, c)
     }
 
-    pub fn borrow<'info>(
-        ctx: Context<'_, '_, '_, 'info, Borrow<'info>>,
-        vault: u8,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn borrow(ctx: Context<Borrow>, vault: u8, amount: u64) -> Result<()> {
         Borrow::handler(ctx, vault, amount)
     }
 
     pub fn repay(ctx: Context<Repay>, vault: u8, amount: u64) -> Result<()> {
         Repay::handler(ctx, vault, amount)
+    }
+
+    pub fn open_position(
+        ctx: Context<OpenPosition>,
+        vault: u8,
+        amount: u64,
+        long: bool,
+    ) -> Result<()> {
+        OpenPosition::handler(ctx, vault, amount, long)
+    }
+
+    pub fn close_position(ctx: Context<ClosePosition>, vault: u8, long: bool) -> Result<()> {
+        ClosePosition::handler(ctx, vault, long)
     }
 }
 
