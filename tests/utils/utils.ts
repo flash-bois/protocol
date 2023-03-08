@@ -69,6 +69,18 @@ export interface IEnableLending extends IProtocolCallable, IStateWithVaults, ILe
   vault: number
 }
 
+export interface ITradingInfo {
+  open_fee: number,
+  max_leverage: number
+  collateral_ratio: number
+  liquidation_threshold: number
+}
+
+export interface IEnableTrading extends IProtocolCallable, IStateWithVaults, ITradingInfo {
+  vault: number
+}
+
+
 export interface ICreateOracleInfo {
   price: BN
   conf: BN
@@ -104,6 +116,7 @@ export interface IVaultInfo extends IAddVaultInfo {
   base_oracle?: ILocalOracleInfo
   lending?: ILendingInfo
   swapping?: ISwappingInfo
+  trading?: ITradingInfo
   strategies?: [IStrategyInfo]
 }
 export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
@@ -180,7 +193,7 @@ export async function createBasicVault(
         .signers([admin])
         .instruction(),
       await program.methods
-        .addStrategy(i, true, false, new BN(1000000), new BN(1000000))
+        .addStrategy(i, true, false, false, new BN(1000000), new BN(1000000))
         .accounts(accounts)
         .signers([admin])
         .instruction()
@@ -388,6 +401,21 @@ export async function enableOracles(
     .rpc({ skipPreflight: true })
 }
 
+export async function enableTrading({ program, admin, ...params }: IEnableTrading) {
+  const { collateral_ratio, liquidation_threshold, max_leverage, open_fee, vault, ...common_accounts } = params
+
+  const sig = await program.methods
+    .enableTrading(vault, open_fee, max_leverage, collateral_ratio, liquidation_threshold)
+    .accounts({
+      admin: admin.publicKey,
+      ...common_accounts
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
 export async function enableSwapping({ program, admin, ...params }: IEnableSwapping) {
   const { vault, kept_fee, max_total_sold, ...common_accounts } = params
 
@@ -436,7 +464,7 @@ export async function createStrategy({
   } = params
 
   const sig = await program.methods
-    .addStrategy(vault, lend, swap, collateral_ratio, liquidation_threshold)
+    .addStrategy(vault, lend, swap, trade, collateral_ratio, liquidation_threshold)
     .accounts({ admin: admin.publicKey, ...common_accounts })
     .signers([admin])
     .rpc({ skipPreflight: true })
@@ -544,7 +572,7 @@ export async function createTestEnvironment({
   const vaults_data: IVaultAccounts[] = []
 
   for (const id of vaults_infos.keys()) {
-    const { base_oracle, quote_oracle, lending, swapping, strategies, ...vault_info }: IVaultInfo =
+    const { base_oracle, quote_oracle, lending, swapping, trading, strategies, ...vault_info }: IVaultInfo =
       vaults_infos[id]
 
     const vault_accounts = await addVault({ ...state_with_vault, ...params, ...vault_info })
@@ -562,6 +590,10 @@ export async function createTestEnvironment({
 
     if (swapping != undefined) {
       await enableSwapping({ vault: id, ...swapping, ...params, ...state_with_vault })
+    }
+
+    if (trading != undefined) {
+      await enableTrading({ vault: id, ...trading, ...params, ...state_with_vault })
     }
 
     if (strategies != undefined) {

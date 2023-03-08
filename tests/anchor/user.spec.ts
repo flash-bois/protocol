@@ -207,6 +207,8 @@ describe('User', () => {
 
 
   it('single swap', async () => {
+    const remaining_accounts = vault0.remaining_accounts;
+
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
 
@@ -227,6 +229,7 @@ describe('User', () => {
         reserveQuote: vault0.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .remainingAccounts(remaining_accounts ?? [])
       .signers([user])
       .rpc({ skipPreflight: true })
 
@@ -235,6 +238,10 @@ describe('User', () => {
   })
 
   it('double swap', async () => {
+    const remaining_accounts0 = vault0.remaining_accounts;
+    const remaining_accounts1 = vault1.remaining_accounts;
+    const remaining_accounts = [...remaining_accounts0!, ...remaining_accounts1!]
+
     assert.equal(vault1.quote.toBase58(), vault0.quote.toBase58())
     assert.notEqual(vault1.base.toBase58(), vault0.base.toBase58())
 
@@ -271,6 +278,7 @@ describe('User', () => {
       .remainingAccounts(
         vault1_remaining_accounts ?? []
       )
+      .remainingAccounts(remaining_accounts)
       .signers([user])
       .rpc({ skipPreflight: true })
 
@@ -299,11 +307,21 @@ describe('User', () => {
         reserveOutQuote: vault1.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
+      .remainingAccounts(remaining_accounts)
       .signers([user])
       .rpc({ skipPreflight: true })
 
     assert.equal((await getAccount(connection, accountBase)).amount, 600000n)
     assert.equal((await getAccount(connection, secondAccountBase)).amount, 800000n - 1990n)
+  })
+
+  it('gets vault indexes from statement', async () => {
+    const data = (await connection.getAccountInfo(statement))?.data
+    statement_acc = StatementAccount.load(data as Buffer)
+
+    const vault_ids = statement_acc.vaults_to_refresh();
+
+    assert.deepEqual(vault_ids, [0, 1])
   })
 })
 
