@@ -177,6 +177,33 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
+    pub fn borrow_limit(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .borrow_limit
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn available_lend(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .available
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn max_utilization(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .max_utilization
+            .get() as u64)
+    }
+
+    #[wasm_bindgen]
     pub fn lending_apy(&mut self, index: u8, timestamp: u32) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {

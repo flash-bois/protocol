@@ -11,7 +11,7 @@ use crate::core_lib::{
         oracle::{Oracle, OraclePriceType},
         FeeCurve, Receipt, Side,
     },
-    user::TradeResult,
+    user::ValueChange,
 };
 
 use super::ServiceUpdate;
@@ -244,10 +244,10 @@ impl Trade {
         oracle: &Oracle,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
-        let open_fee = receipt.locked * self.open_fee;
+        let open_fee = BalanceChange::Loss(receipt.size * self.open_fee);
 
-        let position_change = self.calculate_long_value(&receipt, oracle);
-        let change = position_change + funding_fee + BalanceChange::Loss(open_fee);
+        let position_change = self.calculate_long_change(&receipt, oracle);
+        let change = position_change + funding_fee + open_fee;
 
         self.open_value.base -= receipt.open_value;
         self.locked.base -= receipt.locked;
@@ -274,37 +274,86 @@ impl Trade {
         Ok((change, receipt.locked))
     }
 
-    pub fn calculate_value(
+    pub fn long_fees(&self, receipt: &Receipt) -> BalanceChange {
+        self.calculate_funding_fee(receipt) + BalanceChange::Loss(receipt.locked * self.open_fee)
+    }
+
+    pub fn short_fees(
         &self,
         receipt: &Receipt,
         oracle: &Oracle,
         quote_oracle: &Oracle,
-    ) -> TradeResult {
-        let funding_fee = match receipt.side {
-            Side::Long => self.calculate_funding_fee(receipt),
-            Side::Short => self.calculate_quote_funding_fee(receipt, oracle, quote_oracle),
-        };
-        let fee = funding_fee + BalanceChange::Loss(receipt.locked * self.open_fee);
+    ) -> BalanceChange {
+        self.calculate_quote_funding_fee(receipt, oracle, quote_oracle)
+            + BalanceChange::Loss(receipt.locked * self.open_fee)
+    }
 
-        match receipt.side {
-            Side::Long => match self.calculate_long_value(receipt, oracle) + fee {
-                BalanceChange::Profit(profit) => {
-                    TradeResult::Profitable(oracle.calculate_value(profit))
-                }
-                BalanceChange::Loss(loss) => TradeResult::Loss(oracle.calculate_needed_value(loss)),
-            },
-            Side::Short => match self.calculate_short_change(receipt, oracle, quote_oracle) + fee {
-                BalanceChange::Profit(profit) => {
-                    TradeResult::Profitable(quote_oracle.calculate_value(profit))
-                }
-                BalanceChange::Loss(loss) => {
-                    TradeResult::Loss(quote_oracle.calculate_needed_value(loss))
-                }
-            },
+    fn get_value_change(&self, change: &BalanceChange, oracle: &Oracle) -> ValueChange {
+        match change {
+            BalanceChange::Profit(profit) => {
+                ValueChange::Profitable(oracle.calculate_value(*profit))
+            }
+
+            BalanceChange::Loss(loss) => ValueChange::Loss(oracle.calculate_needed_value(*loss)),
         }
     }
 
-    fn calculate_long_value(&self, receipt: &Receipt, oracle: &Oracle) -> BalanceChange {
+    pub fn calculate_position(
+        &self,
+        receipt: &Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+        minus_fees: bool,
+    ) -> (BalanceChange, ValueChange) {
+        match receipt.side {
+            Side::Long => {
+                let balance_change =
+                    self.calculate_position_change(receipt, oracle, quote_oracle, minus_fees);
+                let value_change = self.get_value_change(&balance_change, oracle);
+
+                (balance_change, value_change)
+            }
+            Side::Short => {
+                let balance_change =
+                    self.calculate_position_change(receipt, oracle, quote_oracle, minus_fees);
+                let value_change = self.get_value_change(&balance_change, oracle);
+
+                (balance_change, value_change)
+            }
+        }
+    }
+
+    pub fn calculate_position_change(
+        &self,
+        receipt: &Receipt,
+        oracle: &Oracle,
+        quote_oracle: &Oracle,
+        minus_fees: bool,
+    ) -> BalanceChange {
+        match receipt.side {
+            Side::Long => {
+                let change = self.calculate_long_change(receipt, oracle);
+
+                if minus_fees {
+                    change + self.long_fees(receipt)
+                } else {
+                    change
+                }
+            }
+
+            Side::Short => {
+                let change = self.calculate_short_change(receipt, oracle, quote_oracle);
+
+                if minus_fees {
+                    change + self.short_fees(receipt, oracle, quote_oracle)
+                } else {
+                    change
+                }
+            }
+        }
+    }
+
+    fn calculate_long_change(&self, receipt: &Receipt, oracle: &Oracle) -> BalanceChange {
         let Receipt {
             size, open_price, ..
         } = receipt;
@@ -423,8 +472,6 @@ impl Trade {
 
         self.funding.base += fee.base - funding;
         self.funding.quote += fee.quote + funding;
-
-        FundingRate::from_decimal(fee.base);
     }
 
     fn calculate_quote_funding_fee(
@@ -434,6 +481,9 @@ impl Trade {
         quote_oracle: &Oracle,
     ) -> BalanceChange {
         match self.calculate_funding_fee(receipt) {
+            BalanceChange::Profit(profit) if profit == Quantity::new(0) => {
+                BalanceChange::Profit(profit)
+            }
             BalanceChange::Profit(profit) => {
                 let value = oracle.calculate_value(profit);
                 BalanceChange::Profit(quote_oracle.calculate_quantity(value))

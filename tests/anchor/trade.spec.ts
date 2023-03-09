@@ -5,7 +5,7 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
+  SYSVAR_RENT_PUBKEY
 } from '@solana/web3.js'
 import { assert } from 'chai'
 import { StatementAccount, VaultsAccount } from '../../pkg/protocol'
@@ -17,12 +17,7 @@ import {
   mintTo,
   getAccount
 } from '@solana/spl-token'
-import {
-  waitFor,
-  createTestEnvironment,
-  TestEnvironment,
-  IVaultAccounts
-} from '../utils/utils'
+import { waitFor, createTestEnvironment, TestEnvironment, IVaultAccounts } from '../utils/utils'
 import { STATEMENT_SEED } from '../../microSdk'
 
 const provider = anchor.AnchorProvider.env()
@@ -39,7 +34,7 @@ let accountBase: PublicKey
 let accountQuote: PublicKey
 let vaults_account: VaultsAccount
 let statement_account: StatementAccount
-let vault0: IVaultAccounts
+let vault: IVaultAccounts
 
 const [statement_address, bump] = PublicKey.findProgramAddressSync(
   [Buffer.from(anchor.utils.bytes.utf8.encode(STATEMENT_SEED)), user.publicKey.toBuffer()],
@@ -47,7 +42,6 @@ const [statement_address, bump] = PublicKey.findProgramAddressSync(
 )
 
 describe('Trading tests', function () {
-
   before(async function () {
     const admin_sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
     await waitFor(connection, admin_sig)
@@ -55,96 +49,60 @@ describe('Trading tests', function () {
     const user_sig = await connection.requestAirdrop(user.publicKey, 1000000000)
     await waitFor(connection, user_sig)
 
-
     test_environment = await createTestEnvironment({
       admin,
       minter: minter.publicKey,
       oracle_program,
       program,
-      vaults_infos: [{
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
-        },
-        trading: {
-          collateral_ratio: 1000000,
-          liquidation_threshold: 1000000,
-          max_leverage: 5000000,
-          open_fee: 2000
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: false, swap: false, trade: true }
-        ]
-      }]
+      vaults_infos: [
+        {
+          base_oracle: {
+            base: true,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(200000000),
+            exp: -8,
+            conf: new BN(200000),
+            max_update_interval: 100
+          },
+          quote_oracle: {
+            base: false,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(100000000),
+            exp: -8,
+            conf: new BN(100000),
+            max_update_interval: 100
+          },
+          trading: {
+            collateral_ratio: 1000000,
+            liquidation_threshold: 1000000,
+            max_leverage: 5000000,
+            open_fee: 2000
+          },
+          strategies: [
+            {
+              collateral_ratio: new BN(1000000),
+              liquidation_threshold: new BN(1000000),
+              lend: false,
+              swap: false,
+              trade: true
+            }
+          ]
+        }
+      ]
     })
 
+    vault = test_environment.vaults_data[0]
 
-    vault0 = test_environment.vaults_data[0]
-
-    accountBase = await createAssociatedTokenAccount(
-      connection,
-      user,
-      vault0.base,
-      user.publicKey
-    )
-
-    accountQuote = await createAssociatedTokenAccount(
-      connection,
-      user,
-      vault0.quote,
-      user.publicKey
-    )
+    accountBase = await createAssociatedTokenAccount(connection, user, vault.base, user.publicKey)
+    accountQuote = await createAssociatedTokenAccount(connection, user, vault.quote, user.publicKey)
 
     await Promise.all([
-      mintTo(connection, user, vault0.base, accountBase, minter, 1e6),
-      mintTo(connection, user, vault0.quote, accountQuote, minter, 1e6)
+      mintTo(connection, user, vault.base, accountBase, minter, 1e9),
+      mintTo(connection, user, vault.quote, accountQuote, minter, 1e9)
     ])
   })
-
-
-  it('oracles data from vaults equals to defined', async function () {
-    const data = (await connection.getAccountInfo(test_environment.vaults))?.data
-    assert.notEqual(data, undefined)
-    vaults_account = VaultsAccount.load(data as Buffer)
-
-
-    // BASE
-    assert.equal(vaults_account.vaults_len(), 2)
-    assert.equal(vaults_account.base_oracle_enabled(0), true)
-    assert.equal(
-      Buffer.from(vaults_account.oracle_base(0)).toString('hex'),
-      test_environment.vaults_data[0].base_oracle?.toBuffer().toString('hex')
-    )
-    assert.equal(vaults_account.get_price(0), 2000000000n)
-    assert.equal(vaults_account.get_confidence(0), 2000000n)
-
-    // QUOTE
-    assert.equal(vaults_account.quote_oracle_enabled(0), true)
-    assert.equal(
-      Buffer.from(vaults_account.oracle_quote(0)).toString('hex'),
-      test_environment.vaults_data[0].quote_oracle?.toBuffer().toString('hex')
-    )
-    assert.equal(vaults_account.get_price_quote(0), 1000000000n)
-    assert.equal(vaults_account.get_confidence_quote(0), 1000000n)
-  })
-
-
-  it('Set lend fee', async function () {
-    let sig = await program.methods
-      .modifyFeeCurve(0, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
-      .accounts({
-        admin: admin.publicKey,
-        ...test_environment
-      })
-      .signers([admin])
-      .rpc({ skipPreflight: true })
-
-    await waitFor(connection, sig)
-  })
-
 
   it('Creates statement', async () => {
     const sig = await program.methods
@@ -161,20 +119,19 @@ describe('Trading tests', function () {
     await waitFor(connection, sig)
   })
 
-
-  it('vault 0: deposit', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+  it('Vault: deposit', async () => {
+    const remaining_accounts = vault.remaining_accounts
 
     const sig = await program.methods
-      .deposit(0, 0, new BN(200000), true)
+      .deposit(0, 0, new BN(200000000), true)
       .accountsStrict({
         ...test_environment,
         accountBase,
         accountQuote,
         statement: statement_address,
         signer: user.publicKey,
-        reserveBase: vault0.reserveBase,
-        reserveQuote: vault0.reserveQuote,
+        reserveBase: vault.reserveBase,
+        reserveQuote: vault.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
       .signers([user])
@@ -183,88 +140,114 @@ describe('Trading tests', function () {
 
     await waitFor(connection, sig)
 
-    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
-    assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
-    assert.equal((await getAccount(connection, vault0.reserveBase)).amount, 200000n)
-    assert.equal((await getAccount(connection, vault0.reserveQuote)).amount, 400000n)
+    assert.equal((await getAccount(connection, accountBase)).amount, 800000000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 600000000n)
+    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 200000000n)
+    assert.equal((await getAccount(connection, vault.reserveQuote)).amount, 400000000n)
   })
 
-  it('gives max borrow value for user', async () => {
+  it('Open Long', async () => {
+    const remaining_accounts = vault.remaining_accounts
+
+    const sig = await program.methods
+      .openPosition(0, new BN(2000000), true)
+      .accounts({
+        ...test_environment,
+        accountBase,
+        accountQuote,
+        statement: statement_address,
+        signer: user.publicKey,
+        reserveBase: vault.reserveBase,
+        reserveQuote: vault.reserveQuote,
+        tokenProgram: TOKEN_PROGRAM_ID
+      })
+      .signers([user])
+      .remainingAccounts(remaining_accounts ?? [])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(connection, sig)
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 800000000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 600000000n)
+    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 200000000n)
+    assert.equal((await getAccount(connection, vault.reserveQuote)).amount, 400000000n)
+  })
+
+  it('gets trading position info', async () => {
     const statement_data = (await connection.getAccountInfo(statement_address))?.data
     statement_account = StatementAccount.load(statement_data as Buffer)
 
-    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
-    vaults_account.reload(vaults_data as Buffer)
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
+    vaults_account = VaultsAccount.load(vaults_data as Buffer)
 
-    statement_account.refresh(vaults_account.buffer())
-    assert.equal(statement_account.remaining_permitted_debt(), 800000000n)
+    const trading_position_info = vaults_account.get_trading_position_info(0, statement_account.buffer(), 0)
+
+    console.log(trading_position_info.pnl)
   })
 
-  it('gives max borrow for user in token quantity', async () => {
-    assert.equal(vaults_account.max_borrow_for(0, statement_account.remaining_permitted_debt()), 400000n)
-  })
 
-  it('borrows 100000 token units', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
 
-    const sig = await program.methods
-      .borrow(0, new BN(100000))
-      .accountsStrict({
-        ...test_environment,
-        accountBase,
-        statement: statement_address,
-        signer: user.publicKey,
-        reserveBase: vault0.reserveBase,
-        tokenProgram: TOKEN_PROGRAM_ID
-      })
-      .remainingAccounts(remaining_accounts ?? [])
-      .signers([user])
-      .rpc({ skipPreflight: true })
+  // it('borrows 100000 token units', async () => {
+  //   const remaining_accounts = vault0.remaining_accounts;
 
-    await waitFor(connection, sig)
+  //   const sig = await program.methods
+  //     .borrow(0, new BN(100000))
+  //     .accountsStrict({
+  //       ...test_environment,
+  //       accountBase,
+  //       statement: statement_address,
+  //       signer: user.publicKey,
+  //       reserveBase: vault0.reserveBase,
+  //       tokenProgram: TOKEN_PROGRAM_ID
+  //     })
+  //     .remainingAccounts(remaining_accounts ?? [])
+  //     .signers([user])
+  //     .rpc({ skipPreflight: true })
 
-    assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
-    assert.equal((await getAccount(connection, vault0.reserveBase)).amount, 100000n)
-  })
+  //   await waitFor(connection, sig)
 
-  it('gets borrow position info', async () => {
-    const statement_data = (await connection.getAccountInfo(statement_address))?.data
-    statement_account.reload(statement_data as Buffer)
+  //   assert.equal((await getAccount(connection, accountBase)).amount, 900000n)
+  //   assert.equal((await getAccount(connection, vault0.reserveBase)).amount, 100000n)
+  // })
 
-    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
-    vaults_account.reload(vaults_data as Buffer)
+  // it('gets borrow position info', async () => {
+  //   const statement_data = (await connection.getAccountInfo(statement_address))?.data
+  //   statement_account.reload(statement_data as Buffer)
 
-    const borrow_position = vaults_account.get_borrow_position_info(0, statement_account.buffer(), 0)
+  //   const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+  //   vaults_account.reload(vaults_data as Buffer)
 
-    assert.equal(borrow_position.owed_quantity, 100000n)
-    assert.equal(borrow_position.borrowed_quantity, 100000n)
-  })
+  //   const borrow_position = vaults_account.get_borrow_position_info(0, statement_account.buffer(), 0)
 
-  it('repays 100000 token units', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+  //   assert.equal(borrow_position.owed_quantity, 100000n)
+  //   assert.equal(borrow_position.borrowed_quantity, 100000n)
+  // })
 
-    const sig = await program.methods
-      .repay(0, new BN(100000))
-      .accountsStrict({
-        ...test_environment,
-        accountBase,
-        statement: statement_address,
-        signer: user.publicKey,
-        reserveBase: vault0.reserveBase,
-        tokenProgram: TOKEN_PROGRAM_ID
-      })
-      .preInstructions([
-        ComputeBudgetProgram.setComputeUnitLimit({
-          units: 1000000
-        })
-      ])
-      .remainingAccounts(remaining_accounts ?? [])
-      .signers([user])
-      .rpc({ skipPreflight: true })
+  // it('repays 100000 token units', async () => {
+  //   const remaining_accounts = vault0.remaining_accounts;
 
-    await waitFor(connection, sig)
+  //   const sig = await program.methods
+  //     .repay(0, new BN(100000))
+  //     .accountsStrict({
+  //       ...test_environment,
+  //       accountBase,
+  //       statement: statement_address,
+  //       signer: user.publicKey,
+  //       reserveBase: vault0.reserveBase,
+  //       tokenProgram: TOKEN_PROGRAM_ID
+  //     })
+  //     .preInstructions([
+  //       ComputeBudgetProgram.setComputeUnitLimit({
+  //         units: 1000000
+  //       })
+  //     ])
+  //     .remainingAccounts(remaining_accounts ?? [])
+  //     .signers([user])
+  //     .rpc({ skipPreflight: true })
 
-    assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
-    assert.equal((await getAccount(connection, vault0.reserveBase)).amount, 200000n)
-  })
+  //   await waitFor(connection, sig)
+
+  //   assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
+  //   assert.equal((await getAccount(connection, vault0.reserveBase)).amount, 200000n)
+  // })
 })

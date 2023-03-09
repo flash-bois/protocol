@@ -139,8 +139,8 @@ impl UserStatement {
     fn collaterals_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_collateral())
-                .fold(Ok(CollateralValues::default()), |sum, curr| {
-                    Ok(sum? + curr.collateral_values(vaults)?)
+                .fold(Ok(CollateralValues::default()), |sum, current| {
+                    Ok(sum? + current.collateral_values(vaults)?)
                 })
         } else {
             Ok(CollateralValues::default())
@@ -355,7 +355,12 @@ mod position_management {
         assert_eq!(
             user_statement.liabilities_value(&vaults).unwrap(),
             Value::new(13000000000)
-        )
+        );
+
+        assert_eq!(
+            user_statement.permitted_debt(),
+            Value::new(50000000000) - Value::new(13000000000)
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use super::{
-    utils::{CollateralValues, TradeResult},
+    utils::{CollateralValues, ValueChange},
     *,
 };
 use crate::core_lib::{errors::LibErrors, services::ServiceUpdate, structs::Receipt};
@@ -281,11 +281,12 @@ impl Position {
                 let trade = vault.services.trade()?;
                 let oracle = vault.oracle()?;
                 let quote_oracle = vault.quote_oracle()?;
-                let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
+                let (_, profit_or_loss) =
+                    trade.calculate_position(&receipt, oracle, quote_oracle, true);
 
                 let res = match profit_or_loss {
-                    TradeResult::None => unreachable!(),
-                    TradeResult::Profitable(val) => (
+                    ValueChange::None => unreachable!(),
+                    ValueChange::Profitable(val) => (
                         Value::new(0),
                         CollateralValues {
                             exact: val,
@@ -293,7 +294,7 @@ impl Position {
                             unhealthy: val * trade.liquidation_threshold(),
                         },
                     ),
-                    TradeResult::Loss(val) => (val, CollateralValues::default()),
+                    ValueChange::Loss(val) => (val, CollateralValues::default()),
                 };
 
                 Ok(res)

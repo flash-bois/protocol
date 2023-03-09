@@ -342,9 +342,19 @@ impl Quantity {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub enum BalanceChange {
     Profit(Quantity),
     Loss(Quantity),
+}
+
+impl BalanceChange {
+    pub fn quantity(&self) -> Quantity {
+        match self {
+            BalanceChange::Profit(q) => *q,
+            BalanceChange::Loss(q) => *q,
+        }
+    }
 }
 
 impl Add for BalanceChange {
