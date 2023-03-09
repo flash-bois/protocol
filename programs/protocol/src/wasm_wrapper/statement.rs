@@ -2,13 +2,14 @@ use crate::{
     core_lib::{
         decimal::{Quantity, Shares, Value},
         errors::LibErrors,
-        user::Position,
+        structs::{Receipt, Side},
+        user::{Position, TradeResult},
     },
     structs::Statement,
     wasm_wrapper::to_buffer,
     ZeroCopyDecoder,
 };
-use checked_decimal_macro::Decimal;
+use checked_decimal_macro::{num_traits::ToPrimitive, Decimal};
 use js_sys::{Array, Uint8Array};
 use std::ops::{Deref, DerefMut};
 use wasm_bindgen::prelude::*;
@@ -52,6 +53,17 @@ pub struct LpPositionInfo {
 }
 
 #[wasm_bindgen]
+pub struct TradingPositionInfo {
+    pub vault_id: u8,
+    pub long: bool,
+    pub size: u64,
+    pub locked: u64,
+    pub open_price: u64,
+    pub open_value: u64,
+    pub pnl: i64,
+}
+
+#[wasm_bindgen]
 impl VaultsAccount {
     #[wasm_bindgen]
     pub fn max_borrow_for(&self, id: u8, value: u64) -> Result<u64, JsError> {
@@ -59,6 +71,49 @@ impl VaultsAccount {
         let value = Value::new(value as u128);
 
         Ok(vault.oracle()?.calculate_quantity(value).get())
+    }
+
+    pub fn get_trading_position_info(
+        &mut self,
+        vault_index: u8,
+        statement: &Uint8Array,
+        current_time: u32,
+    ) -> Result<TradingPositionInfo, JsError> {
+        let vault = self.vault_checked_mut(vault_index)?;
+        let statement_account = StatementAccount::load(statement);
+
+        vault.refresh(current_time)?;
+
+        let (trade, oracle, quote_oracle) = vault.trade_mut_and_oracles()?;
+
+        let position_search = Position::Trading {
+            vault_index,
+            receipt: Receipt::default(),
+        };
+
+        let found_position = statement_account.statement.search(&position_search)?;
+        let receipt = found_position.receipt_not_mut();
+
+        let pnl = match trade.calculate_value(receipt, oracle, quote_oracle) {
+            TradeResult::Profitable(profit) => profit.get().to_i64().unwrap(),
+            TradeResult::Loss(loss) => -loss.get().to_i64().unwrap(),
+            TradeResult::None => unreachable!("pnl cannot be none"),
+        };
+
+        let long = match receipt.side {
+            Side::Long => true,
+            Side::Short => false,
+        };
+
+        Ok(TradingPositionInfo {
+            vault_id: vault_index,
+            long,
+            pnl,
+            size: receipt.size.get(),
+            locked: receipt.locked.get(),
+            open_price: receipt.open_price.get(),
+            open_value: receipt.open_value.get() as u64,
+        })
     }
 
     #[wasm_bindgen]

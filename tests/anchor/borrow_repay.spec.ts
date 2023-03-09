@@ -5,7 +5,7 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
+  SYSVAR_RENT_PUBKEY
 } from '@solana/web3.js'
 import { assert } from 'chai'
 import { StatementAccount, VaultsAccount } from '../../pkg/protocol'
@@ -21,7 +21,9 @@ import {
   waitFor,
   createTestEnvironment,
   TestEnvironment,
-  IVaultAccounts
+  IVaultAccounts,
+  modifyFeeCurve,
+  IModifyCurveType
 } from '../utils/utils'
 import { STATEMENT_SEED } from '../../microSdk'
 
@@ -47,7 +49,6 @@ const [statement_address, bump] = PublicKey.findProgramAddressSync(
 )
 
 describe('Borrow tests', function () {
-
   before(async function () {
     const admin_sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
     await waitFor(connection, admin_sig)
@@ -55,56 +56,86 @@ describe('Borrow tests', function () {
     const user_sig = await connection.requestAirdrop(user.publicKey, 1000000000)
     await waitFor(connection, user_sig)
 
-
     test_environment = await createTestEnvironment({
       admin,
       minter: minter.publicKey,
       oracle_program,
       program,
-      vaults_infos: [{
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
+      vaults_infos: [
+        {
+          base_oracle: {
+            base: true,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(200000000),
+            exp: -8,
+            conf: new BN(200000),
+            max_update_interval: 100
+          },
+          quote_oracle: {
+            base: false,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(100000000),
+            exp: -8,
+            conf: new BN(100000),
+            max_update_interval: 100
+          },
+          lending: {
+            initial_fee_time: 0,
+            max_borrow: new BN(10_000_000_000),
+            max_utilization: 800000
+          },
+          strategies: [
+            {
+              collateral_ratio: new BN(1000000),
+              liquidation_threshold: new BN(1000000),
+              lend: true,
+              swap: false,
+              trade: false
+            }
+          ]
         },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000,
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: false, trade: false }
-        ]
-      }, {
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000), max_update_interval: 100
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000), max_update_interval: 100
-        },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: false, trade: false }
-        ]
-      }]
+        {
+          base_oracle: {
+            base: true,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(200000000),
+            exp: -8,
+            conf: new BN(200000),
+            max_update_interval: 100
+          },
+          quote_oracle: {
+            base: false,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(100000000),
+            exp: -8,
+            conf: new BN(100000),
+            max_update_interval: 100
+          },
+          lending: {
+            initial_fee_time: 0,
+            max_borrow: new BN(10_000_000_000),
+            max_utilization: 800000
+          },
+          strategies: [
+            {
+              collateral_ratio: new BN(1000000),
+              liquidation_threshold: new BN(1000000),
+              lend: true,
+              swap: false,
+              trade: false
+            }
+          ]
+        }
+      ]
     })
-
 
     vault0 = test_environment.vaults_data[0]
 
-    accountBase = await createAssociatedTokenAccount(
-      connection,
-      user,
-      vault0.base,
-      user.publicKey
-    )
+    accountBase = await createAssociatedTokenAccount(connection, user, vault0.base, user.publicKey)
 
     accountQuote = await createAssociatedTokenAccount(
       connection,
@@ -119,12 +150,10 @@ describe('Borrow tests', function () {
     ])
   })
 
-
   it('oracles data from vaults equals to defined', async function () {
     const data = (await connection.getAccountInfo(test_environment.vaults))?.data
     assert.notEqual(data, undefined)
     vaults_account = VaultsAccount.load(data as Buffer)
-
 
     // BASE
     assert.equal(vaults_account.vaults_len(), 2)
@@ -146,20 +175,19 @@ describe('Borrow tests', function () {
     assert.equal(vaults_account.get_confidence_quote(0), 1000000n)
   })
 
-
   it('Set lend fee', async function () {
-    let sig = await program.methods
-      .modifyFeeCurve(0, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(100))
-      .accounts({
-        admin: admin.publicKey,
-        ...test_environment
-      })
-      .signers([admin])
-      .rpc({ skipPreflight: true })
-
-    await waitFor(connection, sig)
+    await modifyFeeCurve({
+      vault: 0,
+      a: new BN(0),
+      b: new BN(0),
+      c: new BN(100),
+      bound: new BN(1000000),
+      which: IModifyCurveType.Lend,
+      program,
+      admin,
+      ...test_environment
+    })
   })
-
 
   it('Creates statement', async () => {
     const sig = await program.methods
@@ -176,9 +204,8 @@ describe('Borrow tests', function () {
     await waitFor(connection, sig)
   })
 
-
   it('vault 0: deposit', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+    const remaining_accounts = vault0.remaining_accounts
 
     const sig = await program.methods
       .deposit(0, 0, new BN(200000), true)
@@ -208,7 +235,7 @@ describe('Borrow tests', function () {
     const statement_data = (await connection.getAccountInfo(statement_address))?.data
     statement_account = StatementAccount.load(statement_data as Buffer)
 
-    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account.reload(vaults_data as Buffer)
 
     statement_account.refresh(vaults_account.buffer())
@@ -216,11 +243,14 @@ describe('Borrow tests', function () {
   })
 
   it('gives max borrow for user in token quantity', async () => {
-    assert.equal(vaults_account.max_borrow_for(0, statement_account.remaining_permitted_debt()), 400000n)
+    assert.equal(
+      vaults_account.max_borrow_for(0, statement_account.remaining_permitted_debt()),
+      400000n
+    )
   })
 
   it('borrows 100000 token units', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+    const remaining_accounts = vault0.remaining_accounts
 
     const sig = await program.methods
       .borrow(0, new BN(100000))
@@ -246,17 +276,21 @@ describe('Borrow tests', function () {
     const statement_data = (await connection.getAccountInfo(statement_address))?.data
     statement_account.reload(statement_data as Buffer)
 
-    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account.reload(vaults_data as Buffer)
 
-    const borrow_position = vaults_account.get_borrow_position_info(0, statement_account.buffer(), 0)
+    const borrow_position = vaults_account.get_borrow_position_info(
+      0,
+      statement_account.buffer(),
+      0
+    )
 
     assert.equal(borrow_position.owed_quantity, 100000n)
     assert.equal(borrow_position.borrowed_quantity, 100000n)
   })
 
   it('repays 100000 token units', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+    const remaining_accounts = vault0.remaining_accounts
 
     const sig = await program.methods
       .repay(0, new BN(100000))

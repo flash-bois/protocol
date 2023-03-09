@@ -168,6 +168,13 @@ impl Position {
         }
     }
 
+    pub fn receipt_not_mut(&self) -> &Receipt {
+        match self {
+            Position::Trading { receipt, .. } => receipt,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn increase_amount(&mut self, amount: Quantity) {
         *self.amount_mut() += amount
     }

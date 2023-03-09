@@ -80,6 +80,24 @@ export interface IEnableTrading extends IProtocolCallable, IStateWithVaults, ITr
   vault: number
 }
 
+export enum IModifyCurveType {
+  Lend,
+  SwapSell,
+  SwapBuy,
+}
+
+export interface IModifyFeeCurveInfo {
+  which: IModifyCurveType
+  bound: BN
+  a: BN
+  b: BN
+  c: BN
+}
+
+export interface IModifyFeeCurve extends IProtocolCallable, IStateWithVaults, IModifyFeeCurveInfo {
+  vault: number
+}
+
 
 export interface ICreateOracleInfo {
   price: BN
@@ -400,6 +418,37 @@ export async function enableOracles(
     ])
     .signers([admin])
     .rpc({ skipPreflight: true })
+}
+
+export async function modifyFeeCurve({ program, admin, vault, which, bound, a, b, c, ...params }: IModifyFeeCurve) {
+  let service: number
+  let base: boolean
+
+  switch (which) {
+    case IModifyCurveType.Lend:
+      service = 1
+      base = true
+      break;
+    case IModifyCurveType.SwapSell:
+      service = 2
+      base = true
+      break;
+    case IModifyCurveType.SwapBuy:
+      service = 2
+      base = false
+      break
+  }
+
+  const sig = await program.methods
+    .modifyFeeCurve(vault, service, base, bound, a, b, c)
+    .accounts({
+      admin: admin.publicKey,
+      ...params
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
 }
 
 export async function enableTrading({ program, admin, ...params }: IEnableTrading) {
