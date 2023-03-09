@@ -458,3 +458,23 @@ impl Trade {
         }
     }
 }
+
+impl Trade {
+    pub fn max_open_leverage(&self) -> Fraction {
+        self.max_open_leverage
+    }
+
+    pub fn open_fee(&self) -> Fraction {
+        self.open_fee
+    }
+
+    pub fn borrow_fee(&self, side: Side) -> Result<Fraction, LibErrors> {
+        match side {
+            Side::Long => self.borrow_fee.base.get_point_fee(self.utilization().base),
+            Side::Short => self
+                .borrow_fee
+                .quote
+                .get_point_fee(self.utilization().quote),
+        }
+    }
+}
