@@ -1,5 +1,5 @@
 use crate::{
-    core_lib::{decimal::Quantity, Token},
+    core_lib::{decimal::Quantity, errors::LibErrors, Token},
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -54,47 +54,65 @@ impl<'info> Withdraw<'info> {
         let current_timestamp = Clock::get()?.unix_timestamp;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
         let statement = &mut ctx.accounts.statement.load_mut()?.statement;
-        vaults.refresh(&[vault], ctx.remaining_accounts, current_timestamp)?;
+
+        let mut vaults_indexes = vec![vault];
+        if let Some(indexes_to_refresh) = statement.get_vaults_indexes() {
+            vaults_indexes.extend(indexes_to_refresh.iter());
+        }
+
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
 
-        let other_quantity = vault.deposit(
+        let (base_amount, quote_amount) = vault.withdraw(
             statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
             strategy,
         )?;
 
-        let (base_amount, quote_amount) = if base {
-            (quantity, other_quantity.get())
-        } else {
-            (other_quantity.get(), quantity)
-        };
+        statement.refresh(&vaults.arr.elements)?;
 
-        transfer(ctx.accounts.take_base(), base_amount)?;
-        transfer(ctx.accounts.take_quote(), quote_amount)?;
+        if !statement.collateralized() {
+            return Err(LibErrors::UserNotCollateralized.into());
+        }
+
+        let seeds = &[
+            b"state".as_ref(),
+            &[ctx.accounts.state.load().unwrap().bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        transfer(
+            ctx.accounts.send_base().with_signer(signer),
+            base_amount.get(),
+        )?;
+        transfer(
+            ctx.accounts.send_quote().with_signer(signer),
+            quote_amount.get(),
+        )?;
 
         Ok(())
     }
 
-    fn take_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn send_base(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
-                from: self.account_base.to_account_info(),
-                to: self.reserve_base.to_account_info(),
-                authority: self.signer.to_account_info(),
+                from: self.reserve_base.to_account_info(),
+                to: self.account_base.to_account_info(),
+                authority: self.state.to_account_info(),
             },
         )
     }
 
-    fn take_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn send_quote(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
-                from: self.account_quote.to_account_info(),
-                to: self.reserve_quote.to_account_info(),
-                authority: self.signer.to_account_info(),
+                from: self.reserve_quote.to_account_info(),
+                to: self.account_quote.to_account_info(),
+                authority: self.state.to_account_info(),
             },
         )
     }

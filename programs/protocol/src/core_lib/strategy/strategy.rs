@@ -1,7 +1,6 @@
 use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::core_lib::errors::LibErrors;
 use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
-use crate::core_lib::Token;
 use checked_decimal_macro::Decimal;
 
 #[cfg(feature = "anchor")]

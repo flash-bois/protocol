@@ -127,6 +127,16 @@ pub mod protocol {
         Deposit::handler(ctx, vault, strategy, quantity, base)
     }
 
+    pub fn withdraw(
+        ctx: Context<Withdraw>,
+        vault: u8,
+        strategy: u8,
+        quantity: u64,
+        base: bool,
+    ) -> Result<()> {
+        Withdraw::handler(ctx, vault, strategy, quantity, base)
+    }
+
     pub fn single_swap(
         ctx: Context<SingleSwap>,
         vault: u8,

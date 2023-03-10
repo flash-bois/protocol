@@ -119,6 +119,10 @@ impl UserStatement {
         self.positions.delete(id)
     }
 
+    pub fn collateralized(&self) -> bool {
+        self.values.collateral.with_collateral_ratio > self.values.liabilities
+    }
+
     /// calculate value that user can borrow
     pub fn permitted_debt(&self) -> Value {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
