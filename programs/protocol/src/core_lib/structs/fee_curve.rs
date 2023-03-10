@@ -88,6 +88,16 @@ impl FeeCurve {
         }
     }
 
+    pub fn get_point_fee(&self, utilization: Fraction) -> Result<Fraction, LibErrors> {
+        let index = self.find_index(utilization);
+
+        Ok(match self.values[index] {
+            CurveSegment::None => Fraction::from_integer(0),
+            CurveSegment::Constant { c } => c,
+            CurveSegment::Linear { a, b } => a.mul_up(utilization) + b,
+        })
+    }
+
     pub fn get_mean(&self, before: Fraction, after: Fraction) -> Result<Fraction, LibErrors> {
         let (smaller, greater) = if before < after {
             (before, after)

@@ -54,4 +54,51 @@ impl VaultsAccount {
     pub fn count_strategies(&self, vault: u8) -> Result<u8, JsError> {
         Ok(self.vault_checked(vault)?.strategies.head)
     }
+
+    #[wasm_bindgen]
+    pub fn does_lend(&self, vault: u8, strategy: u8) -> Result<bool, JsError> {
+        Ok(self.strategy(vault, strategy)?.is_lending_enabled())
+    }
+
+    #[wasm_bindgen]
+    pub fn does_swap(&self, vault: u8, strategy: u8) -> Result<bool, JsError> {
+        Ok(self.strategy(vault, strategy)?.is_swapping_enabled())
+    }
+
+    #[wasm_bindgen]
+    pub fn does_trade(&self, vault: u8, strategy: u8) -> Result<bool, JsError> {
+        Ok(self.strategy(vault, strategy)?.is_trading_enabled())
+    }
+
+    #[wasm_bindgen]
+    pub fn balance_base(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        Ok(self.strategy(vault, strategy)?.balance().get())
+    }
+
+    #[wasm_bindgen]
+    pub fn balance_quote(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        Ok(self.strategy(vault, strategy)?.balance_quote().get())
+    }
+
+    #[wasm_bindgen]
+    pub fn lock_base(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        Ok(self.strategy(vault, strategy)?.locked().get())
+    }
+
+    #[wasm_bindgen]
+    pub fn lock_quote(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        Ok(self.strategy(vault, strategy)?.locked_quote().get())
+    }
+
+    #[wasm_bindgen]
+    pub fn utilization_base(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        let strategy = self.strategy(vault, strategy)?;
+        Ok((strategy.locked() / strategy.balance()).get())
+    }
+
+    #[wasm_bindgen]
+    pub fn utilization_quote(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
+        let strategy = self.strategy(vault, strategy)?;
+        Ok((strategy.locked_quote() / strategy.balance_quote()).get())
+    }
 }

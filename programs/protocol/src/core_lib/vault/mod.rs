@@ -250,6 +250,10 @@ impl Vault {
         self.services.swap()
     }
 
+    pub fn trade_service_not_mut(&self) -> Result<&Trade, LibErrors> {
+        self.services.trade()
+    }
+
     pub fn refresh(&mut self, current_time: Time) -> Result<(), LibErrors> {
         if let Ok(lend) = self.lend_service() {
             lend.accrue_interest_rate(current_time);

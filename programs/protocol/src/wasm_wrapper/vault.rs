@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    core_lib::{decimal::Fraction, errors::LibErrors, Vault},
+    core_lib::{decimal::Fraction, errors::LibErrors, structs::Side, Vault},
     structs::{VaultKeys, Vaults},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
@@ -217,5 +217,32 @@ impl VaultsAccount {
                 0
             },
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn max_leverage(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .max_open_leverage()
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn trading_open_fee(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .open_fee()
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn trading_fee(&self, index: u8, long: bool) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .borrow_fee(if long { Side::Long } else { Side::Short })?
+            .get())
     }
 }
