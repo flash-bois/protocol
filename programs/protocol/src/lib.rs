@@ -11,7 +11,7 @@ mod instructions;
 pub use instructions::*;
 
 #[cfg(feature = "anchor")]
-declare_id!("9wfXRJeV6S8mjMXpEw143VFybkSV7idNjfSb3u8YwFaC");
+declare_id!("AiGz15UrwCR6bpSLUhjPNXWQ84FmJ9q2y2ka7XzaZZFH");
 
 #[cfg(feature = "anchor")]
 use anchor_lang::prelude::*;

@@ -114,6 +114,11 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
+        .enableTrading(1, 10000, 3000000, 600000, 900000)
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
         .addStrategy(index, true, false, new BN(1000_000), new BN(1000_000))
         .accounts(accounts)
         .signers([admin])

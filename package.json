@@ -10,6 +10,7 @@
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "wasm": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && npm run build:wasm:dev",
+    "web": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && cd ./programs/protocol && wasm-pack build --target bundler --out-dir ../../../webapp/src/pkg --release",
     "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
     "test:anchor": "yarn test:borrow && yarn test:services && yarn test:user && yarn test:state && yarn test:vault && yarn test:oracle && yarn test:statement",
     "test:wasm": "anchor test --skip-build tests/wasm/*.ts",
