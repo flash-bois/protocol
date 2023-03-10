@@ -1,7 +1,6 @@
 use crate::{
     core_lib::{
         decimal::{BalanceChange, Quantity, Shares, Value},
-        errors::LibErrors,
         structs::{Receipt, Side},
         user::{Position, ValueChange},
     },
@@ -127,8 +126,8 @@ impl VaultsAccount {
             Err(_) => return Ok(None),
         };
 
-        let (base_quantity, quote_quantity) =
-            found_position.get_earned_double(strategy_index, found_position.shares(), vault)?;
+        let strategy = vault.strategy(strategy_index)?;
+        let (base_quantity, quote_quantity) = strategy.get_earned_double(found_position.shares());
 
         let oracle = vault.oracle()?;
         let quote_oracle = vault.quote_oracle()?;
@@ -245,11 +244,10 @@ impl StatementAccount {
     }
 
     #[wasm_bindgen]
-    pub fn vaults_to_refresh(&self) -> Result<Array, JsError> {
+    pub fn vaults_to_refresh(&self, current: u8) -> Result<Array, JsError> {
         Ok(self
             .statement
-            .get_vaults_indexes()
-            .ok_or(LibErrors::NoVaultsToRefresh)?
+            .get_vaults_indexes(&current)
             .iter()
             .map(|x| JsValue::from(*x))
             .collect::<Array>())

@@ -67,10 +67,12 @@ impl Vault {
         amount: Quantity,
         strategy_index: u8,
     ) -> Result<(Quantity, Quantity), LibErrors> {
-        let position_temp = Position::Borrow {
+        let position_temp = Position::LiquidityProvide {
             vault_index: self.id,
+            strategy_index,
             shares: Shares::new(0),
             amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
         };
 
         let (id, position) = user_statement.search_mut_id(&position_temp)?;
@@ -90,10 +92,10 @@ impl Vault {
 
         let (base_quantity, quote_quantity) = strategy.get_earned_double(&shares);
 
-        if base_quantity <= base_available {
+        if base_quantity > base_available {
             return Err(LibErrors::NotEnoughBaseQuantity);
         }
-        if quote_quantity <= quote_available {
+        if quote_quantity > quote_available {
             return Err(LibErrors::NotEnoughQuoteQuantity);
         }
 

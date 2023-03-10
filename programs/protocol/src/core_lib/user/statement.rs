@@ -5,6 +5,7 @@ use super::{utils::CollateralValues, *};
 use checked_decimal_macro::num_traits::ToPrimitive;
 use checked_decimal_macro::Decimal;
 use std::{
+    collections::HashSet,
     ops::Range,
     slice::{Iter, IterMut},
 };
@@ -75,14 +76,19 @@ pub use zero::*;
 pub use non_zero::*;
 
 impl UserStatement {
-    pub fn get_vaults_indexes(&self) -> Option<Vec<u8>> {
-        Some(self.positions.iter()?.fold(vec![], |mut val, el| {
-            if !val.contains(el.vault_index()) {
-                val.push(*el.vault_index());
-            }
+    pub fn get_vaults_indexes(&self, current: &u8) -> HashSet<u8> {
+        let mut indexes = HashSet::new();
 
-            val
-        }))
+        if let Some(positions) = self.positions.iter() {
+            positions.fold(&mut HashSet::new(), |val, el| {
+                val.insert(*el.vault_index());
+
+                val
+            });
+        }
+
+        indexes.insert(*current);
+        indexes
     }
 
     pub fn add_position(&mut self, position: Position) -> Result<(), LibErrors> {
@@ -120,7 +126,7 @@ impl UserStatement {
     }
 
     pub fn collateralized(&self) -> bool {
-        self.values.collateral.with_collateral_ratio > self.values.liabilities
+        self.values.collateral.with_collateral_ratio >= self.values.liabilities
     }
 
     /// calculate value that user can borrow

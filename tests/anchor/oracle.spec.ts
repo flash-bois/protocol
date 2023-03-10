@@ -54,8 +54,6 @@ describe('Enable Oracle', () => {
     }
   })
 
-
-
   it('sets local oracle  22.0 SOL, -8 exp', async () => {
     const sig = await oracle_program.methods
       .set(new BN(2200000000), -8, new BN(11000000))
@@ -75,9 +73,7 @@ describe('Enable Oracle', () => {
     await waitFor(oracle_program.provider.connection, sig)
   })
 
-
   it('enable base oracle', async () => {
-
     const sig = await program.methods
       .enableOracle(0, 6, true, false, 10)
       .accounts({
@@ -107,7 +103,6 @@ describe('Enable Oracle', () => {
       assert.equal(vaultsAccount.get_confidence(0), 110000000n)
     }
   })
-
 
   it('sets local oracle  2220000.0 (6 dec) , 4 exp', async () => {
     const sig = await oracle_program.methods

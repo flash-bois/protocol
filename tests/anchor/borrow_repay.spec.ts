@@ -250,7 +250,10 @@ describe('Borrow tests', function () {
   })
 
   it('returns undefined on borrow position info', () => {
-    assert.equal(vaults_account.get_borrow_position_info(0, statement_account.buffer(), 0), undefined)
+    assert.equal(
+      vaults_account.get_borrow_position_info(0, statement_account.buffer(), 0),
+      undefined
+    )
   })
 
   it('borrows 100000 token units', async () => {

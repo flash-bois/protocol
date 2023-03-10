@@ -180,7 +180,11 @@ describe('Trading tests', function () {
     const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account = VaultsAccount.load(vaults_data as Buffer)
 
-    const trading_position_info = vaults_account.get_trading_position_info(0, statement_account.buffer(), 0)
+    const trading_position_info = vaults_account.get_trading_position_info(
+      0,
+      statement_account.buffer(),
+      0
+    )
 
     console.log(trading_position_info.fees)
     console.log(trading_position_info.fees_value)

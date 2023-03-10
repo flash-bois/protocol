@@ -99,7 +99,7 @@ describe('Services', () => {
       collateral_ratio: 100000,
       liquidation_threshold: 1000000,
       max_leverage: 3000000,
-      open_fee: 20000,
+      open_fee: 20000
     })
 
     const vaultsAccount = VaultsAccount.load(await tryFetch(connection, vaults))
