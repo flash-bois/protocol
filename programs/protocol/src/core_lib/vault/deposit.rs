@@ -1,6 +1,7 @@
 use super::*;
 use crate::core_lib::user::{Position, UserStatement};
 use checked_decimal_macro::Decimal;
+use std::cmp::min;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -59,6 +60,57 @@ impl Vault {
         (known_amount, opposite_quantity)
     }
 
+    pub fn withdraw(
+        &mut self,
+        user_statement: &mut UserStatement,
+        withdraw_token: Token,
+        amount: Quantity,
+        strategy_index: u8,
+    ) -> Result<(Quantity, Quantity), LibErrors> {
+        let position_temp = Position::Borrow {
+            vault_index: self.id,
+            shares: Shares::new(0),
+            amount: Quantity::new(0),
+        };
+
+        let (id, position) = user_statement.search_mut_id(&position_temp)?;
+
+        let strategy = self.strategy(strategy_index)?;
+        let balance = match withdraw_token {
+            Token::Base => strategy.balance(),
+            Token::Quote => strategy.balance_quote(),
+        };
+        let base_available = strategy.available();
+        let quote_available = strategy.available_quote();
+
+        let shares = min(
+            strategy.total_shares().get_change_up(amount, balance),
+            *position.shares(),
+        );
+
+        let (base_quantity, quote_quantity) = strategy.get_earned_double(&shares);
+
+        if base_quantity <= base_available {
+            return Err(LibErrors::NotEnoughBaseQuantity);
+        }
+        if quote_quantity <= quote_available {
+            return Err(LibErrors::NotEnoughQuoteQuantity);
+        }
+
+        let strategy = self.strategies.get_strategy_mut(strategy_index)?;
+        strategy.withdraw(base_quantity, quote_quantity, shares, &mut self.services);
+
+        if shares.lt(position.shares()) {
+            position.decrease_amount(min(*position.amount(), base_quantity));
+            position.decrease_quote_amount(min(*position.quote_amount(), quote_quantity));
+            position.increase_shares(shares);
+        } else {
+            user_statement.delete_position(id)
+        }
+
+        Ok((base_quantity, quote_quantity))
+    }
+
     pub fn deposit(
         &mut self,
         user_statement: &mut UserStatement,
@@ -77,7 +129,7 @@ impl Vault {
         // returns quantities, if previously mentioned zero amount case happened,
         // then calculate worth of known input and get others in 1:1 value to value ratio
         // from oracles
-        let (base_quantity, quote_quantity, input_balance) = match deposit_token {
+        let (base_quantity, quote_quantity, balance) = match deposit_token {
             Token::Base => {
                 let (base, quote) = self.get_opposite_quantity(
                     quote_oracle,
@@ -101,14 +153,8 @@ impl Vault {
         };
 
         let mut_strategy = self.strategies.get_strategy_mut(strategy_index)?;
-
-        let shares = mut_strategy.deposit(
-            base_quantity,
-            quote_quantity,
-            amount,
-            input_balance,
-            &mut self.services,
-        )?;
+        let shares = mut_strategy.total_shares().get_change_down(amount, balance);
+        mut_strategy.deposit(base_quantity, quote_quantity, shares, &mut self.services);
 
         let temp_position = Position::LiquidityProvide {
             vault_index: self.id,

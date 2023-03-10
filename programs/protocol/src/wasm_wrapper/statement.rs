@@ -181,28 +181,28 @@ impl VaultsAccount {
             _ => unreachable!("pnl cannot be none"),
         };
 
-        // let (long, fees, fees_value) = match receipt.side {
-        //     Side::Long => {
-        //         let fees = trade.long_fees(receipt).quantity();
-        //         let value = oracle.calculate_value(fees);
+        let (long, fees, fees_value) = match receipt.side {
+            Side::Long => {
+                let fees = trade.long_fees(receipt).quantity();
+                let value = oracle.calculate_value(fees);
 
-        //         (true, fees.get(), value.get() as u64)
-        //     }
-        //     Side::Short => {
-        //         let fees = trade.short_fees(receipt, oracle, quote_oracle).quantity();
-        //         let value = quote_oracle.calculate_value(fees);
+                (true, fees.get(), value.get() as u64)
+            }
+            Side::Short => {
+                let fees = trade.short_fees(receipt, oracle, quote_oracle).quantity();
+                let value = quote_oracle.calculate_value(fees);
 
-        //         (true, fees.get(), value.get() as u64)
-        //     }
-        // };
+                (false, fees.get(), value.get() as u64)
+            }
+        };
 
         Ok(TradingPositionInfo {
             vault_id: vault_index,
-            long: true,
+            long,
             pnl,
             pnl_value,
-            fees: 0,
-            fees_value: 0,
+            fees,
+            fees_value,
             size: receipt.size.get(),
             locked: receipt.locked.get(),
             open_price: receipt.open_price.get(),

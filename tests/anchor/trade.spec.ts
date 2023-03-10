@@ -78,7 +78,7 @@ describe('Trading tests', function () {
             collateral_ratio: 1000000,
             liquidation_threshold: 1000000,
             max_leverage: 5000000,
-            open_fee: 2000
+            open_fee: 1000
           },
           strategies: [
             {
@@ -182,10 +182,9 @@ describe('Trading tests', function () {
 
     const trading_position_info = vaults_account.get_trading_position_info(0, statement_account.buffer(), 0)
 
-    console.log(trading_position_info.pnl)
+    console.log(trading_position_info.fees)
+    console.log(trading_position_info.fees_value)
   })
-
-
 
   // it('borrows 100000 token units', async () => {
   //   const remaining_accounts = vault0.remaining_accounts;

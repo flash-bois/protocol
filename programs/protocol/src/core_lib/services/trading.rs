@@ -1,4 +1,4 @@
-use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
+use checked_decimal_macro::{BetweenDecimals, BigOps, Decimal, Factories, Others};
 use std::cmp::min;
 
 use crate::core_lib::{
@@ -9,7 +9,7 @@ use crate::core_lib::{
     errors::LibErrors,
     structs::{
         oracle::{Oracle, OraclePriceType},
-        FeeCurve, Receipt, Side,
+        Receipt, Side,
     },
     user::ValueChange,
 };
@@ -244,7 +244,7 @@ impl Trade {
         oracle: &Oracle,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
-        let open_fee = BalanceChange::Loss(receipt.size * self.open_fee);
+        let open_fee = BalanceChange::Loss(receipt.locked * self.open_fee);
 
         let position_change = self.calculate_long_change(&receipt, oracle);
         let change = position_change + funding_fee + open_fee;
@@ -504,7 +504,11 @@ impl Trade {
         if funding_change > FundingRate::from_integer(0) {
             BalanceChange::Loss(receipt.size * funding_change)
         } else {
-            BalanceChange::Profit(receipt.size * (FundingRate::from_integer(0) - funding_change))
+            BalanceChange::Profit(
+                receipt
+                    .size
+                    .big_mul(FundingRate::from_integer(0) - funding_change),
+            )
         }
     }
 }

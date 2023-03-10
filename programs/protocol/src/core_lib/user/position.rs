@@ -191,6 +191,10 @@ impl Position {
         *self.amount_mut() -= amount
     }
 
+    pub fn decrease_quote_amount(&mut self, amount: Quantity) {
+        *self.amount_quote_mut() -= amount
+    }
+
     pub fn decrease_shares(&mut self, shares: Shares) {
         *self.shares_mut() -= shares
     }
@@ -201,25 +205,6 @@ impl Position {
         Ok(service
             .borrow_shares()
             .calculate_owed(*shares, service.locked().base))
-    }
-
-    pub fn get_earned_double(
-        &self,
-        strategy_index: u8,
-        shares: &Shares,
-        vault: &Vault,
-    ) -> Result<(Quantity, Quantity), LibErrors> {
-        let strategy = vault.strategies.get_strategy(strategy_index)?;
-
-        let base_quantity = strategy
-            .total_shares()
-            .calculate_earned(*shares, strategy.balance());
-
-        let quote_quantity = strategy
-            .total_shares()
-            .calculate_earned(*shares, strategy.balance_quote());
-
-        Ok((base_quantity, quote_quantity))
     }
 
     pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
@@ -252,8 +237,7 @@ impl Position {
 
                 let strategy = vault.strategies.get_strategy(*strategy_index)?;
 
-                let (base_quantity, quote_quantity) =
-                    self.get_earned_double(*strategy_index, shares, vault)?;
+                let (base_quantity, quote_quantity) = strategy.get_earned_double(shares);
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
