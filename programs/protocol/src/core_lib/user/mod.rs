@@ -9,4 +9,4 @@ use crate::core_lib::{
 
 pub use position::Position;
 pub use statement::UserStatement;
-pub use utils::TradeResult;
+pub use utils::ValueChange;

@@ -1,5 +1,3 @@
-mod error;
-
 use anchor_lang::prelude::*;
 use bytemuck::{Pod, Zeroable};
 use std::cell::RefMut;

@@ -5,6 +5,7 @@ use super::{utils::CollateralValues, *};
 use checked_decimal_macro::num_traits::ToPrimitive;
 use checked_decimal_macro::Decimal;
 use std::{
+    collections::HashSet,
     ops::Range,
     slice::{Iter, IterMut},
 };
@@ -75,14 +76,19 @@ pub use zero::*;
 pub use non_zero::*;
 
 impl UserStatement {
-    pub fn get_vaults_indexes(&self) -> Option<Vec<u8>> {
-        Some(self.positions.iter()?.fold(vec![], |mut val, el| {
-            if !val.contains(el.vault_index()) {
-                val.push(*el.vault_index());
-            }
+    pub fn get_vaults_indexes(&self, current: &u8) -> HashSet<u8> {
+        let mut indexes = if let Some(positions) = self.positions.iter() {
+            positions.fold(HashSet::new(), |mut val, el| {
+                val.insert(*el.vault_index());
 
-            val
-        }))
+                val
+            })
+        } else {
+            HashSet::new()
+        };
+
+        indexes.insert(*current);
+        indexes
     }
 
     pub fn add_position(&mut self, position: Position) -> Result<(), LibErrors> {
@@ -119,6 +125,10 @@ impl UserStatement {
         self.positions.delete(id)
     }
 
+    pub fn collateralized(&self) -> bool {
+        self.values.collateral.with_collateral_ratio >= self.values.liabilities
+    }
+
     /// calculate value that user can borrow
     pub fn permitted_debt(&self) -> Value {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
@@ -139,8 +149,8 @@ impl UserStatement {
     fn collaterals_values(&self, vaults: &[Vault]) -> Result<CollateralValues, LibErrors> {
         if let Some(iter) = self.positions.iter() {
             iter.filter(|&pos| pos.is_collateral())
-                .fold(Ok(CollateralValues::default()), |sum, curr| {
-                    Ok(sum? + curr.collateral_values(vaults)?)
+                .fold(Ok(CollateralValues::default()), |sum, current| {
+                    Ok(sum? + current.collateral_values(vaults)?)
                 })
         } else {
             Ok(CollateralValues::default())
@@ -232,6 +242,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Base,
+                0,
             )
             .unwrap();
 
@@ -243,6 +254,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Quote,
+                0,
             )
             .unwrap();
 
@@ -274,6 +286,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Base,
+                0,
             )
             .unwrap();
 
@@ -285,6 +298,7 @@ mod position_management {
                 Price::from_scale(5, 3),
                 0,
                 Token::Quote,
+                0,
             )
             .unwrap();
 
@@ -351,7 +365,12 @@ mod position_management {
         assert_eq!(
             user_statement.liabilities_value(&vaults).unwrap(),
             Value::new(13000000000)
-        )
+        );
+
+        assert_eq!(
+            user_statement.permitted_debt(),
+            Value::new(50000000000) - Value::new(13000000000)
+        );
     }
 
     #[test]

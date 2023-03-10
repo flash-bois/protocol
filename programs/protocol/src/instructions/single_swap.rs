@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     core_lib::decimal::Quantity,
     core_lib::errors::LibErrors,
@@ -54,7 +56,9 @@ impl<'info> SingleSwap<'info> {
         let current_timestamp = Clock::get()?.unix_timestamp;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
 
-        vaults.refresh(&[vault], ctx.remaining_accounts, current_timestamp)?;
+        let mut vaults_indexes = HashSet::new();
+        vaults_indexes.insert(vault);
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
 
         let vault = vaults.vault_checked_mut(vault)?;
         let quantity = Quantity::new(amount);

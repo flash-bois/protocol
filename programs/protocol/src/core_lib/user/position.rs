@@ -1,5 +1,5 @@
 use super::{
-    utils::{CollateralValues, TradeResult},
+    utils::{CollateralValues, ValueChange},
     *,
 };
 use crate::core_lib::{errors::LibErrors, services::ServiceUpdate, structs::Receipt};
@@ -168,6 +168,13 @@ impl Position {
         }
     }
 
+    pub fn receipt_not_mut(&self) -> &Receipt {
+        match self {
+            Position::Trading { receipt, .. } => receipt,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn increase_amount(&mut self, amount: Quantity) {
         *self.amount_mut() += amount
     }
@@ -184,6 +191,10 @@ impl Position {
         *self.amount_mut() -= amount
     }
 
+    pub fn decrease_quote_amount(&mut self, amount: Quantity) {
+        *self.amount_quote_mut() -= amount
+    }
+
     pub fn decrease_shares(&mut self, shares: Shares) {
         *self.shares_mut() -= shares
     }
@@ -194,25 +205,6 @@ impl Position {
         Ok(service
             .borrow_shares()
             .calculate_owed(*shares, service.locked().base))
-    }
-
-    pub fn get_earned_double(
-        &self,
-        strategy_index: u8,
-        shares: &Shares,
-        vault: &Vault,
-    ) -> Result<(Quantity, Quantity), LibErrors> {
-        let strategy = vault.strategies.get_strategy(strategy_index)?;
-
-        let base_quantity = strategy
-            .total_shares()
-            .calculate_earned(*shares, strategy.balance());
-
-        let quote_quantity = strategy
-            .total_shares()
-            .calculate_earned(*shares, strategy.balance_quote());
-
-        Ok((base_quantity, quote_quantity))
     }
 
     pub fn liability_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
@@ -245,8 +237,7 @@ impl Position {
 
                 let strategy = vault.strategies.get_strategy(*strategy_index)?;
 
-                let (base_quantity, quote_quantity) =
-                    self.get_earned_double(*strategy_index, shares, vault)?;
+                let (base_quantity, quote_quantity) = strategy.get_earned_double(shares);
 
                 let value = oracle.calculate_value(base_quantity)
                     + quote_oracle.calculate_value(quote_quantity);
@@ -274,11 +265,12 @@ impl Position {
                 let trade = vault.services.trade()?;
                 let oracle = vault.oracle()?;
                 let quote_oracle = vault.quote_oracle()?;
-                let profit_or_loss = trade.calculate_value(&receipt, oracle, quote_oracle);
+                let (_, profit_or_loss) =
+                    trade.calculate_position(&receipt, oracle, quote_oracle, true);
 
                 let res = match profit_or_loss {
-                    TradeResult::None => unreachable!(),
-                    TradeResult::Profitable(val) => (
+                    ValueChange::None => unreachable!(),
+                    ValueChange::Profitable(val) => (
                         Value::new(0),
                         CollateralValues {
                             exact: val,
@@ -286,7 +278,7 @@ impl Position {
                             unhealthy: val * trade.liquidation_threshold(),
                         },
                     ),
-                    TradeResult::Loss(val) => (val, CollateralValues::default()),
+                    ValueChange::Loss(val) => (val, CollateralValues::default()),
                 };
 
                 Ok(res)

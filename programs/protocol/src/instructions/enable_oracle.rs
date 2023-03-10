@@ -28,6 +28,7 @@ impl EnableOracle<'_> {
         decimals: u8,
         base: bool,
         skip_init: bool,
+        max_update_interval: u32,
     ) -> anchor_lang::Result<()> {
         msg!(
             "DotWave: Enabling {} oracle",
@@ -55,6 +56,7 @@ impl EnableOracle<'_> {
             Price::from_scale(2, 2),
             our_current_timestamp,
             if base { Token::Base } else { Token::Quote },
+            max_update_interval,
         )?;
 
         if !skip_init {

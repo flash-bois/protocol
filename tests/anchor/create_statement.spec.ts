@@ -8,7 +8,6 @@ import { STATEMENT_SEED } from '../../microSdk'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-
 describe('statement for user', () => {
   const provider = anchor.AnchorProvider.env()
   const program = anchor.workspace.Protocol as Program<Protocol>

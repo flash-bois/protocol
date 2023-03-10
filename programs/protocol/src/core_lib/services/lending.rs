@@ -7,6 +7,8 @@ use crate::core_lib::{
     structs::Oracle,
 };
 
+use std::cmp::min;
+
 use super::ServiceUpdate;
 
 #[cfg(feature = "anchor")]
@@ -301,7 +303,7 @@ pub trait Borrowable {
         repay_quantity: Quantity,
         borrowed: Quantity,
         borrowed_shares: Shares,
-    ) -> Result<(Quantity, Shares), LibErrors>;
+    ) -> Result<(Quantity, Shares, Quantity), LibErrors>;
 }
 
 impl Borrowable for Lend {
@@ -325,23 +327,28 @@ impl Borrowable for Lend {
         repay_quantity: Quantity,
         borrowed: Quantity,
         borrowed_shares: Shares,
-    ) -> Result<(Quantity, Shares), LibErrors> {
+    ) -> Result<(Quantity, Shares, Quantity), LibErrors> {
         let owed_quantity = self
             .borrow_shares
             .calculate_owed(borrowed_shares, self.borrowed);
 
         let fee_owed = owed_quantity - borrowed;
+        let repay_amount = min(repay_quantity, owed_quantity);
 
         if repay_quantity > fee_owed {
             let shares_to_burn = self
                 .borrow_shares
-                .get_change_down(repay_quantity, self.borrowed);
+                .get_change_down(repay_amount, self.borrowed);
 
             self.borrowed -= repay_quantity;
             self.borrow_shares -= shares_to_burn;
             self.utilization = self.current_utilization();
 
-            Ok((repay_quantity, shares_to_burn))
+            Ok((
+                repay_quantity,
+                shares_to_burn,
+                min(repay_quantity, borrowed),
+            ))
         } else {
             Err(LibErrors::RepayLowerThanFee)
         }
@@ -431,7 +438,7 @@ mod shares_tests {
 
         assert!(lending.borrow(Quantity::new(1)).is_err(), "can't borrow");
 
-        let (partially_repaid, shares_partially_repaid) = lending
+        let (partially_repaid, shares_partially_repaid, _) = lending
             .repay(
                 Quantity::new(1_530_264),
                 Quantity::new(1_600_000),
@@ -441,7 +448,7 @@ mod shares_tests {
 
         lending.add_available_base(partially_repaid);
 
-        let (full_repaid, _shares_fully_repaid) = lending
+        let (full_repaid, _shares_fully_repaid, _) = lending
             .repay(
                 Quantity::new(1_600_000) - partially_repaid,
                 Quantity::new(1_600_000) - partially_repaid,
@@ -598,7 +605,7 @@ mod shares_tests {
             }
         );
 
-        let (repaid, first_repaid_shares) = lending
+        let (repaid, first_repaid_shares, _) = lending
             .repay(
                 Quantity::new(184186871548154787),
                 Quantity::new(184186871548154787),
@@ -629,7 +636,7 @@ mod shares_tests {
             }
         );
 
-        let (repaid, second_repaid_shares) = lending
+        let (repaid, second_repaid_shares, _) = lending
             .repay(
                 Quantity::new(11051825915530),
                 Quantity::new(11051825915530),
@@ -666,7 +673,7 @@ mod shares_tests {
 
         //repay to zero, merge 2 debts
 
-        let (repaid, _) = lending
+        let (repaid, _, _) = lending
             .repay(
                 Quantity::new(1851108807930549),
                 Quantity::new(1851108807930549),
