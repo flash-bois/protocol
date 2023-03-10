@@ -77,15 +77,15 @@ pub use non_zero::*;
 
 impl UserStatement {
     pub fn get_vaults_indexes(&self, current: &u8) -> HashSet<u8> {
-        let mut indexes = HashSet::new();
-
-        if let Some(positions) = self.positions.iter() {
-            positions.fold(&mut HashSet::new(), |val, el| {
+        let mut indexes = if let Some(positions) = self.positions.iter() {
+            positions.fold(HashSet::new(), |mut val, el| {
                 val.insert(*el.vault_index());
 
                 val
-            });
-        }
+            })
+        } else {
+            HashSet::new()
+        };
 
         indexes.insert(*current);
         indexes

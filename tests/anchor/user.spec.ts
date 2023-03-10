@@ -359,6 +359,6 @@ describe('User', () => {
 
     const vault_ids = statement_acc.vaults_to_refresh(2)
 
-    assert.deepEqual(vault_ids, [0, 1, 2])
+    assert.deepEqual(vault_ids, [0, 2, 1])
   })
 })
