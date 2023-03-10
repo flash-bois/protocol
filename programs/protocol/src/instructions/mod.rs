@@ -11,6 +11,7 @@ pub mod init_vault;
 pub mod open_position;
 pub mod repay;
 pub mod single_swap;
+pub mod withdraw;
 
 pub use add_strategy::*;
 pub use admin::*;
@@ -25,3 +26,4 @@ pub use init_vault::*;
 pub use open_position::*;
 pub use repay::*;
 pub use single_swap::*;
+pub use withdraw::*;

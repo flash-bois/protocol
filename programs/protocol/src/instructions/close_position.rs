@@ -50,12 +50,9 @@ impl<'info> ClosePosition<'info> {
         let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
         let vaults = &mut ctx.accounts.vaults.load_mut()?;
 
-        let mut vaults_indexes = vec![vault];
-        if let Some(indexes_to_refresh) = user_statement.get_vaults_indexes() {
-            vaults_indexes.extend(indexes_to_refresh.iter());
-        }
-
+        let vaults_indexes = user_statement.get_vaults_indexes(&vault);
         vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
+
         user_statement.refresh(&vaults.arr.elements)?;
 
         let vault = vaults.vault_checked_mut(vault)?;

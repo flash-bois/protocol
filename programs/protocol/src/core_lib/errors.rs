@@ -87,6 +87,8 @@ mod anchor_one {
         NoVaultsToRefresh,
         #[msg("Given service was enabled before")]
         ServiceAlreadyExists,
+        #[msg("Withdraw amount is not permitted due to reached limit")]
+        UserNotCollateralized,
     }
 }
 
@@ -179,6 +181,8 @@ mod anchor_none {
         NoVaultsToRefresh,
         #[error("Given service was enabled before")]
         ServiceAlreadyExists,
+        #[error("Withdraw amount is not permitted due to reached limit")]
+        UserNotCollateralized,
     }
 }
 

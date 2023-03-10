@@ -96,6 +96,7 @@ impl Vault {
         spread_limit: Price,
         time: Time,
         for_token: Token,
+        max_update_interval: Time,
     ) -> Result<(), LibErrors> {
         if match for_token {
             Token::Base => self.oracle.is_some(),
@@ -110,6 +111,7 @@ impl Vault {
             confidence,
             spread_limit,
             time,
+            max_update_interval,
         ));
 
         match for_token {
@@ -248,6 +250,10 @@ impl Vault {
         self.services.swap()
     }
 
+    pub fn trade_service_not_mut(&self) -> Result<&Trade, LibErrors> {
+        self.services.trade()
+    }
+
     pub fn refresh(&mut self, current_time: Time) -> Result<(), LibErrors> {
         if let Ok(lend) = self.lend_service() {
             lend.accrue_interest_rate(current_time);
@@ -288,6 +294,7 @@ impl Vault {
             Price::from_scale(1, 2),
             0,
             Token::Base,
+            0,
         )?;
         vault.enable_oracle(
             DecimalPlaces::Six,
@@ -296,6 +303,7 @@ impl Vault {
             Price::from_scale(2, 3),
             0,
             Token::Quote,
+            0,
         )?;
         vault.enable_lending(
             FeeCurve::default(),

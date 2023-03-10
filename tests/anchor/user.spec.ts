@@ -1,8 +1,20 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
-import { Keypair, PublicKey, SIGNATURE_LENGTH_IN_BYTES, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import {
+  Keypair,
+  PublicKey,
+  SIGNATURE_LENGTH_IN_BYTES,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  Transaction
+} from '@solana/web3.js'
 import { assert, use } from 'chai'
-import { price_denominator, StateAccount, StatementAccount, VaultsAccount } from '../../pkg/protocol'
+import {
+  price_denominator,
+  StateAccount,
+  StatementAccount,
+  VaultsAccount
+} from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import {
   createMint,
@@ -57,7 +69,6 @@ const [statement, bump] = PublicKey.findProgramAddressSync(
   program.programId
 )
 
-
 describe('User', () => {
   before(async function () {
     const admin_sig = await connection.requestAirdrop(admin.publicKey, 10000000000)
@@ -73,60 +84,92 @@ describe('User', () => {
       minter: minter.publicKey,
       oracle_program,
       program,
-      vaults_infos: [{
-        quote_mint,
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000)
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000)
+      vaults_infos: [
+        {
+          quote_mint,
+          base_oracle: {
+            base: true,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(200000000),
+            exp: -8,
+            conf: new BN(200000),
+            max_update_interval: 100
+          },
+          quote_oracle: {
+            base: false,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(100000000),
+            exp: -8,
+            conf: new BN(100000),
+            max_update_interval: 100
+          },
+          lending: {
+            initial_fee_time: 0,
+            max_borrow: new BN(10_000_000_000),
+            max_utilization: 800000
+          },
+          swapping: {
+            kept_fee: 100000,
+            max_total_sold: new BN(10_000_000_000)
+          },
+          strategies: [
+            {
+              collateral_ratio: new BN(1000000),
+              liquidation_threshold: new BN(1000000),
+              lend: true,
+              swap: true,
+              trade: false
+            }
+          ]
         },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000,
-        },
-        swapping: {
-          kept_fee: 100000,
-          max_total_sold: new BN(10_000_000_000)
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: true, swap: true, trade: false }
-        ]
-      }, {
-        quote_mint,
-        base_oracle: {
-          base: true, decimals: 6, skip_init: false,
-          price: new BN(200000000), exp: -8, conf: new BN(200000)
-        }, quote_oracle: {
-          base: false, decimals: 6, skip_init: false,
-          price: new BN(100000000), exp: -8, conf: new BN(100000)
-        },
-        lending: {
-          initial_fee_time: 0,
-          max_borrow: new BN(10_000_000_000),
-          max_utilization: 800000
-        },
-        swapping: {
-          kept_fee: 100000,
-          max_total_sold: new BN(10_000_000_000)
-        },
-        strategies: [
-          { collateral_ratio: new BN(1000000), liquidation_threshold: new BN(1000000), lend: false, swap: true, trade: false }
-        ]
-      }]
+        {
+          quote_mint,
+          base_oracle: {
+            base: true,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(200000000),
+            exp: -8,
+            conf: new BN(200000),
+            max_update_interval: 100
+          },
+          quote_oracle: {
+            base: false,
+            decimals: 6,
+            skip_init: false,
+            price: new BN(100000000),
+            exp: -8,
+            conf: new BN(100000),
+            max_update_interval: 100
+          },
+          lending: {
+            initial_fee_time: 0,
+            max_borrow: new BN(10_000_000_000),
+            max_utilization: 800000
+          },
+          swapping: {
+            kept_fee: 100000,
+            max_total_sold: new BN(10_000_000_000)
+          },
+          strategies: [
+            {
+              collateral_ratio: new BN(1000000),
+              liquidation_threshold: new BN(1000000),
+              lend: false,
+              swap: true,
+              trade: false
+            }
+          ]
+        }
+      ]
     })
 
     vault0 = test_environment.vaults_data[0]
     vault1 = test_environment.vaults_data[1]
 
-    accountBase = await createAssociatedTokenAccount(
-      connection,
-      user,
-      vault0.base,
-      user.publicKey
-    )
+    accountBase = await createAssociatedTokenAccount(connection, user, vault0.base, user.publicKey)
 
     accountQuote = await createAssociatedTokenAccount(
       connection,
@@ -154,7 +197,6 @@ describe('User', () => {
       .rpc({ skipPreflight: true })
   })
 
-
   it('calculates deposit', async () => {
     const data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account = VaultsAccount.load(data as Buffer)
@@ -164,7 +206,7 @@ describe('User', () => {
   })
 
   it('deposit', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+    const remaining_accounts = vault0.remaining_accounts
 
     assert.equal((await getAccount(connection, accountBase)).amount, 1000000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 1000000n)
@@ -194,20 +236,18 @@ describe('User', () => {
   it('gets lp position info from statement', async () => {
     const data = (await connection.getAccountInfo(statement))?.data
     statement_acc = StatementAccount.load(data as Buffer)
-    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data;
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account.reload(vaults_data as Buffer)
 
     const position_info = vaults_account.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
 
-    assert.equal(position_info.earned_base_quantity, 200000n)
-    assert.equal(position_info.earned_quote_quantity, 400000n)
-    assert.equal(position_info.position_value, 800000000n)
+    assert.equal(position_info!.earned_base_quantity, 200000n)
+    assert.equal(position_info!.earned_quote_quantity, 400000n)
+    assert.equal(position_info!.position_value, 800000000n)
   })
 
-
-
   it('single swap', async () => {
-    const remaining_accounts = vault0.remaining_accounts;
+    const remaining_accounts = vault0.remaining_accounts
 
     assert.equal((await getAccount(connection, accountBase)).amount, 800000n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 600000n)
@@ -238,8 +278,8 @@ describe('User', () => {
   })
 
   it('double swap', async () => {
-    const remaining_accounts0 = vault0.remaining_accounts;
-    const remaining_accounts1 = vault1.remaining_accounts;
+    const remaining_accounts0 = vault0.remaining_accounts
+    const remaining_accounts1 = vault1.remaining_accounts
     const remaining_accounts = [...remaining_accounts0!, ...remaining_accounts1!]
 
     assert.equal(vault1.quote.toBase58(), vault0.quote.toBase58())
@@ -262,7 +302,7 @@ describe('User', () => {
 
     await mintTo(connection, user, vault1.base, secondAccountBase, minter, 1e6)
 
-    const vault1_remaining_accounts = vault1.remaining_accounts;
+    const vault1_remaining_accounts = vault1.remaining_accounts
     await program.methods
       .deposit(1, 0, new BN(300000), true)
       .accountsStrict({
@@ -275,9 +315,7 @@ describe('User', () => {
         reserveQuote: vault1.reserveQuote,
         tokenProgram: TOKEN_PROGRAM_ID
       })
-      .remainingAccounts(
-        vault1_remaining_accounts ?? []
-      )
+      .remainingAccounts(vault1_remaining_accounts ?? [])
       .remainingAccounts(remaining_accounts)
       .signers([user])
       .rpc({ skipPreflight: true })
@@ -286,7 +324,7 @@ describe('User', () => {
       .modifyFeeCurve(1, 2, false, new BN(1000000), new BN(0), new BN(0), new BN(10000))
       .accounts({
         admin: admin.publicKey,
-        ...test_environment,
+        ...test_environment
       })
       .signers([admin])
       .rpc({ skipPreflight: true })
@@ -319,9 +357,8 @@ describe('User', () => {
     const data = (await connection.getAccountInfo(statement))?.data
     statement_acc = StatementAccount.load(data as Buffer)
 
-    const vault_ids = statement_acc.vaults_to_refresh();
+    const vault_ids = statement_acc.vaults_to_refresh(2)
 
-    assert.deepEqual(vault_ids, [0, 1])
+    assert.deepEqual(vault_ids, [0, 2, 1])
   })
 })
-

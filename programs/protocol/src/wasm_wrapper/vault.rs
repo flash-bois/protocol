@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    core_lib::{decimal::Fraction, errors::LibErrors, Vault},
+    core_lib::{decimal::Fraction, errors::LibErrors, structs::Side, Vault},
     structs::{VaultKeys, Vaults},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
@@ -177,6 +177,33 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
+    pub fn borrow_limit(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .borrow_limit
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn available_lend(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .available
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn max_utilization(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .max_utilization
+            .get() as u64)
+    }
+
+    #[wasm_bindgen]
     pub fn lending_apy(&mut self, index: u8, timestamp: u32) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
@@ -190,5 +217,32 @@ impl VaultsAccount {
                 0
             },
         )
+    }
+
+    #[wasm_bindgen]
+    pub fn max_leverage(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .max_open_leverage()
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn trading_open_fee(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .open_fee()
+            .get())
+    }
+
+    #[wasm_bindgen]
+    pub fn trading_fee(&self, index: u8, long: bool) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .trade_service_not_mut()?
+            .borrow_fee(if long { Side::Long } else { Side::Short })?
+            .get())
     }
 }

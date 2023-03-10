@@ -80,7 +80,7 @@ const main = async () => {
     })
     .postInstructions([
       await program.methods
-        .enableOracle(index, 6, true, false)
+        .enableOracle(index, 6, true, false, 10)
         .accountsStrict({
           ...accounts,
           // priceFeed: new PublicKey('EhgAdTrgxi4ZoVZLQx1n93vULucPpiFi2BQtz9RJr1y6') // RAY
@@ -88,7 +88,7 @@ const main = async () => {
         })
         .instruction(),
       await program.methods
-        .enableOracle(index, 6, false, false)
+        .enableOracle(index, 6, false, false, 10)
         .accountsStrict({
           ...accounts,
           priceFeed: new PublicKey('5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7') // USDC
@@ -119,7 +119,12 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
-        .addStrategy(index, true, false, new BN(1000_000), new BN(1000_000))
+        .addStrategy(index, true, false, false, new BN(800_000), new BN(850_000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .addStrategy(index, true, true, true, new BN(600_000), new BN(7000_000))
         .accounts(accounts)
         .signers([admin])
         .instruction(),

@@ -20,10 +20,17 @@ import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import { STATE_SEED } from '../../microSdk'
 import { Oracle } from '../../target/types/oracle'
+import { program } from '@coral-xyz/anchor/dist/cjs/native/system'
 
 export interface IProtocolCallable {
   program: Program<Protocol>
   admin: Keypair
+}
+
+export interface IProtocolCallableUser {
+  program: Program<Protocol>
+  user: Keypair
+  statement: PublicKey
 }
 
 export interface IOracleCallable {
@@ -70,7 +77,7 @@ export interface IEnableLending extends IProtocolCallable, IStateWithVaults, ILe
 }
 
 export interface ITradingInfo {
-  open_fee: number,
+  open_fee: number
   max_leverage: number
   collateral_ratio: number
   liquidation_threshold: number
@@ -80,6 +87,23 @@ export interface IEnableTrading extends IProtocolCallable, IStateWithVaults, ITr
   vault: number
 }
 
+export enum IModifyCurveType {
+  Lend,
+  SwapSell,
+  SwapBuy
+}
+
+export interface IModifyFeeCurveInfo {
+  which: IModifyCurveType
+  bound: BN
+  a: BN
+  b: BN
+  c: BN
+}
+
+export interface IModifyFeeCurve extends IProtocolCallable, IStateWithVaults, IModifyFeeCurveInfo {
+  vault: number
+}
 
 export interface ICreateOracleInfo {
   price: BN
@@ -91,6 +115,7 @@ export interface IEnableOracleInfo {
   base: boolean
   decimals: number
   skip_init: boolean
+  max_update_interval: number
 }
 
 export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
@@ -103,7 +128,7 @@ export interface ICreateAndEnableOracle
 }
 
 export interface IAddVaultInfo {
-  base_mint?: PublicKey,
+  base_mint?: PublicKey
   quote_mint?: PublicKey
 }
 
@@ -142,6 +167,29 @@ export interface IVaultAccounts {
 
 export interface TestEnvironment extends IStateWithVaults {
   vaults_data: IVaultAccounts[]
+}
+
+export interface IDeposit extends IProtocolCallableUser, IStateWithVaults {
+  vault: number
+  strategy: number
+  base: boolean
+  amount: BN
+  accountBase: PublicKey
+  accountQuote: PublicKey
+  reserveBase: PublicKey
+  reserveQuote: PublicKey
+  remaining_accounts: {
+    isSigner: boolean
+    isWritable: boolean
+    pubkey: anchor.web3.PublicKey
+  }[]
+}
+
+export interface IUserAccounts {
+  user: Keypair
+  statement: PublicKey
+  accountBase: PublicKey
+  accountQuote: PublicKey
 }
 
 export interface DotWaveAccounts {
@@ -375,14 +423,14 @@ export async function enableOracles(
   const priceFeed = Keypair.generate().publicKey
   const { state, vaults, admin: adminKey } = accounts
   await program.methods
-    .enableOracle(index, 6, true, true)
+    .enableOracle(index, 6, true, true, 10)
     .accountsStrict({
       ...accounts,
       priceFeed
     })
     .postInstructions([
       await program.methods
-        .enableOracle(index, 6, false, true)
+        .enableOracle(index, 6, false, true, 10)
         .accountsStrict({
           ...accounts,
           priceFeed
@@ -401,12 +449,108 @@ export async function enableOracles(
     .rpc({ skipPreflight: true })
 }
 
+export async function withdraw({
+  program,
+  user,
+  vault,
+  strategy,
+  amount,
+  base,
+  remaining_accounts,
+  ...params
+}: IDeposit) {
+  const sig = await program.methods
+    .withdraw(vault, strategy, amount, base)
+    .accountsStrict({
+      signer: user.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      ...params
+    })
+    .signers([user])
+    .remainingAccounts(remaining_accounts)
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
+export async function deposit({
+  program,
+  user,
+  vault,
+  strategy,
+  amount,
+  base,
+  remaining_accounts,
+  ...params
+}: IDeposit) {
+  const sig = await program.methods
+    .deposit(vault, strategy, amount, base)
+    .accountsStrict({
+      signer: user.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      ...params
+    })
+    .remainingAccounts(remaining_accounts)
+    .signers([user])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
+export async function modifyFeeCurve({
+  program,
+  admin,
+  vault,
+  which,
+  bound,
+  a,
+  b,
+  c,
+  ...params
+}: IModifyFeeCurve) {
+  let service: number
+  let base: boolean
+
+  switch (which) {
+    case IModifyCurveType.Lend:
+      service = 1
+      base = true
+      break
+    case IModifyCurveType.SwapSell:
+      service = 2
+      base = true
+      break
+    case IModifyCurveType.SwapBuy:
+      service = 2
+      base = false
+      break
+  }
+
+  const sig = await program.methods
+    .modifyFeeCurve(vault, service, base, bound, a, b, c)
+    .accountsStrict({
+      admin: admin.publicKey,
+      ...params
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, sig)
+}
+
 export async function enableTrading({ program, admin, ...params }: IEnableTrading) {
-  const { collateral_ratio, liquidation_threshold, max_leverage, open_fee, vault, ...common_accounts } = params
+  const {
+    collateral_ratio,
+    liquidation_threshold,
+    max_leverage,
+    open_fee,
+    vault,
+    ...common_accounts
+  } = params
 
   const sig = await program.methods
     .enableTrading(vault, open_fee, max_leverage, collateral_ratio, liquidation_threshold)
-    .accounts({
+    .accountsStrict({
       admin: admin.publicKey,
       ...common_accounts
     })
@@ -421,7 +565,7 @@ export async function enableSwapping({ program, admin, ...params }: IEnableSwapp
 
   const sig = await program.methods
     .enableSwapping(vault, kept_fee, max_total_sold)
-    .accounts({
+    .accountsStrict({
       admin: admin.publicKey,
       ...common_accounts
     })
@@ -436,7 +580,7 @@ export async function enableLending({ program, admin, ...params }: IEnableLendin
 
   const sig = await program.methods
     .enableLending(vault, max_utilization, max_borrow, initial_fee_time)
-    .accounts({
+    .accountsStrict({
       admin: admin.publicKey,
       ...common_accounts
     })
@@ -465,7 +609,7 @@ export async function createStrategy({
 
   const sig = await program.methods
     .addStrategy(vault, lend, swap, trade, collateral_ratio, liquidation_threshold)
-    .accounts({ admin: admin.publicKey, ...common_accounts })
+    .accountsStrict({ admin: admin.publicKey, ...common_accounts })
     .signers([admin])
     .rpc({ skipPreflight: true })
 
@@ -487,7 +631,7 @@ export async function createAndEnableOracle({
     price,
     decimals,
     skip_init,
-
+    max_update_interval,
     ...common_accounts
   } = params
 
@@ -506,14 +650,14 @@ export async function createAndEnableOracle({
         programId: oracle_program.programId
       })
     ])
-    .accounts({ price: oracle.publicKey, signer: admin.publicKey })
+    .accountsStrict({ price: oracle.publicKey, signer: admin.publicKey })
     .signers([oracle, admin])
     .rpc({ skipPreflight: true })
 
   await waitFor(oracle_connection, create_sig)
 
   const enable_sig = await program.methods
-    .enableOracle(vault, decimals, base, skip_init)
+    .enableOracle(vault, decimals, base, skip_init, max_update_interval)
     .accounts({
       priceFeed: oracle.publicKey,
       admin: admin.publicKey,
@@ -540,7 +684,7 @@ export async function createStateWithVaults(params: IProtocolCallable): Promise<
 
   const sig = await program.methods
     .createState()
-    .accounts({
+    .accountsStrict({
       admin: admin.publicKey,
       state,
       rent: SYSVAR_RENT_PUBKEY,
@@ -572,8 +716,15 @@ export async function createTestEnvironment({
   const vaults_data: IVaultAccounts[] = []
 
   for (const id of vaults_infos.keys()) {
-    const { base_oracle, quote_oracle, lending, swapping, trading, strategies, ...vault_info }: IVaultInfo =
-      vaults_infos[id]
+    const {
+      base_oracle,
+      quote_oracle,
+      lending,
+      swapping,
+      trading,
+      strategies,
+      ...vault_info
+    }: IVaultInfo = vaults_infos[id]
 
     const vault_accounts = await addVault({ ...state_with_vault, ...params, ...vault_info })
 
@@ -632,15 +783,15 @@ export async function addVault({
   ...common_accounts
 }: IAddVault): Promise<IVaultAccounts> {
   const connection = program.provider.connection
-  const base = base_mint ?? await createMint(connection, admin, minter, null, 6)
-  const quote = quote_mint ?? await createMint(connection, admin, minter, null, 6)
+  const base = base_mint ?? (await createMint(connection, admin, minter, null, 6))
+  const quote = quote_mint ?? (await createMint(connection, admin, minter, null, 6))
 
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 
   const sig = await program.methods
     .initVault()
-    .accounts({
+    .accountsStrict({
       ...common_accounts,
       base,
       quote,

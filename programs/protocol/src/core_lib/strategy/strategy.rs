@@ -82,6 +82,18 @@ impl Strategy {
 }
 
 impl Strategy {
+    pub fn get_earned_double(&self, shares: &Shares) -> (Quantity, Quantity) {
+        let base_quantity = self
+            .total_shares()
+            .calculate_earned(*shares, self.balance());
+
+        let quote_quantity = self
+            .total_shares()
+            .calculate_earned(*shares, self.balance_quote());
+
+        (base_quantity, quote_quantity)
+    }
+
     pub fn available(&self) -> Quantity {
         self.available.base
     }
@@ -200,14 +212,39 @@ impl Strategy {
         &mut service.quote
     }
 
+    pub fn withdraw(
+        &mut self,
+        quantity: Quantity,
+        quote_quantity: Quantity,
+        shares: Shares,
+        services: &mut Services,
+    ) {
+        if let Ok(lend) = services.lend_mut() {
+            lend.remove_available_base(quantity);
+        }
+
+        if let Ok(swap) = services.swap_mut() {
+            swap.remove_liquidity_base(quantity);
+            swap.remove_liquidity_quote(quote_quantity);
+        }
+
+        if let Ok(trade) = services.trade_mut() {
+            trade.remove_available_base(quantity);
+            trade.remove_available_quote(quantity);
+        }
+
+        self.available.base -= quantity;
+        self.available.quote -= quote_quantity;
+        self.total_shares -= shares;
+    }
+
     pub fn deposit(
         &mut self,
         quantity: Quantity,
         quote_quantity: Quantity,
-        input_quantity: Quantity,
-        balance: Quantity,
+        shares: Shares,
         services: &mut Services,
-    ) -> Result<Shares, LibErrors> {
+    ) {
         if let Ok(lend) = services.lend_mut() {
             lend.add_available_base(quantity);
         }
@@ -222,13 +259,9 @@ impl Strategy {
             trade.add_available_quote(quantity);
         }
 
-        let shares = self.total_shares.get_change_down(input_quantity, balance);
-
         self.available.base += quantity;
         self.available.quote += quote_quantity;
         self.total_shares += shares;
-
-        Ok(shares)
     }
 
     /// Add locked tokens to a specific sub strategy

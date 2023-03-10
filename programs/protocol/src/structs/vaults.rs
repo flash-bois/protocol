@@ -7,6 +7,7 @@ mod zero {
     use anchor_lang::prelude::*;
 
     use checked_decimal_macro::num_traits::ToPrimitive;
+    use std::collections::HashSet;
     use std::ops::Range;
     use std::slice::{Iter, IterMut};
     use vec_macro::SafeArray;
@@ -75,7 +76,7 @@ mod zero {
 
         pub fn refresh(
             &mut self,
-            vaults: &[u8],
+            vaults: &HashSet<u8>,
             accounts: &[AccountInfo],
             current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {

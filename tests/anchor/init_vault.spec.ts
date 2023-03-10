@@ -64,7 +64,6 @@ describe('Init vault', () => {
       const vaultsAccount = VaultsAccount.load(vault_account_info)
       assert.equal(vaultsAccount.vaults_len(), 1)
 
-
       assert.equal(
         Buffer.from(vaultsAccount.base_token(0)).toString('hex'),
         base.toBuffer().toString('hex')
@@ -114,13 +113,9 @@ describe('Init vault', () => {
 
     if (vault_account_info) {
       const vaultsAccount = VaultsAccount.load(vault_account_info)
-      const keys = vaultsAccount.vaults_keys_with_id();
+      const keys = vaultsAccount.vaults_keys_with_id()
 
-
-      assert.equal(
-        Buffer.from(keys[1].base_key).toString('hex'),
-        base.toBuffer().toString('hex')
-      )
+      assert.equal(Buffer.from(keys[1].base_key).toString('hex'), base.toBuffer().toString('hex'))
 
       assert.equal(vaultsAccount.vaults_len(), 2)
 

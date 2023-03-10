@@ -68,7 +68,7 @@ impl Vault {
         let lend = self.lend_service()?;
         let total_locked = lend.locked().base;
 
-        let (unlock_quantity, burned_shares) =
+        let (unlock_quantity, burned_shares, position_decrease) =
             lend.repay(repay_quantity, *position.amount(), *position.shares())?;
 
         self.unlock_base(unlock_quantity, total_locked, ServiceType::Lend)?;
@@ -76,7 +76,7 @@ impl Vault {
         if burned_shares.ge(&position.shares()) {
             user_statement.delete_position(id)
         } else {
-            position.decrease_amount(unlock_quantity);
+            position.decrease_amount(position_decrease);
             position.decrease_shares(burned_shares);
         }
 

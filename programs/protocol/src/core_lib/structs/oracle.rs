@@ -11,11 +11,9 @@ pub enum OraclePriceType {
     Buy,
 }
 
-pub const DEFAULT_MAX_ORACLE_AGE: u32 = 100; // TODO refresh it in tests
-
 #[cfg(feature = "anchor")]
 mod zero {
-    use crate::pyth::{get_oracle_update_from_acc, OracleUpdate};
+    use crate::pyth::OracleUpdate;
 
     use super::*;
     use anchor_lang::prelude::*;
@@ -34,7 +32,7 @@ mod zero {
         /// The maximum time interval between updates.
         pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
-        pub use_spread: u8,
+        pub use_spread: bool,
         /// Limit of quotient above which the confidence is too great to use spot price.
         pub spread_limit: Price,
         /// The number of decimals of the asset.
@@ -48,7 +46,7 @@ mod zero {
             current_timestamp: i64,
         ) -> std::result::Result<(), LibErrors> {
             let OracleUpdate { price, conf, exp } =
-                get_oracle_update_from_acc(acc, current_timestamp)?;
+                self.get_update_from_acc(acc, current_timestamp)?;
 
             let (price, confidence) = if exp < 0 {
                 (
@@ -102,7 +100,7 @@ mod non_zero {
         /// The maximum time interval between updates.
         pub max_update_interval: u32,
         /// If true, the oracle will force use the spread instead of the spot price.
-        pub use_spread: u8,
+        pub use_spread: bool,
         /// Limit of quotient above which the confidence is too great to use spot price.
         pub spread_limit: Price,
         /// The number of decimals of the asset.
@@ -123,16 +121,17 @@ impl Oracle {
         price: Price,
         confidence: Price,
         spread_limit: Price,
-        time: Time,
+        last_update: Time,
+        max_update_interval: Time,
     ) -> Self {
         Self {
-            price: price,
+            price,
             confidence,
-            last_update: time,
-            max_update_interval: DEFAULT_MAX_ORACLE_AGE,
-            use_spread: 0,
+            last_update,
+            max_update_interval,
             decimals,
             spread_limit,
+            use_spread: false,
         }
     }
 
@@ -172,7 +171,7 @@ impl Oracle {
     /// Checks if either the confidence is too great to use spot price or the `use_spread` flag is
     /// set.
     pub fn should_use_spread(&self) -> bool {
-        self.use_spread == 1 || self.confidence / self.price > self.spread_limit
+        self.use_spread || self.confidence / self.price > self.spread_limit
     }
 
     /// Calculates the value for a given quantity of token.
@@ -244,6 +243,7 @@ impl Oracle {
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
             0,
+            0,
         )
     }
 
@@ -253,6 +253,7 @@ impl Oracle {
             Price::from_integer(1),
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
+            0,
             0,
         )
     }
@@ -274,6 +275,7 @@ mod test_oracle {
             Price::from_scale(1, 3),
             Price::from_scale(2, 2),
             0,
+            0,
         );
 
         oracle
@@ -288,6 +290,7 @@ mod test_oracle {
             Price::from_integer(2),
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
+            0,
             0,
         );
 
@@ -380,6 +383,7 @@ mod test_oracle {
             Price::from_scale(1, 9),
             Price::from_scale(5, 3),
             0,
+            0,
         );
 
         assert_eq!(
@@ -399,6 +403,7 @@ mod test_oracle {
             Price::from_integer(2),
             Price::from_scale(1, 3),
             Price::from_scale(5, 3),
+            0,
             0,
         );
 

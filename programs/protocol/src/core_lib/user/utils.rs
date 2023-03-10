@@ -55,7 +55,7 @@ impl Add for CollateralValues {
 
 #[derive(Default)]
 #[repr(u8)]
-pub enum TradeResult {
+pub enum ValueChange {
     #[default]
     None,
     Profitable(Value),

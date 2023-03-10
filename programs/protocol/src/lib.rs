@@ -39,8 +39,10 @@ pub mod protocol {
         decimals: u8,
         base: bool,
         skip_init: bool,
+        max_update_interval: u32,
     ) -> Result<()> {
-        ctx.accounts.handler(index, decimals, base, skip_init)
+        ctx.accounts
+            .handler(index, decimals, base, skip_init, max_update_interval)
     }
 
     pub fn force_override_oracle(
@@ -123,6 +125,16 @@ pub mod protocol {
         base: bool,
     ) -> Result<()> {
         Deposit::handler(ctx, vault, strategy, quantity, base)
+    }
+
+    pub fn withdraw(
+        ctx: Context<Withdraw>,
+        vault: u8,
+        strategy: u8,
+        quantity: u64,
+        base: bool,
+    ) -> Result<()> {
+        Withdraw::handler(ctx, vault, strategy, quantity, base)
     }
 
     pub fn single_swap(

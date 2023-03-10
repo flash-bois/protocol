@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     core_lib::decimal::Quantity,
     core_lib::errors::LibErrors,
@@ -72,11 +74,10 @@ impl<'info> DoubleSwap<'info> {
             unimplemented!("swaps by amount out are not yet implemented")
         }
 
-        vaults.refresh(
-            &[vault_in, vault_out],
-            ctx.remaining_accounts,
-            current_timestamp,
-        )?;
+        let mut vaults_indexes = HashSet::new();
+        vaults_indexes.insert(vault_in);
+        vaults_indexes.insert(vault_out);
+        vaults.refresh(&vaults_indexes, ctx.remaining_accounts, current_timestamp)?;
 
         let vault_in = vaults.vault_checked_mut(vault_in)?;
         let quote_quantity = vault_in.sell(quantity)?;
