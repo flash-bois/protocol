@@ -245,4 +245,15 @@ impl VaultsAccount {
             .borrow_fee(if long { Side::Long } else { Side::Short })?
             .get())
     }
+
+    #[wasm_bindgen]
+    pub fn refresh_lend_fees(&mut self, current_time: u32) -> Result<(), JsError> {
+        if let Some(mut iter) = self.arr.iter_mut() {
+            while let Some(vault) = iter.next() {
+                vault.refresh(current_time)?
+            }
+        };
+
+        Ok(())
+    }
 }

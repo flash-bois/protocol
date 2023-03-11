@@ -316,7 +316,7 @@ impl Trade {
             Side::Short => {
                 let balance_change =
                     self.calculate_position_change(receipt, oracle, quote_oracle, minus_fees);
-                let value_change = self.get_value_change(&balance_change, oracle);
+                let value_change = self.get_value_change(&balance_change, quote_oracle);
 
                 (balance_change, value_change)
             }

@@ -17,30 +17,6 @@ pub struct OpenPosition<'info> {
     pub statement: AccountLoader<'info, Statement>,
     #[account(mut)]
     pub signer: Signer<'info>,
-
-    #[account(mut,
-      constraint = account_base.mint == reserve_base.mint,
-      constraint = account_base.owner == signer.key(),
-  )]
-    pub account_base: Account<'info, TokenAccount>,
-    #[account(mut,
-      constraint = account_quote.mint == reserve_quote.mint,
-      constraint = account_quote.owner == signer.key(),
-  )]
-    pub account_quote: Account<'info, TokenAccount>,
-    #[account(mut,
-      constraint = reserve_base.mint == vaults.load()?.keys.get(vault as usize).unwrap().base_token,
-      constraint = reserve_base.key() == vaults.load()?.keys.get(vault as usize).unwrap().base_reserve,
-      constraint = reserve_base.owner == state.key(),
-  )]
-    pub reserve_base: Account<'info, TokenAccount>,
-    #[account(mut,
-      constraint = reserve_quote.mint == vaults.load()?.keys.get(vault as usize).unwrap().quote_token,
-      constraint = reserve_quote.key() == vaults.load()?.keys.get(vault as usize).unwrap().quote_reserve,
-      constraint = reserve_quote.owner == state.key(),
-  )]
-    pub reserve_quote: Account<'info, TokenAccount>,
-    pub token_program: Program<'info, token::Token>,
 }
 
 impl<'info> OpenPosition<'info> {
