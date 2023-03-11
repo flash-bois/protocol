@@ -294,6 +294,11 @@ describe('Borrow tests', function () {
 
     assert.equal(borrow_position.owed_quantity, 100000n)
     assert.equal(borrow_position.borrowed_quantity, 100000n)
+
+
+    const daily_apy = vaults_account.lending_apy(0, 24 * 60 * 60)
+    assert.isDefined(daily_apy)
+
   })
 
   it('repays 100000 token units', async () => {

@@ -137,6 +137,9 @@ impl Oracle {
 
     /// Updates the price and confidence of the oracle.
     pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
+        // update can occur anytime and there is no need for this check,
+        // it is checked in price getter
+
         // if confidence.big_div_up(price) > self.spread_limit {
         //     return Err(LibErrors::ConfidenceTooHigh);
         // }

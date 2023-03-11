@@ -195,6 +195,15 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
+    pub fn utilization_lend(&self, index: u8) -> Result<u64, JsError> {
+        Ok(self
+            .vault_checked(index)?
+            .lend_service_not_mut()?
+            .utilization
+            .get() as u64)
+    }
+
+    #[wasm_bindgen]
     pub fn max_utilization(&self, index: u8) -> Result<u64, JsError> {
         Ok(self
             .vault_checked(index)?
@@ -204,13 +213,13 @@ impl VaultsAccount {
     }
 
     #[wasm_bindgen]
-    pub fn lending_apy(&mut self, index: u8, timestamp: u32) -> Result<u64, JsError> {
+    pub fn lending_apy(&mut self, index: u8, duration_in_secs: u32) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
                 let utilization = lend.current_utilization();
                 let fee_curve = lend.fee_curve();
                 Fraction::from_decimal(
-                    fee_curve.compounded_fee(Fraction::from_decimal(utilization), timestamp),
+                    fee_curve.compounded_fee(Fraction::from_decimal(utilization), duration_in_secs),
                 )
                 .get()
             } else {
