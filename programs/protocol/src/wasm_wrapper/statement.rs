@@ -193,7 +193,7 @@ impl VaultsAccount {
         vault_index: u8,
         statement: &Uint8Array,
         current_time: u32,
-    ) -> Result<TradingPositionInfo, JsError> {
+    ) -> Result<Option<TradingPositionInfo>, JsError> {
         let vault = self.vault_checked_mut(vault_index)?;
         let user_statement = StatementAccount::load(statement);
 
@@ -206,7 +206,11 @@ impl VaultsAccount {
             receipt: Receipt::default(),
         };
 
-        let found_position = user_statement.statement.search(&position_search)?;
+        let found_position = match user_statement.statement.search(&position_search) {
+            Ok(position) => position,
+            Err(_) => return Ok(None),
+        };
+
         let receipt = found_position.receipt_not_mut();
 
         let (pnl, pnl_value) = match trade.calculate_position(receipt, oracle, quote_oracle, false)
@@ -237,7 +241,7 @@ impl VaultsAccount {
             }
         };
 
-        Ok(TradingPositionInfo {
+        Ok(Some(TradingPositionInfo {
             vault_id: vault_index,
             long,
             pnl,
@@ -248,7 +252,7 @@ impl VaultsAccount {
             locked: receipt.locked.get(),
             open_price: receipt.open_price.get(),
             open_value: receipt.open_value.get() as u64,
-        })
+        }))
     }
 
     #[wasm_bindgen]
