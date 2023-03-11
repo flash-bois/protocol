@@ -223,7 +223,7 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 100000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 100000n) // 1%
     assert.equal(trading_position_info!.fees_value, 220000000n)
     assert.equal(trading_position_info!.pnl, 909090n);
     assert.equal(trading_position_info!.pnl_value, 1999998000n);
@@ -239,7 +239,7 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 100000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 100000n) // 1%
     assert.equal(trading_position_info!.fees_value, 100000000n)
     assert.equal(trading_position_info!.pnl, -10000000n);
     assert.equal(trading_position_info!.pnl_value, -10000000000n);
@@ -254,7 +254,7 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 100000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 100000n) // 1%
     assert.equal(trading_position_info!.fees_value, 180000000n)
     assert.equal(trading_position_info!.pnl, -1111112n);
     assert.equal(trading_position_info!.pnl_value, -2000001600n);
@@ -333,7 +333,7 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 200000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 200000n) // 1%
     assert.equal(trading_position_info!.fees_value, 200000000n)
     assert.equal(trading_position_info!.pnl, 0n);
     assert.equal(trading_position_info!.pnl_value, 0n);
@@ -345,7 +345,7 @@ describe('Trading tests', function () {
     assert.equal(trading_position_info!.vault_id, 0);
   })
 
-  it('price 1.8, pnl +2 stable', async () => {
+  it('price 1.8, pnl +2$', async () => {
     vaults_account.update_oracle(0, 1800000000n, 2000000n, 0)
 
     const trading_position_info = vaults_account.get_trading_position_info(
@@ -354,13 +354,13 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 200000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 200000n) // 1%
     assert.equal(trading_position_info!.fees_value, 200000000n)
     assert.equal(trading_position_info!.pnl, 2000000n);
     assert.equal(trading_position_info!.pnl_value, 2000000000n);
   })
 
-  it('price 2.2, pnl -2 stable', async () => {
+  it('price 2.2, pnl -2$', async () => {
     vaults_account.update_oracle(0, 2200000000n, 2000000n, 0)
 
     const trading_position_info = vaults_account.get_trading_position_info(
@@ -369,9 +369,70 @@ describe('Trading tests', function () {
       0
     )
 
-    assert.equal(trading_position_info!.fees, 200000n) // 0.01%
+    assert.equal(trading_position_info!.fees, 200000n) // 1%
     assert.equal(trading_position_info!.fees_value, 200000000n)
     assert.equal(trading_position_info!.pnl, -2000000n);
     assert.equal(trading_position_info!.pnl_value, -2000000000n);
+  })
+
+  it('price 1, pnl 10$', async () => {
+    vaults_account.update_oracle(0, 1000000000n, 2000000n, 0)
+
+    const trading_position_info = vaults_account.get_trading_position_info(
+      0,
+      statement_account.buffer(),
+      0
+    )
+
+    assert.equal(trading_position_info!.fees, 200000n) // 1%
+    assert.equal(trading_position_info!.fees_value, 200000000n)
+    assert.equal(trading_position_info!.pnl, 10000000n);
+    assert.equal(trading_position_info!.pnl_value, 10000000000n);
+  })
+
+
+  it('closes short position, pnl 10, fees: 0.2', async () => {
+
+    await changeOraclePrice({ oracle_program, admin, price: new BN(100000000), conf: new BN(200000), exp: -8, price_feed: vault.base_oracle! });
+
+    const remaining_accounts = vault.remaining_accounts
+
+    const sig = await program.methods
+      .closePosition(0)
+      .accountsStrict({
+        ...test_environment,
+        reserveBase: vault.reserveBase,
+        reserveQuote: vault.reserveQuote,
+        accountBase: accountBase!,
+        accountQuote: accountQuote!,
+        statement: statement_address,
+        signer: user.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([user])
+      .remainingAccounts(remaining_accounts ?? [])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(connection, sig)
+
+    const statement_data = (await connection.getAccountInfo(statement_address))?.data
+    statement_account = StatementAccount.load(statement_data as Buffer)
+
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
+    vaults_account = VaultsAccount.load(vaults_data as Buffer)
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 799900000n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 609800000n)
+    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 200100000n)
+    assert.equal((await getAccount(connection, vault.reserveQuote)).amount, 390200000n)
+
+
+    const trading_position_info = vaults_account.get_trading_position_info(
+      0,
+      statement_account.buffer(),
+      0
+    )
+
+    assert.equal(trading_position_info, undefined)
   })
 })
