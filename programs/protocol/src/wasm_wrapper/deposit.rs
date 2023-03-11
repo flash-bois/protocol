@@ -22,14 +22,14 @@ impl VaultsAccount {
         vault: u8,
         strategy: u8,
         amount: u64,
-        deposit_base: bool,
+        withdraw_base: bool,
         statement: &Uint8Array,
     ) -> Result<WithdrawAmounts, JsError> {
         let mut vault = self.vault_checked(vault)?.clone();
         let user_statement = &mut StatementAccount::load(statement).statement;
 
         let amount = Quantity::new(amount);
-        let deposit_token = if deposit_base {
+        let deposit_token = if withdraw_base {
             Token::Base
         } else {
             Token::Quote

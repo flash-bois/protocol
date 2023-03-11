@@ -240,10 +240,43 @@ describe('User', () => {
     vaults_account.reload(vaults_data as Buffer)
 
     const position_info = vaults_account.get_lp_position_info(0, 0, statement_acc.buffer(), 0)
+    const withdraw_info = vaults_account.withdraw(0, 0, 200000n, true, statement_acc.buffer())!
+
+    assert.equal(withdraw_info.base, 200000n)
+    assert.equal(withdraw_info.quote, 400000n)
+
+    const reverse_withdraw_info = vaults_account.withdraw(0, 0, 400000n, false, statement_acc.buffer())
+
+    assert.equal(reverse_withdraw_info.base, 200000n)
+    assert.equal(reverse_withdraw_info.quote, 400000n)
+
+    const withdraw_half = vaults_account.withdraw(0, 0, 100000n, true, statement_acc.buffer())
+
+    assert.equal(withdraw_half.base, 100000n)
+    assert.equal(withdraw_half.quote, 200000n)
+
+    const withdraw_half_reverse = vaults_account.withdraw(0, 0, 200000n, false, statement_acc.buffer())
+
+    assert.equal(withdraw_half_reverse.base, 100000n)
+    assert.equal(withdraw_half_reverse.quote, 200000n)
+
+    const too_much_withdraw_info = vaults_account.withdraw(0, 0, 500000n, true, statement_acc.buffer())
+
+    assert.equal(too_much_withdraw_info.base, 200000n)
+    assert.equal(too_much_withdraw_info.quote, 400000n)
+
+    const too_much_withdraw_info_reverse = vaults_account.withdraw(0, 0, 500000n, false, statement_acc.buffer())
+
+    assert.equal(too_much_withdraw_info.base, 200000n)
+    assert.equal(too_much_withdraw_info.quote, 400000n)
+
+
 
     assert.equal(position_info!.earned_base_quantity, 200000n)
     assert.equal(position_info!.earned_quote_quantity, 400000n)
     assert.equal(position_info!.position_value, 800000000n)
+    assert.equal(position_info!.max_withdraw_base, 200000n)
+    assert.equal(position_info!.max_withdraw_quote, 400000n)
   })
 
   it('single swap', async () => {
