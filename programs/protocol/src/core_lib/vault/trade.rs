@@ -16,6 +16,16 @@ impl Vault {
         side: Side,
     ) -> Result<(), LibErrors> {
         let collateral = user_statement.permitted_debt();
+
+        let position_temp = Position::Trading {
+            vault_index: self.id,
+            receipt: Receipt::default(),
+        };
+
+        if user_statement.search_mut(&position_temp).is_ok() {
+            return Err(LibErrors::PositionAlreadyExists);
+        }
+
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
         let receipt = match side {

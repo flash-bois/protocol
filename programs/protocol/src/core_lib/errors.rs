@@ -89,6 +89,8 @@ mod anchor_one {
         ServiceAlreadyExists,
         #[msg("Withdraw amount is not permitted due to reached limit")]
         UserNotCollateralized,
+        #[msg("position already exists, close it to open new one")]
+        PositionAlreadyExists,
     }
 }
 
@@ -183,6 +185,8 @@ mod anchor_none {
         ServiceAlreadyExists,
         #[error("Withdraw amount is not permitted due to reached limit")]
         UserNotCollateralized,
+        #[error("position already exists, close it to open new one")]
+        PositionAlreadyExists,
     }
 }
 
