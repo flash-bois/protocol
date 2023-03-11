@@ -304,6 +304,67 @@ describe('Trading tests', function () {
   })
 
 
+  it('opens and close long on profit price: 2 -> 2.2, ', async () => {
+    const remaining_accounts = vault.remaining_accounts
+
+    const sig = await program.methods
+      .openPosition(0, new BN(10000000), true)
+      .accounts({
+        ...test_environment,
+        statement: statement_address,
+        signer: user.publicKey,
+      })
+      .signers([user])
+      .remainingAccounts(remaining_accounts ?? [])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(connection, sig)
+
+
+    await changeOraclePrice({ oracle_program, admin, price: new BN(220000000), conf: new BN(200000), exp: -8, price_feed: vault.base_oracle! });
+
+    const sig2 = await program.methods
+      .closePosition(0)
+      .accountsStrict({
+        ...test_environment,
+        reserveBase: vault.reserveBase,
+        reserveQuote: vault.reserveQuote,
+        accountBase: accountBase!,
+        accountQuote: accountQuote!,
+        statement: statement_address,
+        signer: user.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([user])
+      .remainingAccounts(remaining_accounts ?? [])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(connection, sig2)
+
+    const statement_data = (await connection.getAccountInfo(statement_address))?.data
+    statement_account = StatementAccount.load(statement_data as Buffer)
+
+    const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
+    vaults_account = VaultsAccount.load(vaults_data as Buffer)
+
+    assert.equal((await getAccount(connection, accountBase)).amount, 800709090n)
+    assert.equal((await getAccount(connection, accountQuote)).amount, 600000000n)
+    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 199290910n)
+    assert.equal((await getAccount(connection, vault.reserveQuote)).amount, 400000000n)
+
+
+    const trading_position_info = vaults_account.get_trading_position_info(
+      0,
+      statement_account.buffer(),
+      0
+    )
+
+    assert.equal(trading_position_info, undefined)
+
+
+    await changeOraclePrice({ oracle_program, admin, price: new BN(200000000), conf: new BN(200000), exp: -8, price_feed: vault.base_oracle! });
+  })
+
   it('opens short 10, on price: 2 (20$ worth)', async () => {
     const remaining_accounts = vault.remaining_accounts
 
@@ -421,11 +482,10 @@ describe('Trading tests', function () {
     const vaults_data = (await connection.getAccountInfo(test_environment.vaults))?.data
     vaults_account = VaultsAccount.load(vaults_data as Buffer)
 
-    assert.equal((await getAccount(connection, accountBase)).amount, 799900000n)
+    assert.equal((await getAccount(connection, accountBase)).amount, 800709090n)
     assert.equal((await getAccount(connection, accountQuote)).amount, 609800000n)
-    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 200100000n)
+    assert.equal((await getAccount(connection, vault.reserveBase)).amount, 199290910n)
     assert.equal((await getAccount(connection, vault.reserveQuote)).amount, 390200000n)
-
 
     const trading_position_info = vaults_account.get_trading_position_info(
       0,
