@@ -21,6 +21,7 @@ import { Protocol } from '../../target/types/protocol'
 import { STATE_SEED } from '../../microSdk'
 import { Oracle } from '../../target/types/oracle'
 import { program } from '@coral-xyz/anchor/dist/cjs/native/system'
+import { features } from '@coral-xyz/anchor/dist/cjs/utils'
 
 export interface IProtocolCallable {
   program: Program<Protocol>
@@ -70,6 +71,15 @@ export interface ILendingInfo {
   initial_fee_time: number
   max_utilization: number
   max_borrow: BN
+}
+
+export interface ILendingInfoWithFees extends ILendingInfo {
+  fees: IModifyFeeCurveInfo[]
+}
+
+
+export interface ISwappingInfoWithFees extends ISwappingInfo {
+  fees: IModifyFeeCurveInfo[]
 }
 
 export interface IEnableLending extends IProtocolCallable, IStateWithVaults, ILendingInfo {
@@ -122,6 +132,16 @@ export interface IEnableOracleInfo {
   max_update_interval: number
 }
 
+export interface IEnableOracle extends IProtocolCallable, IEnableOracleInfo, IStateWithVaults {
+  oracle: PublicKey,
+  vault: number,
+}
+
+export interface IEnableOracleKnownId extends IEnableOracleInfo {
+  oracle: PublicKey,
+}
+
+
 export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
 
 export interface ICreateAndEnableOracle
@@ -140,17 +160,35 @@ export interface IAddVault extends IProtocolCallable, IStateWithVaults, IAddVaul
   minter: PublicKey
 }
 
+
+
 export interface IVaultInfo extends IAddVaultInfo {
   quote_oracle?: ILocalOracleInfo
   base_oracle?: ILocalOracleInfo
   lending?: ILendingInfo
   swapping?: ISwappingInfo
   trading?: ITradingInfo
-  strategies?: [IStrategyInfo]
+  strategies?: IStrategyInfo[]
 }
+
 export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
   minter: PublicKey
   vaults_infos: IVaultInfo[]
+}
+
+
+export interface IVaultInfoDevnet extends IAddVaultInfo {
+  quote_oracle: IEnableOracleKnownId
+  base_oracle: IEnableOracleKnownId
+  lending?: ILendingInfoWithFees,
+  swapping?: ISwappingInfoWithFees
+  trading?: ITradingInfo
+  strategies?: [IStrategyInfo]
+}
+
+export interface ICreateDevnetEnvironment extends IProtocolCallable {
+  minter: PublicKey
+  vaults_infos: IVaultInfoDevnet[]
 }
 
 export type OracleKey = PublicKey
@@ -637,6 +675,20 @@ export async function changeOraclePrice({
   await waitFor(oracle_program.provider.connection, sig)
 }
 
+export async function enableOracle({ program, admin, vault, decimals, skip_init, max_update_interval, base, oracle, ...params }: IEnableOracle) {
+  const enable_sig = await program.methods
+    .enableOracle(vault, decimals, base, skip_init, max_update_interval)
+    .accounts({
+      priceFeed: oracle,
+      admin: admin.publicKey,
+      ...params
+    })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(program.provider.connection, enable_sig)
+}
+
 export async function createAndEnableOracle({
   oracle_program,
   program,
@@ -728,6 +780,77 @@ export async function createStateWithVaults(params: IProtocolCallable): Promise<
 
   return { vaults: vaults.publicKey, state }
 }
+
+export async function createDevnetEnvironment({
+  vaults_infos,
+  ...params
+}: ICreateDevnetEnvironment): Promise<TestEnvironment> {
+  const state_with_vault = await createStateWithVaults(params)
+  const vaults_data: IVaultAccounts[] = []
+
+  for (const id of vaults_infos.keys()) {
+    const {
+      base_oracle,
+      quote_oracle,
+      lending,
+      swapping,
+      trading,
+      strategies,
+      ...vault_info
+    }: IVaultInfoDevnet = vaults_infos[id]
+
+    const vault_accounts = await addVault({ ...state_with_vault, ...params, ...vault_info })
+
+    await enableOracle({ vault: id, ...base_oracle, ...params, ...state_with_vault })
+    await enableOracle({ vault: id, ...quote_oracle, ...params, ...state_with_vault })
+
+    if (lending != undefined) {
+      await enableLending({ vault: id, ...lending, ...params, ...state_with_vault })
+
+      for (const fee of lending.fees.values()) {
+        await modifyFeeCurve({ vault: id, ...fee, ...params, ...state_with_vault })
+      }
+    }
+
+    if (swapping != undefined) {
+      await enableSwapping({ vault: id, ...swapping, ...params, ...state_with_vault })
+
+      for (const fee of swapping.fees.values()) {
+        await modifyFeeCurve({ vault: id, ...fee, ...params, ...state_with_vault })
+      }
+    }
+
+    if (trading != undefined) {
+      await enableTrading({ vault: id, ...trading, ...params, ...state_with_vault })
+    }
+
+    if (strategies != undefined) {
+      for (const strategy of strategies) {
+        await createStrategy({ vault: id, ...strategy, ...params, ...state_with_vault })
+      }
+    }
+
+    let remaining_accounts: { isSigner: false; isWritable: false; pubkey: PublicKey }[] = []
+
+    if (base_oracle) {
+      remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: base_oracle.oracle })
+    }
+
+    if (quote_oracle) {
+      remaining_accounts.push({ isSigner: false, isWritable: false, pubkey: quote_oracle.oracle })
+    }
+
+    vaults_data.push({
+      ...vault_accounts,
+      base_oracle: base_oracle.oracle,
+      quote_oracle: quote_oracle.oracle,
+      remaining_accounts
+    })
+  }
+
+  return { ...state_with_vault, vaults_data }
+}
+
 
 export async function createTestEnvironment({
   vaults_infos,
