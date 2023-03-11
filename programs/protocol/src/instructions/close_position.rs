@@ -44,7 +44,7 @@ pub struct ClosePosition<'info> {
 }
 
 impl<'info> ClosePosition<'info> {
-    pub fn handler(ctx: Context<ClosePosition>, vault: u8, long: bool) -> anchor_lang::Result<()> {
+    pub fn handler(ctx: Context<ClosePosition>, vault: u8) -> anchor_lang::Result<()> {
         msg!("DotWave: Close position");
         let current_timestamp = Clock::get()?.unix_timestamp;
         let user_statement = &mut ctx.accounts.statement.load_mut()?.statement;
@@ -57,8 +57,7 @@ impl<'info> ClosePosition<'info> {
 
         let vault = vaults.vault_checked_mut(vault)?;
         let current_timestamp = Clock::get()?.unix_timestamp as u32;
-        let side = if long { Side::Long } else { Side::Short };
-        let balance_change = vault.close_position(user_statement, side, current_timestamp)?;
+        let (balance_change, side) = vault.close_position(user_statement, current_timestamp)?;
 
         match balance_change {
             BalanceChange::Profit(profit_amount) => {

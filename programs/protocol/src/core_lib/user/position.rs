@@ -56,17 +56,12 @@ impl PartialEq for Position {
                 },
             ) => vault_index == vault_index_cmp,
             (
-                Self::Trading {
-                    vault_index,
-                    receipt,
-                    ..
-                },
+                Self::Trading { vault_index, .. },
                 Self::Trading {
                     vault_index: vault_index_cmp,
-                    receipt: receipt_cmp,
                     ..
                 },
-            ) => vault_index == vault_index_cmp && receipt.side == receipt_cmp.side,
+            ) => vault_index == vault_index_cmp,
             (Self::Empty, Self::Empty) => true,
             _ => false,
         }

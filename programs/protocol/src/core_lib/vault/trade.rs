@@ -16,6 +16,16 @@ impl Vault {
         side: Side,
     ) -> Result<(), LibErrors> {
         let collateral = user_statement.permitted_debt();
+
+        let position_temp = Position::Trading {
+            vault_index: self.id,
+            receipt: Receipt::default(),
+        };
+
+        if user_statement.search_mut(&position_temp).is_ok() {
+            return Err(LibErrors::PositionAlreadyExists);
+        }
+
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
 
         let receipt = match side {
@@ -48,15 +58,11 @@ impl Vault {
     pub fn close_position(
         &mut self,
         user_statement: &mut UserStatement,
-        side: Side,
         now: Time,
-    ) -> Result<BalanceChange, LibErrors> {
+    ) -> Result<(BalanceChange, Side), LibErrors> {
         let temp_position = Position::Trading {
             vault_index: self.id,
-            receipt: Receipt {
-                side,
-                ..Default::default()
-            },
+            receipt: Receipt::default(),
         };
 
         let (trade, oracle, quote_oracle) = self.trade_mut_and_oracles()?;
@@ -66,29 +72,26 @@ impl Vault {
 
         let change = match receipt.side {
             Side::Long => {
+                let total_locked = trade.locked().base;
                 let (change, unlock) = trade.close_long(*receipt, oracle)?;
                 match change {
-                    BalanceChange::Profit(profit) => {
-                        let total_locked = trade.locked().base;
-                        self.unlock_with_loss_base(
-                            unlock,
-                            profit,
-                            total_locked,
-                            ServiceType::Trade,
-                        )?
-                    }
+                    BalanceChange::Profit(profit) => self.unlock_with_loss_base(
+                        unlock,
+                        profit,
+                        total_locked,
+                        ServiceType::Trade,
+                    )?,
                     BalanceChange::Loss(loss) => {
-                        let total_locked = trade.locked().base;
                         self.unlock_base(unlock, total_locked, ServiceType::Trade)?;
-                        // TODO: do something with system profit
                         self.profit_base(loss, total_locked, ServiceType::Trade)?;
                     }
                 };
-                change
+
+                (change, Side::Long)
             }
             Side::Short => {
-                let (change, unlock) = trade.close_short(*receipt, oracle, &quote_oracle, now)?;
                 let total_locked = trade.locked().quote;
+                let (change, unlock) = trade.close_short(*receipt, oracle, &quote_oracle, now)?;
                 match change {
                     BalanceChange::Profit(profit) => self.unlock_with_loss_quote(
                         unlock,
@@ -102,7 +105,7 @@ impl Vault {
                         self.profit_quote(loss, total_locked, ServiceType::Trade)?
                     }
                 }
-                change
+                (change, Side::Short)
             }
         };
 

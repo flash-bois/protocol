@@ -89,16 +89,4 @@ impl VaultsAccount {
     pub fn lock_quote(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
         Ok(self.strategy(vault, strategy)?.locked_quote().get())
     }
-
-    #[wasm_bindgen]
-    pub fn utilization_base(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
-        let strategy = self.strategy(vault, strategy)?;
-        Ok((strategy.locked() / strategy.balance()).get())
-    }
-
-    #[wasm_bindgen]
-    pub fn utilization_quote(&self, vault: u8, strategy: u8) -> Result<u64, JsError> {
-        let strategy = self.strategy(vault, strategy)?;
-        Ok((strategy.locked_quote() / strategy.balance_quote()).get())
-    }
 }

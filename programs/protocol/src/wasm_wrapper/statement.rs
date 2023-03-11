@@ -10,7 +10,10 @@ use crate::{
 };
 use checked_decimal_macro::{num_traits::ToPrimitive, Decimal};
 use js_sys::{Array, Uint8Array};
-use std::ops::{Deref, DerefMut};
+use std::{
+    cmp::Ordering,
+    ops::{Deref, DerefMut},
+};
 use wasm_bindgen::prelude::*;
 
 use super::VaultsAccount;
@@ -49,6 +52,8 @@ pub struct LpPositionInfo {
     pub deposited_quote_quantity: u64,
     pub earned_base_quantity: u64,
     pub earned_quote_quantity: u64,
+    pub max_withdraw_quote: u64,
+    pub max_withdraw_base: u64,
 }
 
 #[wasm_bindgen]
@@ -127,13 +132,48 @@ impl VaultsAccount {
         };
 
         let strategy = vault.strategy(strategy_index)?;
+        let available = strategy.available();
+        let balance = strategy.balance();
+        let balance_quote = strategy.balance_quote();
+        let available_quote = strategy.available_quote();
+        let total_shares = strategy.total_shares();
         let (base_quantity, quote_quantity) = strategy.get_earned_double(found_position.shares());
-
         let oracle = vault.oracle()?;
         let quote_oracle = vault.quote_oracle()?;
-
         let value =
             oracle.calculate_value(base_quantity) + quote_oracle.calculate_value(quote_quantity);
+
+        let (max_withdraw_base, max_withdraw_quote) = match (
+            base_quantity.cmp(&strategy.available()),
+            quote_quantity.cmp(&strategy.available_quote()),
+        ) {
+            (Ordering::Less | Ordering::Equal, Ordering::Less | Ordering::Equal) => {
+                (base_quantity, quote_quantity)
+            }
+            (Ordering::Less | Ordering::Equal, Ordering::Greater) => {
+                let max_quote = std::cmp::min(quote_quantity, available_quote);
+                let shares = total_shares.get_change_down(max_quote, balance_quote);
+                let max_base = total_shares.calculate_earned(shares, balance);
+
+                (max_base, max_quote)
+            }
+            (Ordering::Greater, Ordering::Less | Ordering::Equal) => {
+                let max_base = std::cmp::min(base_quantity, available);
+                let shares = total_shares.get_change_down(max_base, balance);
+                let max_quote = total_shares.calculate_earned(shares, balance_quote);
+
+                (max_base, max_quote)
+            }
+            (Ordering::Greater, Ordering::Greater) => {
+                let shares_base = total_shares.get_change_down(available, balance);
+                let shares_quote = total_shares.get_change_down(available_quote, balance_quote);
+                let shares = std::cmp::min(shares_quote, shares_base);
+                let max_base = total_shares.calculate_earned(shares, balance);
+                let max_quote = total_shares.calculate_earned(shares, balance_quote);
+
+                (max_base, max_quote)
+            }
+        };
 
         Ok(Some(LpPositionInfo {
             vault_id: vault_index,
@@ -143,6 +183,8 @@ impl VaultsAccount {
             earned_quote_quantity: quote_quantity.get(),
             deposited_base_quantity: found_position.amount().get(),
             deposited_quote_quantity: found_position.quote_amount().get(),
+            max_withdraw_quote: max_withdraw_quote.get(),
+            max_withdraw_base: max_withdraw_base.get(),
         }))
     }
 
@@ -151,7 +193,7 @@ impl VaultsAccount {
         vault_index: u8,
         statement: &Uint8Array,
         current_time: u32,
-    ) -> Result<TradingPositionInfo, JsError> {
+    ) -> Result<Option<TradingPositionInfo>, JsError> {
         let vault = self.vault_checked_mut(vault_index)?;
         let user_statement = StatementAccount::load(statement);
 
@@ -164,7 +206,11 @@ impl VaultsAccount {
             receipt: Receipt::default(),
         };
 
-        let found_position = user_statement.statement.search(&position_search)?;
+        let found_position = match user_statement.statement.search(&position_search) {
+            Ok(position) => position,
+            Err(_) => return Ok(None),
+        };
+
         let receipt = found_position.receipt_not_mut();
 
         let (pnl, pnl_value) = match trade.calculate_position(receipt, oracle, quote_oracle, false)
@@ -195,7 +241,7 @@ impl VaultsAccount {
             }
         };
 
-        Ok(TradingPositionInfo {
+        Ok(Some(TradingPositionInfo {
             vault_id: vault_index,
             long,
             pnl,
@@ -206,7 +252,7 @@ impl VaultsAccount {
             locked: receipt.locked.get(),
             open_price: receipt.open_price.get(),
             open_value: receipt.open_value.get() as u64,
-        })
+        }))
     }
 
     #[wasm_bindgen]

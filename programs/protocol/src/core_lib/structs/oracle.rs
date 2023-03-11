@@ -137,9 +137,12 @@ impl Oracle {
 
     /// Updates the price and confidence of the oracle.
     pub fn update(&mut self, price: Price, confidence: Price, time: Time) -> Result<(), LibErrors> {
-        if confidence.big_div_up(price) > self.spread_limit {
-            return Err(LibErrors::ConfidenceTooHigh);
-        }
+        // update can occur anytime and there is no need for this check,
+        // it is checked in price getter
+
+        // if confidence.big_div_up(price) > self.spread_limit {
+        //     return Err(LibErrors::ConfidenceTooHigh);
+        // }
         self.price = price;
         self.confidence = confidence;
         self.last_update = time;
@@ -171,7 +174,7 @@ impl Oracle {
     /// Checks if either the confidence is too great to use spot price or the `use_spread` flag is
     /// set.
     pub fn should_use_spread(&self) -> bool {
-        self.use_spread || self.confidence / self.price > self.spread_limit
+        self.use_spread || self.confidence.big_div_up(self.price) > self.spread_limit
     }
 
     /// Calculates the value for a given quantity of token.

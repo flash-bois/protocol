@@ -197,8 +197,8 @@ pub mod protocol {
         OpenPosition::handler(ctx, vault, amount, long)
     }
 
-    pub fn close_position(ctx: Context<ClosePosition>, vault: u8, long: bool) -> Result<()> {
-        ClosePosition::handler(ctx, vault, long)
+    pub fn close_position(ctx: Context<ClosePosition>, vault: u8) -> Result<()> {
+        ClosePosition::handler(ctx, vault)
     }
 }
 

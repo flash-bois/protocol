@@ -111,6 +111,10 @@ export interface ICreateOracleInfo {
   exp: number
 }
 
+export interface IChangePrice extends IOracleCallable, ICreateOracleInfo {
+  price_feed: PublicKey
+}
+
 export interface IEnableOracleInfo {
   base: boolean
   decimals: number
@@ -614,6 +618,23 @@ export async function createStrategy({
     .rpc({ skipPreflight: true })
 
   await waitFor(program.provider.connection, sig)
+}
+
+export async function changeOraclePrice({
+  oracle_program,
+  price,
+  price_feed,
+  admin,
+  conf,
+  exp
+}: IChangePrice) {
+  const sig = await oracle_program.methods
+    .set(price, exp, conf)
+    .accountsStrict({ price: price_feed, signer: admin.publicKey })
+    .signers([admin])
+    .rpc({ skipPreflight: true })
+
+  await waitFor(oracle_program.provider.connection, sig)
 }
 
 export async function createAndEnableOracle({
