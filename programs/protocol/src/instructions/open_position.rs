@@ -3,7 +3,6 @@ use crate::{
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount};
 use checked_decimal_macro::Decimal;
 
 #[derive(Accounts)]
