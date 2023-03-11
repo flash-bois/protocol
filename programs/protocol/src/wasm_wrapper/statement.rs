@@ -61,6 +61,7 @@ pub struct TradingPositionInfo {
     pub vault_id: u8,
     pub long: bool,
     pub size: u64,
+    pub size_value: u64,
     pub locked: u64,
     pub open_price: u64,
     pub open_value: u64,
@@ -241,6 +242,8 @@ impl VaultsAccount {
             }
         };
 
+        let size_value = oracle.calculate_value(receipt.size).get() as u64;
+
         Ok(Some(TradingPositionInfo {
             vault_id: vault_index,
             long,
@@ -249,6 +252,7 @@ impl VaultsAccount {
             fees,
             fees_value,
             size: receipt.size.get(),
+            size_value,
             locked: receipt.locked.get(),
             open_price: receipt.open_price.get(),
             open_value: receipt.open_value.get() as u64,
