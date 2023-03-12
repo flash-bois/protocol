@@ -39,7 +39,7 @@ export interface IOracleCallable {
   admin: Keypair
 }
 
-export interface IProtocolWithOracleCallable extends IProtocolCallable, IOracleCallable { }
+export interface IProtocolWithOracleCallable extends IProtocolCallable, IOracleCallable {}
 
 export interface IStateWithVaults {
   state: PublicKey
@@ -76,7 +76,6 @@ export interface ILendingInfo {
 export interface ILendingInfoWithFees extends ILendingInfo {
   fees: IModifyFeeCurveInfo[]
 }
-
 
 export interface ISwappingInfoWithFees extends ISwappingInfo {
   fees: IModifyFeeCurveInfo[]
@@ -133,21 +132,20 @@ export interface IEnableOracleInfo {
 }
 
 export interface IEnableOracle extends IProtocolCallable, IEnableOracleInfo, IStateWithVaults {
-  oracle: PublicKey,
-  vault: number,
+  oracle: PublicKey
+  vault: number
 }
 
 export interface IEnableOracleKnownId extends IEnableOracleInfo {
-  oracle: PublicKey,
+  oracle: PublicKey
 }
 
-
-export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
+export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo {}
 
 export interface ICreateAndEnableOracle
   extends IProtocolWithOracleCallable,
-  IStateWithVaults,
-  ILocalOracleInfo {
+    IStateWithVaults,
+    ILocalOracleInfo {
   vault: number
 }
 
@@ -159,8 +157,6 @@ export interface IAddVaultInfo {
 export interface IAddVault extends IProtocolCallable, IStateWithVaults, IAddVaultInfo {
   minter: PublicKey
 }
-
-
 
 export interface IVaultInfo extends IAddVaultInfo {
   quote_oracle?: ILocalOracleInfo
@@ -176,14 +172,13 @@ export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
   vaults_infos: IVaultInfo[]
 }
 
-
 export interface IVaultInfoDevnet extends IAddVaultInfo {
   quote_oracle: IEnableOracleKnownId
   base_oracle: IEnableOracleKnownId
-  lending?: ILendingInfoWithFees,
+  lending?: ILendingInfoWithFees
   swapping?: ISwappingInfoWithFees
   trading?: ITradingInfo
-  strategies?: [IStrategyInfo]
+  strategies?: IStrategyInfo[]
 }
 
 export interface ICreateDevnetEnvironment extends IProtocolCallable {
@@ -675,7 +670,17 @@ export async function changeOraclePrice({
   await waitFor(oracle_program.provider.connection, sig)
 }
 
-export async function enableOracle({ program, admin, vault, decimals, skip_init, max_update_interval, base, oracle, ...params }: IEnableOracle) {
+export async function enableOracle({
+  program,
+  admin,
+  vault,
+  decimals,
+  skip_init,
+  max_update_interval,
+  base,
+  oracle,
+  ...params
+}: IEnableOracle) {
   const enable_sig = await program.methods
     .enableOracle(vault, decimals, base, skip_init, max_update_interval)
     .accounts({
@@ -850,7 +855,6 @@ export async function createDevnetEnvironment({
 
   return { ...state_with_vault, vaults_data }
 }
-
 
 export async function createTestEnvironment({
   vaults_infos,
