@@ -80,7 +80,6 @@ export interface ILendingInfoWithFees extends ILendingInfo {
   fees: IModifyFeeCurveInfo[]
 }
 
-
 export interface ISwappingInfoWithFees extends ISwappingInfo {
   fees: IModifyFeeCurveInfo[]
 }
@@ -136,14 +135,13 @@ export interface IEnableOracleInfo {
 }
 
 export interface IEnableOracle extends IProtocolCallable, IEnableOracleInfo, IStateWithVaults {
-  oracle: PublicKey,
-  vault: number,
+  oracle: PublicKey
+  vault: number
 }
 
 export interface IEnableOracleKnownId extends IEnableOracleInfo {
-  oracle: PublicKey,
+  oracle: PublicKey
 }
-
 
 export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
 
@@ -163,8 +161,6 @@ export interface IAddVault extends IProtocolCallable, IStateWithVaults, IAddVaul
   minter: PublicKey
 }
 
-
-
 export interface IVaultInfo extends IAddVaultInfo {
   quote_oracle?: ILocalOracleInfo
   base_oracle?: ILocalOracleInfo
@@ -179,14 +175,13 @@ export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
   vaults_infos: IVaultInfo[]
 }
 
-
 export interface IVaultInfoDevnet extends IAddVaultInfo {
   quote_oracle: IEnableOracleKnownId
   base_oracle: IEnableOracleKnownId
-  lending?: ILendingInfoWithFees,
+  lending?: ILendingInfoWithFees
   swapping?: ISwappingInfoWithFees
   trading?: ITradingInfo
-  strategies?: [IStrategyInfo]
+  strategies?: IStrategyInfo[]
 }
 
 export interface ICreateDevnetEnvironment extends IProtocolCallable, IStateWithVaults {
@@ -943,7 +938,6 @@ export async function createDevnetEnvironment({
 
   return vault_txs
 }
-
 
 export async function createTestEnvironment({
   vaults_infos,

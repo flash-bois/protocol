@@ -44,12 +44,21 @@ const main = async () => {
   }
 
   const vaults = VaultsAccount.load(accountInfo.data)
-  console.log(`vaults: ${vaults.vaults_len()}`)
-  console.log(`strategies : ${vaults.count_strategies(0)}`)
-  const stinfo = vaults.strategy_info(0, 0)
-  console.log(`strategy : ${stinfo.balance_base}, ${stinfo.balance_quote}`)
+  // console.log(`vaults: ${vaults.vaults_len()}`)
+  // console.log(`strategies : ${vaults.count_strategies(0)}`)
+  // const stinfo = vaults.strategy_info(0, 0)
+  // console.log(`strategy : ${stinfo.balance_base}, ${stinfo.balance_quote}`)
 
   console.log(`quote: ${new PublicKey(vaults.quote_token(0)).toString()}`)
   console.log(`base: ${new PublicKey(vaults.base_token(0)).toString()}`)
+
+  for (let i = 0; i < vaults.vaults_len(); i++) {
+    console.log(
+      `vault ${i} tokens: ${vaults.base_token(i).toString()},  ${vaults.quote_token(i).toString()}`
+    )
+    console.log(
+      `vault ${i} orales: ${vaults.oracle_base(i).toString()}, ${vaults.oracle_quote(i).toString()}`
+    )
+  }
 }
 main()

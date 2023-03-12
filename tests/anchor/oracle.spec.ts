@@ -12,7 +12,6 @@ import {
   createAccount
 } from '@solana/spl-token'
 import { createAccounts, initAccounts, sleep, waitFor } from '../utils/utils'
-import { SOL_ORACLE } from '../../microSdk'
 import { BN } from 'bn.js'
 
 const STATE_SEED = 'state'

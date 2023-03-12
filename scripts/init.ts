@@ -37,7 +37,7 @@ const [state_address, bump] = PublicKey.findProgramAddressSync(
 console.log(program.programId.toString())
 
 const main = async () => {
-  await connection.requestAirdrop(admin.publicKey, 1000000000)
+  // await connection.requestAirdrop(admin.publicKey, 1000000000)
 
   const sig = await program.methods
     .createState()
