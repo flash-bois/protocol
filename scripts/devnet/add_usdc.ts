@@ -80,7 +80,7 @@ const main = async () => {
   console.log('vault', sigv)
 
   const sig = await program.methods
-    .enableOracle(index, 9, true, false, 1)
+    .enableOracle(index, 6, true, false, 1)
     .accountsStrict({
       ...accounts,
       priceFeed: DEVNET_ORACLES.USDC
