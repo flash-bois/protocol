@@ -80,6 +80,7 @@ describe('User', () => {
     quote_mint = await createMint(connection, admin, minter.publicKey, null, 6)
 
     test_environment = await createTestEnvironment({
+      ix_only: false,
       admin,
       minter: minter.publicKey,
       oracle_program,

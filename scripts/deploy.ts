@@ -1,10 +1,10 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program, BN } from '@coral-xyz/anchor'
-import { clusterApiUrl, PublicKey, Signer } from '@solana/web3.js'
+import { clusterApiUrl, PublicKey, sendAndConfirmTransaction, Signer } from '@solana/web3.js'
 
 import { Protocol } from '../target/types/protocol'
 import { admin, minter } from '../microSdk'
-import { createDevnetEnvironment, IModifyCurveType } from '../tests/utils/utils'
+import { createDevnetEnvironment, IModifyCurveType, createStateWithVaults, IStateWithVaults } from '../tests/utils/utils'
 import { createMint } from '@solana/spl-token'
 
 anchor.setProvider(
@@ -25,13 +25,20 @@ const main = async () => {
   await connection.requestAirdrop(admin.publicKey, 1000000000)
 
   const quote_mint = await createMint(connection, admin, minter.publicKey, null, 6)
+  const base_mint1 = await createMint(connection, admin, minter.publicKey, null, 6)
+  const base_mint2 = await createMint(connection, admin, minter.publicKey, null, 6)
 
-  await createDevnetEnvironment({
+  const state_with_vault = await createStateWithVaults({ admin, ix_only: false, program }) as IStateWithVaults
+
+  const vault_txs = await createDevnetEnvironment({
+    ix_only: true,
+    ...state_with_vault,
     admin,
     minter: minter.publicKey,
     program,
     vaults_infos: [
       {
+        base_mint: base_mint1,
         quote_mint,
         base_oracle: {
           oracle: new PublicKey('EhgAdTrgxi4ZoVZLQx1n93vULucPpiFi2BQtz9RJr1y6'),
@@ -92,6 +99,7 @@ const main = async () => {
         ]
       },
       {
+        base_mint: base_mint2,
         quote_mint,
         base_oracle: {
           oracle: new PublicKey('A1WttWF7X3Rg6ZRpB2YQUFHCRh1kiXV8sKKLV3S9neJV'),
@@ -153,6 +161,19 @@ const main = async () => {
       }
     ]
   })
+
+  const len = vault_txs.length
+  let i = 0;
+
+  while (i < len) {
+    try {
+      sendAndConfirmTransaction(provider.connection, vault_txs[i], [admin], { 'skipPreflight': true })
+    } catch (err) {
+      continue;
+    }
+
+    i++
+  }
 }
 
 main()
