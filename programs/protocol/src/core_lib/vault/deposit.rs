@@ -105,7 +105,7 @@ impl Vault {
         if shares.lt(position.shares()) {
             position.decrease_amount(min(*position.amount(), base_quantity));
             position.decrease_quote_amount(min(*position.quote_amount(), quote_quantity));
-            position.increase_shares(shares);
+            position.decrease_shares(shares);
         } else {
             user_statement.delete_position(id)
         }
