@@ -27,7 +27,8 @@ const main = async () => {
   const quote_mint = await createMint(connection, admin, minter.publicKey, null, 6)
   const base_mint1 = await createMint(connection, admin, minter.publicKey, null, 6)
   const base_mint2 = await createMint(connection, admin, minter.publicKey, null, 6)
-
+  const base_mint3 = await createMint(connection, admin, minter.publicKey, null, 6)
+  const base_mint4 = await createMint(connection, admin, minter.publicKey, null, 6)
   const state_with_vault = await createStateWithVaults({ admin, ix_only: false, program }) as IStateWithVaults
 
   const vault_txs = await createDevnetEnvironment({
@@ -245,6 +246,7 @@ const main = async () => {
       },
       {
         quote_mint,
+        base_mint: base_mint3,
         base_oracle: {
           oracle: new PublicKey('E4v1BBgoso9s64TQvmyownAVJbhbEPGyzA3qn4n46qj9'), // MSOL
           base: true,
@@ -346,6 +348,7 @@ const main = async () => {
         ]
       },
       {
+        base_mint: base_mint4,
         quote_mint,
         base_oracle: {
           oracle: new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD'), // USDC
