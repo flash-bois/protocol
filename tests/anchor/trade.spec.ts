@@ -57,6 +57,7 @@ describe('Trading tests', function () {
     await waitFor(connection, user_sig)
 
     test_environment = await createTestEnvironment({
+      ix_only: false,
       admin,
       minter: minter.publicKey,
       oracle_program,

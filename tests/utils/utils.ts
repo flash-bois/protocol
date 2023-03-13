@@ -14,17 +14,21 @@ import {
   PublicKey,
   Signer,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY
+  SYSVAR_RENT_PUBKEY,
+  Transaction,
+  TransactionInstruction
 } from '@solana/web3.js'
 import { VaultsAccount } from '../../pkg/protocol'
 import { Protocol } from '../../target/types/protocol'
 import { STATE_SEED } from '../../microSdk'
 import { Oracle } from '../../target/types/oracle'
 import { program } from '@coral-xyz/anchor/dist/cjs/native/system'
+import { features } from '@coral-xyz/anchor/dist/cjs/utils'
 
 export interface IProtocolCallable {
   program: Program<Protocol>
   admin: Keypair
+  ix_only: boolean
 }
 
 export interface IProtocolCallableUser {
@@ -70,6 +74,14 @@ export interface ILendingInfo {
   initial_fee_time: number
   max_utilization: number
   max_borrow: BN
+}
+
+export interface ILendingInfoWithFees extends ILendingInfo {
+  fees: IModifyFeeCurveInfo[]
+}
+
+export interface ISwappingInfoWithFees extends ISwappingInfo {
+  fees: IModifyFeeCurveInfo[]
 }
 
 export interface IEnableLending extends IProtocolCallable, IStateWithVaults, ILendingInfo {
@@ -122,6 +134,15 @@ export interface IEnableOracleInfo {
   max_update_interval: number
 }
 
+export interface IEnableOracle extends IProtocolCallable, IEnableOracleInfo, IStateWithVaults {
+  oracle: PublicKey
+  vault: number
+}
+
+export interface IEnableOracleKnownId extends IEnableOracleInfo {
+  oracle: PublicKey
+}
+
 export interface ILocalOracleInfo extends ICreateOracleInfo, IEnableOracleInfo { }
 
 export interface ICreateAndEnableOracle
@@ -146,11 +167,26 @@ export interface IVaultInfo extends IAddVaultInfo {
   lending?: ILendingInfo
   swapping?: ISwappingInfo
   trading?: ITradingInfo
-  strategies?: [IStrategyInfo]
+  strategies?: IStrategyInfo[]
 }
+
 export interface ICreateTestEnvironment extends IProtocolWithOracleCallable {
   minter: PublicKey
   vaults_infos: IVaultInfo[]
+}
+
+export interface IVaultInfoDevnet extends IAddVaultInfo {
+  quote_oracle: IEnableOracleKnownId
+  base_oracle: IEnableOracleKnownId
+  lending?: ILendingInfoWithFees
+  swapping?: ISwappingInfoWithFees
+  trading?: ITradingInfo
+  strategies?: IStrategyInfo[]
+}
+
+export interface ICreateDevnetEnvironment extends IProtocolCallable, IStateWithVaults {
+  minter: PublicKey
+  vaults_infos: IVaultInfoDevnet[]
 }
 
 export type OracleKey = PublicKey
@@ -510,8 +546,9 @@ export async function modifyFeeCurve({
   a,
   b,
   c,
+  ix_only,
   ...params
-}: IModifyFeeCurve) {
+}: IModifyFeeCurve): Promise<TransactionInstruction | undefined> {
   let service: number
   let base: boolean
 
@@ -530,68 +567,115 @@ export async function modifyFeeCurve({
       break
   }
 
-  const sig = await program.methods
-    .modifyFeeCurve(vault, service, base, bound, a, b, c)
-    .accountsStrict({
-      admin: admin.publicKey,
-      ...params
-    })
-    .signers([admin])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .modifyFeeCurve(vault, service, base, bound, a, b, c)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...params
+      })
+      .signers([admin]).
+      instruction()
+  } else {
+    const sig = await program.methods
+      .modifyFeeCurve(vault, service, base, bound, a, b, c)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...params
+      })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(program.provider.connection, sig)
+    await waitFor(program.provider.connection, sig)
+  }
 }
 
-export async function enableTrading({ program, admin, ...params }: IEnableTrading) {
+export async function enableTrading({ program, admin, ...params }: IEnableTrading): Promise<TransactionInstruction | undefined> {
   const {
     collateral_ratio,
     liquidation_threshold,
     max_leverage,
     open_fee,
     vault,
+    ix_only,
     ...common_accounts
   } = params
 
-  const sig = await program.methods
-    .enableTrading(vault, open_fee, max_leverage, collateral_ratio, liquidation_threshold)
-    .accountsStrict({
-      admin: admin.publicKey,
-      ...common_accounts
-    })
-    .signers([admin])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .enableTrading(vault, open_fee, max_leverage, collateral_ratio, liquidation_threshold)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin]).
+      instruction()
+  } else {
+    const sig = await program.methods
+      .enableTrading(vault, open_fee, max_leverage, collateral_ratio, liquidation_threshold)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(program.provider.connection, sig)
+    await waitFor(program.provider.connection, sig)
+  }
+
+
 }
 
-export async function enableSwapping({ program, admin, ...params }: IEnableSwapping) {
+export async function enableSwapping({ program, admin, ix_only, ...params }: IEnableSwapping): Promise<TransactionInstruction | undefined> {
   const { vault, kept_fee, max_total_sold, ...common_accounts } = params
 
-  const sig = await program.methods
-    .enableSwapping(vault, kept_fee, max_total_sold)
-    .accountsStrict({
-      admin: admin.publicKey,
-      ...common_accounts
-    })
-    .signers([admin])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .enableSwapping(vault, kept_fee, max_total_sold)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin]).
+      instruction()
+  } else {
+    const sig = await program.methods
+      .enableSwapping(vault, kept_fee, max_total_sold)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(program.provider.connection, sig)
+    await waitFor(program.provider.connection, sig)
+  }
 }
 
-export async function enableLending({ program, admin, ...params }: IEnableLending) {
+export async function enableLending({ program, admin, ix_only, ...params }: IEnableLending): Promise<TransactionInstruction | undefined> {
   const { vault, initial_fee_time, max_borrow, max_utilization, ...common_accounts } = params
 
-  const sig = await program.methods
-    .enableLending(vault, max_utilization, max_borrow, initial_fee_time)
-    .accountsStrict({
-      admin: admin.publicKey,
-      ...common_accounts
-    })
-    .signers([admin])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .enableLending(vault, max_utilization, max_borrow, initial_fee_time)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin]).
+      instruction()
+  } else {
+    const sig = await program.methods
+      .enableLending(vault, max_utilization, max_borrow, initial_fee_time)
+      .accountsStrict({
+        admin: admin.publicKey,
+        ...common_accounts
+      })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(program.provider.connection, sig)
+    await waitFor(program.provider.connection, sig)
+  }
 }
 
 export async function createStrategy({
@@ -600,24 +684,32 @@ export async function createStrategy({
   admin,
 
   ...params
-}: ICreateStrategy) {
+}: ICreateStrategy): Promise<TransactionInstruction | undefined> {
   const {
     lend,
     swap,
     trade,
     collateral_ratio,
     liquidation_threshold,
-
+    ix_only,
     ...common_accounts
   } = params
 
-  const sig = await program.methods
-    .addStrategy(vault, lend, swap, trade, collateral_ratio, liquidation_threshold)
-    .accountsStrict({ admin: admin.publicKey, ...common_accounts })
-    .signers([admin])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .addStrategy(vault, lend, swap, trade, collateral_ratio, liquidation_threshold)
+      .accountsStrict({ admin: admin.publicKey, ...common_accounts })
+      .signers([admin]).
+      instruction()
+  } else {
+    const sig = await program.methods
+      .addStrategy(vault, lend, swap, trade, collateral_ratio, liquidation_threshold)
+      .accountsStrict({ admin: admin.publicKey, ...common_accounts })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(program.provider.connection, sig)
+    await waitFor(program.provider.connection, sig)
+  }
 }
 
 export async function changeOraclePrice({
@@ -635,6 +727,33 @@ export async function changeOraclePrice({
     .rpc({ skipPreflight: true })
 
   await waitFor(oracle_program.provider.connection, sig)
+}
+
+export async function enableOracle({ program, admin, vault, decimals, skip_init, max_update_interval, base, oracle, ix_only, ...params }: IEnableOracle): Promise<TransactionInstruction | undefined> {
+
+  if (ix_only) {
+    return await program.methods
+      .enableOracle(vault, decimals, base, skip_init, max_update_interval)
+      .accounts({
+        priceFeed: oracle,
+        admin: admin.publicKey,
+        ...params
+      })
+      .signers([admin]).
+      instruction()
+  } else {
+    const enable_sig = await program.methods
+      .enableOracle(vault, decimals, base, skip_init, max_update_interval)
+      .accounts({
+        priceFeed: oracle,
+        admin: admin.publicKey,
+        ...params
+      })
+      .signers([admin])
+      .rpc({ skipPreflight: true })
+
+    await waitFor(program.provider.connection, enable_sig)
+  }
 }
 
 export async function createAndEnableOracle({
@@ -692,7 +811,7 @@ export async function createAndEnableOracle({
   return oracle.publicKey
 }
 
-export async function createStateWithVaults(params: IProtocolCallable): Promise<IStateWithVaults> {
+export async function createStateWithVaults(params: IProtocolCallable): Promise<IStateWithVaults | TransactionInstruction> {
   const { admin, program } = params
 
   const vaults = Keypair.generate()
@@ -703,37 +822,128 @@ export async function createStateWithVaults(params: IProtocolCallable): Promise<
     program.programId
   )
 
-  const sig = await program.methods
-    .createState()
-    .accountsStrict({
-      admin: admin.publicKey,
-      state,
-      rent: SYSVAR_RENT_PUBKEY,
-      systemProgram: SystemProgram.programId,
-      vaults: vaults.publicKey
-    })
-    .preInstructions([
-      SystemProgram.createAccount({
-        fromPubkey: admin.publicKey,
-        newAccountPubkey: vaults.publicKey,
-        space: VaultsAccount.size(),
-        lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
-        programId: program.programId
+  if (params.ix_only) {
+    return await program.methods
+      .createState()
+      .accountsStrict({
+        admin: admin.publicKey,
+        state,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId,
+        vaults: vaults.publicKey
       })
-    ])
-    .signers([admin, vaults])
-    .rpc({ skipPreflight: true })
+      .preInstructions([
+        SystemProgram.createAccount({
+          fromPubkey: admin.publicKey,
+          newAccountPubkey: vaults.publicKey,
+          space: VaultsAccount.size(),
+          lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
+          programId: program.programId
+        })
+      ])
+      .signers([admin, vaults]).instruction()
+  } else {
 
-  await waitFor(connection, sig)
+    const sig = await program.methods
+      .createState()
+      .accountsStrict({
+        admin: admin.publicKey,
+        state,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId,
+        vaults: vaults.publicKey
+      })
+      .preInstructions([
+        SystemProgram.createAccount({
+          fromPubkey: admin.publicKey,
+          newAccountPubkey: vaults.publicKey,
+          space: VaultsAccount.size(),
+          lamports: await connection.getMinimumBalanceForRentExemption(VaultsAccount.size()),
+          programId: program.programId
+        })
+      ])
+      .signers([admin, vaults])
+      .rpc({ skipPreflight: true })
 
-  return { vaults: vaults.publicKey, state }
+    await waitFor(connection, sig)
+
+    return { vaults: vaults.publicKey, state }
+  }
+
+}
+
+
+
+export async function createDevnetEnvironment({
+  vaults_infos,
+  ...params
+}: ICreateDevnetEnvironment): Promise<Transaction[]> {
+  const vault_txs: Transaction[] = []
+
+  for (const id of vaults_infos.keys()) {
+    const {
+      base_oracle,
+      quote_oracle,
+      lending,
+      swapping,
+      trading,
+      strategies,
+      ...vault_info
+    }: IVaultInfoDevnet = vaults_infos[id]
+
+    const vault_tx = new Transaction()
+
+    const vault_ix = await addVault({ ...params, ...vault_info }) as TransactionInstruction
+    const oracle_base_ix = await enableOracle({ vault: id, ...base_oracle, ...params }) as TransactionInstruction
+    const oracle_quote_ix = await enableOracle({ vault: id, ...quote_oracle, ...params }) as TransactionInstruction
+
+    vault_tx.add(vault_ix)
+    vault_tx.add(oracle_base_ix)
+    vault_tx.add(oracle_quote_ix)
+
+    if (lending != undefined) {
+      const lending_ix = await enableLending({ vault: id, ...lending, ...params }) as TransactionInstruction
+      vault_tx.add(lending_ix)
+
+      for (const fee of lending.fees.values()) {
+        const fee_ix = await modifyFeeCurve({ vault: id, ...fee, ...params }) as TransactionInstruction
+        vault_tx.add(fee_ix)
+      }
+    }
+
+    if (swapping != undefined) {
+      const swapping_ix = await enableSwapping({ vault: id, ...swapping, ...params }) as TransactionInstruction
+      vault_tx.add(swapping_ix)
+
+      for (const fee of swapping.fees.values()) {
+        const fee_ix = await modifyFeeCurve({ vault: id, ...fee, ...params }) as TransactionInstruction
+        vault_tx.add(fee_ix)
+      }
+    }
+
+    if (trading != undefined) {
+      const trading_ix = await enableTrading({ vault: id, ...trading, ...params }) as TransactionInstruction
+      vault_tx.add(trading_ix)
+    }
+
+    if (strategies != undefined) {
+      for (const strategy of strategies) {
+        const strategy_ix = await createStrategy({ vault: id, ...strategy, ...params }) as TransactionInstruction
+        vault_tx.add(strategy_ix)
+      }
+    }
+
+    vault_txs.push(vault_tx)
+  }
+
+  return vault_txs
 }
 
 export async function createTestEnvironment({
   vaults_infos,
   ...params
 }: ICreateTestEnvironment): Promise<TestEnvironment> {
-  const state_with_vault = await createStateWithVaults(params)
+  const state_with_vault = await createStateWithVaults(params) as IStateWithVaults
   const vaults_data: IVaultAccounts[] = []
 
   for (const id of vaults_infos.keys()) {
@@ -785,7 +995,7 @@ export async function createTestEnvironment({
     }
 
     vaults_data.push({
-      ...vault_accounts,
+      ...vault_accounts as IVaultAccounts,
       base_oracle: base_oracle_key,
       quote_oracle: quote_oracle_key,
       remaining_accounts
@@ -801,8 +1011,9 @@ export async function addVault({
   program,
   base_mint,
   quote_mint,
+  ix_only,
   ...common_accounts
-}: IAddVault): Promise<IVaultAccounts> {
+}: IAddVault): Promise<IVaultAccounts | TransactionInstruction> {
   const connection = program.provider.connection
   const base = base_mint ?? (await createMint(connection, admin, minter, null, 6))
   const quote = quote_mint ?? (await createMint(connection, admin, minter, null, 6))
@@ -810,24 +1021,41 @@ export async function addVault({
   const reserveBase = Keypair.generate()
   const reserveQuote = Keypair.generate()
 
-  const sig = await program.methods
-    .initVault()
-    .accountsStrict({
-      ...common_accounts,
-      base,
-      quote,
-      reserveBase: reserveBase.publicKey,
-      reserveQuote: reserveQuote.publicKey,
-      admin: admin.publicKey,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId
-    })
-    .signers([admin, reserveBase, reserveQuote])
-    .rpc({ skipPreflight: true })
+  if (ix_only) {
+    return await program.methods
+      .initVault()
+      .accountsStrict({
+        ...common_accounts,
+        base,
+        quote,
+        reserveBase: reserveBase.publicKey,
+        reserveQuote: reserveQuote.publicKey,
+        admin: admin.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([admin, reserveBase, reserveQuote])
+      .instruction()
+  } else {
+    const sig = await program.methods
+      .initVault()
+      .accountsStrict({
+        ...common_accounts,
+        base,
+        quote,
+        reserveBase: reserveBase.publicKey,
+        reserveQuote: reserveQuote.publicKey,
+        admin: admin.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId
+      })
+      .signers([admin, reserveBase, reserveQuote])
+      .rpc({ skipPreflight: true })
 
-  await waitFor(connection, sig)
+    await waitFor(connection, sig)
 
-  return { base, quote, reserveBase: reserveBase.publicKey, reserveQuote: reserveQuote.publicKey }
+    return { base, quote, reserveBase: reserveBase.publicKey, reserveQuote: reserveQuote.publicKey }
+  }
 }
 
 export async function tryFetch(connection: Connection, address: PublicKey): Promise<Buffer> {

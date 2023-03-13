@@ -57,6 +57,7 @@ describe('Borrow tests', function () {
     await waitFor(connection, user_sig)
 
     test_environment = await createTestEnvironment({
+      ix_only: false,
       admin,
       minter: minter.publicKey,
       oracle_program,
@@ -177,6 +178,7 @@ describe('Borrow tests', function () {
 
   it('Set lend fee', async function () {
     await modifyFeeCurve({
+      ix_only: false,
       vault: 0,
       a: new BN(0),
       b: new BN(0),

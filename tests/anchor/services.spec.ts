@@ -91,6 +91,7 @@ describe('Services', () => {
 
   it('enable trade', async () => {
     await enableTrading({
+      ix_only: false,
       program,
       admin,
       state: accounts.state,
