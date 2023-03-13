@@ -82,8 +82,12 @@ impl Vault {
                         ServiceType::Trade,
                     )?,
                     BalanceChange::Loss(loss) => {
-                        self.unlock_base(unlock, total_locked, ServiceType::Trade)?;
-                        self.profit_base(loss, total_locked, ServiceType::Trade)?;
+                        self.unlock_with_profit_base(
+                            unlock,
+                            loss,
+                            total_locked,
+                            ServiceType::Trade,
+                        )?;
                     }
                 };
 
@@ -100,9 +104,12 @@ impl Vault {
                         ServiceType::Trade,
                     )?,
                     BalanceChange::Loss(loss) => {
-                        self.unlock_quote(unlock, total_locked, ServiceType::Trade)?;
-                        // TODO: do something with system profit
-                        self.profit_quote(loss, total_locked, ServiceType::Trade)?
+                        self.unlock_with_profit_quote(
+                            unlock,
+                            loss,
+                            total_locked,
+                            ServiceType::Trade,
+                        )?;
                     }
                 }
                 (change, Side::Short)
@@ -112,5 +119,216 @@ impl Vault {
         user_statement.delete_position(position_id);
 
         Ok(change)
+    }
+}
+
+#[cfg(test)]
+mod vault_trade {
+    use super::*;
+    use crate::core_lib::{
+        decimal::{DecimalPlaces, Fraction, Price, Utilization},
+        structs::FeeCurve,
+        Token,
+    };
+    use checked_decimal_macro::{Decimal, Factories};
+
+    fn test_vault(user: &mut UserStatement) -> Result<Vault, LibErrors> {
+        let mut vault = Vault::default();
+
+        vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::from_scale(5, 3),
+            Price::from_scale(2, 2),
+            0,
+            Token::Base,
+            0,
+        )?;
+
+        vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 3),
+            Price::from_scale(2, 2),
+            0,
+            Token::Quote,
+            0,
+        )?;
+
+        vault.enable_lending(
+            FeeCurve::default(),
+            Utilization::from_integer(1),
+            Quantity::new(u64::MAX),
+            0,
+            0,
+        )?;
+
+        vault.enable_swapping(
+            FeeCurve::default(),
+            FeeCurve::default(),
+            Fraction::from_scale(1, 1),
+        )?;
+
+        vault.enable_trading(
+            Fraction::new(100),
+            Fraction::from_integer(3),
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+            0,
+        )?;
+
+        vault.add_strategy(
+            true,
+            true,
+            true,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
+
+        vault.add_strategy(
+            true,
+            false,
+            true,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
+
+        vault.add_strategy(
+            false,
+            true,
+            true,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
+
+        vault.deposit(user, Token::Base, Quantity::new(397512473195), 0)?;
+        vault.deposit(user, Token::Base, Quantity::new(8432214580093), 1)?;
+        vault.deposit(user, Token::Base, Quantity::new(6334216739056), 2)?;
+
+        Ok(vault)
+    }
+
+    #[test]
+    fn check_unlock_profit_long() -> Result<(), LibErrors> {
+        let mut user = UserStatement::default();
+        let mut vault = test_vault(&mut user)?;
+        user.refresh(&mut [vault])?;
+
+        let mut sum_before = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum_before += strategy.available();
+        }
+
+        vault.open_position(&mut user, Quantity::new(2000000), Side::Long)?;
+
+        vault
+            .oracle_mut()?
+            .update(Price::new(2100000000), Price::new(2000000), 0)?;
+
+        let (balance_change, side) = vault.close_position(&mut user, 0)?;
+
+        let mut sum = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum += strategy.available();
+        }
+
+        assert_eq!(balance_change.quantity(), Quantity::new(95038));
+        assert_eq!(sum, sum_before - balance_change.quantity());
+        assert_eq!(side, Side::Long);
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_unlock_loss_long() -> Result<(), LibErrors> {
+        let mut user = UserStatement::default();
+        let mut vault = test_vault(&mut user)?;
+        user.refresh(&mut [vault])?;
+
+        let mut sum_before = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum_before += strategy.available();
+        }
+
+        vault.open_position(&mut user, Quantity::new(2000000), Side::Long)?;
+
+        vault
+            .oracle_mut()?
+            .update(Price::new(1900000000), Price::new(2000000), 0)?;
+
+        let (balance_change, side) = vault.close_position(&mut user, 0)?;
+
+        let mut sum = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum += strategy.available();
+        }
+
+        assert_eq!(balance_change.quantity(), Quantity::new(105464));
+        assert_eq!(sum, sum_before + balance_change.quantity());
+        assert_eq!(side, Side::Long);
+
+        Ok(())
+    }
+
+    #[test]
+    fn unlock_with_short_profit() -> Result<(), LibErrors> {
+        let mut user = UserStatement::default();
+        let mut vault = test_vault(&mut user)?;
+        user.refresh(&mut [vault])?;
+
+        let mut sum_before = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum_before += strategy.available_quote();
+        }
+
+        vault.open_position(&mut user, Quantity::new(2000000), Side::Short)?;
+
+        vault
+            .oracle_mut()?
+            .update(Price::new(1900000000), Price::new(2000000), 0)?;
+
+        let (balance_change, side) = vault.close_position(&mut user, 0)?;
+
+        let mut sum = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum += strategy.available_quote();
+        }
+
+        assert_eq!(balance_change.quantity(), Quantity::new(199600));
+        assert_eq!(sum, sum_before - balance_change.quantity());
+        assert_eq!(side, Side::Short);
+
+        Ok(())
+    }
+
+    #[test]
+    fn unlock_with_short_loss() -> Result<(), LibErrors> {
+        let mut user = UserStatement::default();
+        let mut vault = test_vault(&mut user)?;
+        user.refresh(&mut [vault])?;
+
+        let mut sum_before = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum_before += strategy.available_quote();
+        }
+
+        vault.open_position(&mut user, Quantity::new(2000000), Side::Short)?;
+
+        vault
+            .oracle_mut()?
+            .update(Price::new(2100000000), Price::new(2000000), 0)?;
+
+        let (balance_change, side) = vault.close_position(&mut user, 0)?;
+
+        let mut sum = Quantity::new(0);
+        for strategy in vault.strategies.iter().unwrap() {
+            sum += strategy.available_quote();
+        }
+
+        assert_eq!(balance_change.quantity(), Quantity::new(200400));
+        assert_eq!(sum, sum_before + balance_change.quantity());
+        assert_eq!(side, Side::Short);
+
+        Ok(())
     }
 }
