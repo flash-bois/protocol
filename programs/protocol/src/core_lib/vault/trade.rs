@@ -5,6 +5,7 @@ use crate::core_lib::{
     structs::{Receipt, Side},
     user::{Position, UserStatement},
 };
+use checked_decimal_macro::Decimal;
 
 use super::Vault;
 
@@ -15,6 +16,10 @@ impl Vault {
         quantity: Quantity,
         side: Side,
     ) -> Result<(), LibErrors> {
+        if quantity == Quantity::new(0) {
+            return Err(LibErrors::ZeroAmountInput);
+        }
+
         let collateral = user_statement.permitted_debt();
 
         let position_temp = Position::Trading {

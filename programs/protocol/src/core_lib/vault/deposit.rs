@@ -67,6 +67,10 @@ impl Vault {
         amount: Quantity,
         strategy_index: u8,
     ) -> Result<(Quantity, Quantity), LibErrors> {
+        if amount == Quantity::new(0) {
+            return Err(LibErrors::ZeroAmountInput);
+        }
+
         let position_temp = Position::LiquidityProvide {
             vault_index: self.id,
             strategy_index,
@@ -120,6 +124,10 @@ impl Vault {
         amount: Quantity,
         strategy_index: u8,
     ) -> Result<Quantity, LibErrors> {
+        if amount == Quantity::new(0) {
+            return Err(LibErrors::ZeroAmountInput);
+        }
+
         let base_oracle = self.oracle()?;
         let quote_oracle = self.quote_oracle()?;
 
@@ -168,7 +176,7 @@ impl Vault {
 
         match user_statement.search_mut(&temp_position) {
             Ok(position) => {
-                position.increase_amount(amount);
+                position.increase_amount(base_quantity);
                 position.increase_quote_amount(quote_quantity);
                 position.increase_shares(shares);
             }
@@ -189,7 +197,7 @@ mod tests {
     use crate::core_lib::Vault;
 
     #[test]
-    fn deposit_base_and_quote() -> Result<(), LibErrors> {
+    fn deposit() -> Result<(), LibErrors> {
         let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
         let user_statement = &mut UserStatement::default();
 
@@ -202,16 +210,83 @@ mod tests {
             Quantity::new(2000000)
         );
 
+        let pos = Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(0),
+            amount: Quantity::new(0),
+            quote_amount: Quantity::new(0),
+        };
+
+        let found_pos = user_statement.search(&pos)?;
+
+        assert_eq!(*found_pos.amount(), Quantity::new(4000000));
+        assert_eq!(*found_pos.quote_amount(), Quantity::new(8000000));
+        assert_eq!(*found_pos.shares(), Shares::new(4000000));
+        assert_eq!(vault.strategy(0)?.total_shares, *found_pos.shares());
+
+        let second_user_statement = &mut UserStatement::default();
+
+        assert_eq!(
+            vault.deposit(
+                second_user_statement,
+                Token::Base,
+                Quantity::new(4000000),
+                0
+            )?,
+            Quantity::new(8000000)
+        );
+
+        let found_pos = second_user_statement.search(&pos)?;
+
+        assert_eq!(*found_pos.amount(), Quantity::new(4000000));
+        assert_eq!(*found_pos.quote_amount(), Quantity::new(8000000));
+        assert_eq!(*found_pos.shares(), Shares::new(4000000));
+        assert_eq!(
+            vault.strategy(0)?.total_shares / Shares::from_integer(2),
+            *found_pos.shares()
+        );
+
         Ok(())
     }
 
     #[test]
-    fn test_deposit() {
+    fn withdraw() -> Result<(), LibErrors> {
         let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
         let user_statement = &mut UserStatement::default();
+        let second_user_statement = &mut UserStatement::default();
 
-        vault
-            .deposit(user_statement, Token::Base, Quantity::new(100), 0)
-            .expect("deposit failed");
+        vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0)?;
+        vault.deposit(user_statement, Token::Quote, Quantity::new(4000000), 0)?;
+
+        vault.deposit(
+            second_user_statement,
+            Token::Base,
+            Quantity::new(4000000),
+            0,
+        )?;
+
+        let (base, quote) = vault.withdraw(
+            second_user_statement,
+            Token::Base,
+            Quantity::new(4000005),
+            0,
+        )?;
+
+        assert_eq!(base, Quantity::new(4000000));
+        assert_eq!(quote, Quantity::new(8000000));
+
+        vault.deposit(
+            second_user_statement,
+            Token::Base,
+            Quantity::new(4000000),
+            0,
+        )?;
+
+        assert!(vault
+            .withdraw(second_user_statement, Token::Base, Quantity::new(0), 0)
+            .is_err());
+
+        Ok(())
     }
 }
