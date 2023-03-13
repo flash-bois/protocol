@@ -118,7 +118,7 @@ impl VaultsAccount {
 
     #[wasm_bindgen]
     pub fn base_reserve(&self, index: u8) -> Result<Uint8Array, JsError> {
-        Ok(to_buffer(&self.account.keys_checked(index)?.base_reserve))
+        Ok(to_buffer(&self.keys_checked(index)?.base_reserve))
     }
 
     #[wasm_bindgen]

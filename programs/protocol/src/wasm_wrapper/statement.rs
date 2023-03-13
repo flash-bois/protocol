@@ -189,6 +189,7 @@ impl VaultsAccount {
         }))
     }
 
+    #[wasm_bindgen]
     pub fn get_trading_position_info(
         &mut self,
         vault_index: u8,
