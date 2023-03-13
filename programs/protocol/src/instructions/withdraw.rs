@@ -1,5 +1,9 @@
 use crate::{
-    core_lib::{decimal::Quantity, errors::LibErrors, Token},
+    core_lib::{
+        decimal::{BothQuantities, Quantity},
+        errors::LibErrors,
+        Token,
+    },
     structs::{State, Statement, Vaults},
 };
 use anchor_lang::prelude::*;
@@ -60,7 +64,7 @@ impl<'info> Withdraw<'info> {
 
         let vault = vaults.vault_checked_mut(vault)?;
 
-        let (base_amount, quote_amount) = vault.withdraw(
+        let BothQuantities { base, quote } = vault.withdraw(
             statement,
             if base { Token::Base } else { Token::Quote },
             Quantity::new(quantity),
@@ -76,14 +80,8 @@ impl<'info> Withdraw<'info> {
         let seeds = &[b"state".as_ref(), &[ctx.accounts.state.load()?.bump]];
         let signer = &[&seeds[..]];
 
-        transfer(
-            ctx.accounts.send_base().with_signer(signer),
-            base_amount.get(),
-        )?;
-        transfer(
-            ctx.accounts.send_quote().with_signer(signer),
-            quote_amount.get(),
-        )?;
+        transfer(ctx.accounts.send_base().with_signer(signer), base.get())?;
+        transfer(ctx.accounts.send_quote().with_signer(signer), quote.get())?;
 
         Ok(())
     }
