@@ -194,6 +194,13 @@ mod tests {
         fee.add_constant_fee(Fraction::new(5000), Fraction::from_integer(1));
 
         fee.compounded_apy(Fraction::new(1), 365 * 24 * 60 * 60);
+
+        let mut fee = FeeCurve::default();
+        fee.add_constant_fee(Fraction::new(10), Fraction::from_integer(1));
+
+        let fee = fee.compounded_apy(Fraction::new(1), 24 * 60 * 60);
+
+        assert!(fee > PreciseApy::from_scale(24, 5) && fee < PreciseApy::from_scale(24003, 6));
     }
 
     #[test]
