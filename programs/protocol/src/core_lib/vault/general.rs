@@ -219,7 +219,7 @@ impl Vault {
             service,
             Strategy::locked,
             Strategy::unlock_base,
-            Strategy::increase_balance_base,
+            Strategy::decrease_balance_base,
         )
     }
 
@@ -235,38 +235,44 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_quote,
             Strategy::unlock_quote,
             Strategy::decrease_balance_quote,
         )
     }
 
-    pub fn profit_base(
+    pub fn unlock_with_profit_base(
         &mut self,
-        quantity: Quantity,
+        unlock: Quantity,
+        loss: Quantity,
         total_locked: Quantity,
         service: ServiceType,
     ) -> Result<(), LibErrors> {
-        self.split(
-            quantity,
+        self.double_split(
+            unlock,
+            loss,
             total_locked,
             service,
             Strategy::locked,
+            Strategy::unlock_base,
             Strategy::increase_balance_base,
         )
     }
 
-    pub fn profit_quote(
+    pub fn unlock_with_profit_quote(
         &mut self,
-        quantity: Quantity,
+        unlock: Quantity,
+        loss: Quantity,
         total_locked: Quantity,
         service: ServiceType,
     ) -> Result<(), LibErrors> {
-        self.split(
-            quantity,
+        self.double_split(
+            unlock,
+            loss,
             total_locked,
             service,
             Strategy::locked_quote,
+            Strategy::unlock_quote,
             Strategy::increase_balance_quote,
         )
     }
