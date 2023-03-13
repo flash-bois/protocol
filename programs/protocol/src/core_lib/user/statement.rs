@@ -197,7 +197,7 @@ mod position_management {
     use super::*;
 
     #[test]
-    fn default_positions() {
+    fn default_positions() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         assert!(user_statement.positions.iter().is_none(), "should be empty");
@@ -206,7 +206,7 @@ mod position_management {
 
         // add 5 positions with default values
         for _ in 0..5 {
-            user_statement.add_position(def_pos.clone()).unwrap();
+            user_statement.add_position(def_pos.clone())?;
         }
 
         let elements = user_statement.positions.iter().unwrap();
@@ -222,10 +222,12 @@ mod position_management {
         }
 
         assert!(user_statement.positions.iter().is_none(), "should be empty");
+
+        Ok(())
     }
 
     #[test]
-    fn add_position() {
+    fn add_position() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         let mut first_vault = Vault::default();
@@ -234,136 +236,110 @@ mod position_management {
         first_vault.id = 0;
         second_vault.id = 1;
 
-        first_vault
-            .enable_oracle(
-                DecimalPlaces::Six,
-                Price::from_integer(1),
-                Price::from_scale(1, 5),
-                Price::from_scale(5, 3),
-                0,
-                Token::Base,
-                0,
-            )
-            .unwrap();
+        first_vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 5),
+            Price::from_scale(5, 3),
+            0,
+            Token::Base,
+            0,
+        )?;
 
-        first_vault
-            .enable_oracle(
-                DecimalPlaces::Six,
-                Price::from_integer(1),
-                Price::from_scale(1, 5),
-                Price::from_scale(5, 3),
-                0,
-                Token::Quote,
-                0,
-            )
-            .unwrap();
+        first_vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 5),
+            Price::from_scale(5, 3),
+            0,
+            Token::Quote,
+            0,
+        )?;
 
-        first_vault
-            .enable_lending(
-                FeeCurve::default(),
-                Utilization::from_scale(8, 1),
-                Quantity::new(u64::MAX),
-                0,
-                0,
-            )
-            .unwrap();
+        first_vault.enable_lending(
+            FeeCurve::default(),
+            Utilization::from_scale(8, 1),
+            Quantity::new(u64::MAX),
+            0,
+            0,
+        )?;
 
-        first_vault
-            .add_strategy(
-                true,
-                false,
-                false,
-                Fraction::from_integer(1),
-                Fraction::from_integer(1),
-            )
-            .unwrap();
+        first_vault.add_strategy(
+            true,
+            false,
+            false,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
 
-        second_vault
-            .enable_oracle(
-                DecimalPlaces::Six,
-                Price::from_integer(2),
-                Price::from_scale(1, 5),
-                Price::from_scale(5, 3),
-                0,
-                Token::Base,
-                0,
-            )
-            .unwrap();
+        second_vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::from_scale(1, 5),
+            Price::from_scale(5, 3),
+            0,
+            Token::Base,
+            0,
+        )?;
 
-        second_vault
-            .enable_oracle(
-                DecimalPlaces::Six,
-                Price::from_integer(1),
-                Price::from_scale(1, 5),
-                Price::from_scale(5, 3),
-                0,
-                Token::Quote,
-                0,
-            )
-            .unwrap();
+        second_vault.enable_oracle(
+            DecimalPlaces::Six,
+            Price::from_integer(1),
+            Price::from_scale(1, 5),
+            Price::from_scale(5, 3),
+            0,
+            Token::Quote,
+            0,
+        )?;
 
-        second_vault
-            .enable_lending(
-                FeeCurve::default(),
-                Utilization::from_scale(8, 1),
-                Quantity::new(u64::MAX),
-                0,
-                0,
-            )
-            .unwrap();
+        second_vault.enable_lending(
+            FeeCurve::default(),
+            Utilization::from_scale(8, 1),
+            Quantity::new(u64::MAX),
+            0,
+            0,
+        )?;
 
-        second_vault
-            .add_strategy(
-                true,
-                false,
-                false,
-                Fraction::from_integer(1),
-                Fraction::from_integer(1),
-            )
-            .unwrap();
+        second_vault.add_strategy(
+            true,
+            false,
+            false,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
 
         let mut vaults = [first_vault, second_vault];
 
-        vaults[0]
-            .deposit(&mut user_statement, Token::Base, Quantity::new(10000000), 0)
-            .unwrap();
+        vaults[0].deposit(&mut user_statement, Token::Base, Quantity::new(10000000), 0)?;
 
-        vaults[1]
-            .deposit(&mut user_statement, Token::Base, Quantity::new(5000000), 0)
-            .unwrap();
+        vaults[1].deposit(&mut user_statement, Token::Base, Quantity::new(5000000), 0)?;
 
-        user_statement
-            .add_position(Position::LiquidityProvide {
-                vault_index: 0,
-                strategy_index: 0,
-                shares: Shares::new(5000000),
-                amount: Quantity::new(5000000),
-                quote_amount: Quantity::new(5000000),
-            })
-            .unwrap();
+        user_statement.add_position(Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(5000000),
+            amount: Quantity::new(5000000),
+            quote_amount: Quantity::new(5000000),
+        })?;
 
-        user_statement.refresh(&mut vaults).unwrap();
+        user_statement.refresh(&mut vaults)?;
 
-        vaults[0]
-            .borrow(&mut user_statement, Quantity::new(5000000))
-            .unwrap();
+        vaults[0].borrow(&mut user_statement, Quantity::new(5000000))?;
 
-        user_statement.refresh(&mut vaults).unwrap();
+        user_statement.refresh(&mut vaults)?;
 
-        vaults[1]
-            .borrow(&mut user_statement, Quantity::new(4000000))
-            .unwrap();
+        vaults[1].borrow(&mut user_statement, Quantity::new(4000000))?;
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 5);
 
-        user_statement.refresh(&mut vaults).unwrap();
+        user_statement.refresh(&mut vaults)?;
         assert_eq!(
-            user_statement.collaterals_values(&vaults).unwrap().exact,
+            user_statement.collaterals_values(&vaults)?.exact,
             Value::new(50000000000)
         );
 
         assert_eq!(
-            user_statement.liabilities_value(&vaults).unwrap(),
+            user_statement.liabilities_value(&vaults)?,
             Value::new(13000000000)
         );
 
@@ -371,10 +347,12 @@ mod position_management {
             user_statement.permitted_debt(),
             Value::new(50000000000) - Value::new(13000000000)
         );
+
+        Ok(())
     }
 
     #[test]
-    fn delete_position_in_the_middle() {
+    fn delete_position_in_the_middle() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         let new_position = Position::LiquidityProvide {
@@ -385,33 +363,27 @@ mod position_management {
             quote_amount: Quantity::new(0),
         };
 
-        user_statement
-            .add_position(Position::LiquidityProvide {
-                vault_index: 0,
-                strategy_index: 0,
-                shares: Shares::new(1234),
-                amount: Quantity::new(5678),
-                quote_amount: Quantity::new(0),
-            })
-            .unwrap();
+        user_statement.add_position(Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(1234),
+            amount: Quantity::new(5678),
+            quote_amount: Quantity::new(0),
+        })?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(91011),
-                amount: Quantity::new(121314),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(91011),
+            amount: Quantity::new(121314),
+        })?;
 
-        user_statement.add_position(new_position.clone()).unwrap();
+        user_statement.add_position(new_position.clone())?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(1920),
-                amount: Quantity::new(2122),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(1920),
+            amount: Quantity::new(2122),
+        })?;
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 4);
 
@@ -425,10 +397,12 @@ mod position_management {
 
         assert_eq!(*new_on_index_1.shares(), *new_position.shares());
         assert_eq!(*new_on_index_1.amount(), *new_position.amount());
+
+        Ok(())
     }
 
     #[test]
-    fn delete_position_in_the_end() {
+    fn delete_position_in_the_end() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         let new_position = Position::LiquidityProvide {
@@ -439,33 +413,27 @@ mod position_management {
             quote_amount: Quantity::new(0),
         };
 
-        user_statement
-            .add_position(Position::LiquidityProvide {
-                vault_index: 0,
-                strategy_index: 0,
-                shares: Shares::new(1234),
-                amount: Quantity::new(5678),
-                quote_amount: Quantity::new(0),
-            })
-            .unwrap();
+        user_statement.add_position(Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(1234),
+            amount: Quantity::new(5678),
+            quote_amount: Quantity::new(0),
+        })?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(91011),
-                amount: Quantity::new(121314),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(91011),
+            amount: Quantity::new(121314),
+        })?;
 
-        user_statement.add_position(new_position.clone()).unwrap();
+        user_statement.add_position(new_position.clone())?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(1920),
-                amount: Quantity::new(2122),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(1920),
+            amount: Quantity::new(2122),
+        })?;
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 4);
 
@@ -479,10 +447,12 @@ mod position_management {
 
         assert_eq!(*new_on_index_1.shares(), *new_position.shares());
         assert_eq!(*new_on_index_1.amount(), *new_position.amount());
+
+        Ok(())
     }
 
     #[test]
-    fn delete_position_in_the_beginning() {
+    fn delete_position_in_the_beginning() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         let new_position = Position::LiquidityProvide {
@@ -493,33 +463,27 @@ mod position_management {
             quote_amount: Quantity::new(0),
         };
 
-        user_statement
-            .add_position(Position::LiquidityProvide {
-                vault_index: 0,
-                strategy_index: 0,
-                shares: Shares::new(1234),
-                amount: Quantity::new(5678),
-                quote_amount: Quantity::new(0),
-            })
-            .unwrap();
+        user_statement.add_position(Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(1234),
+            amount: Quantity::new(5678),
+            quote_amount: Quantity::new(0),
+        })?;
 
-        user_statement.add_position(new_position.clone()).unwrap();
+        user_statement.add_position(new_position.clone())?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(91011),
-                amount: Quantity::new(121314),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(91011),
+            amount: Quantity::new(121314),
+        })?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(1920),
-                amount: Quantity::new(2122),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(1920),
+            amount: Quantity::new(2122),
+        })?;
 
         assert_eq!(user_statement.positions.iter().unwrap().len(), 4);
 
@@ -533,10 +497,12 @@ mod position_management {
 
         assert_eq!(*new_on_index_1.shares(), *new_position.shares());
         assert_eq!(*new_on_index_1.amount(), *new_position.amount());
+
+        Ok(())
     }
 
     #[test]
-    fn finding_position() {
+    fn finding_position() -> Result<(), LibErrors> {
         let mut user_statement = UserStatement::default();
 
         let search_position = Position::LiquidityProvide {
@@ -547,35 +513,27 @@ mod position_management {
             quote_amount: Quantity::new(0),
         };
 
-        user_statement
-            .add_position(Position::LiquidityProvide {
-                vault_index: 0,
-                strategy_index: 0,
-                shares: Shares::new(1234),
-                amount: Quantity::new(5678),
-                quote_amount: Quantity::new(0),
-            })
-            .unwrap();
+        user_statement.add_position(Position::LiquidityProvide {
+            vault_index: 0,
+            strategy_index: 0,
+            shares: Shares::new(1234),
+            amount: Quantity::new(5678),
+            quote_amount: Quantity::new(0),
+        })?;
 
-        user_statement
-            .add_position(search_position.clone())
-            .unwrap();
+        user_statement.add_position(search_position.clone())?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(91011),
-                amount: Quantity::new(121314),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(91011),
+            amount: Quantity::new(121314),
+        })?;
 
-        user_statement
-            .add_position(Position::Borrow {
-                vault_index: 0,
-                shares: Shares::new(1920),
-                amount: Quantity::new(2122),
-            })
-            .unwrap();
+        user_statement.add_position(Position::Borrow {
+            vault_index: 0,
+            shares: Shares::new(1920),
+            amount: Quantity::new(2122),
+        })?;
 
         let modified_search_position = Position::LiquidityProvide {
             vault_index: 0,
@@ -585,9 +543,7 @@ mod position_management {
             quote_amount: Quantity::new(0),
         };
 
-        let found_position = user_statement
-            .search_mut(&modified_search_position)
-            .unwrap();
+        let found_position = user_statement.search_mut(&modified_search_position)?;
 
         assert_eq!(*found_position.shares(), *search_position.shares());
         assert_eq!(*found_position.amount(), *search_position.amount());
@@ -605,15 +561,14 @@ mod position_management {
             .is_err());
 
         assert_eq!(
-            user_statement
-                .search_mut_id(&modified_search_position)
-                .unwrap()
-                .0,
+            user_statement.search_mut_id(&modified_search_position)?.0,
             1
         );
 
         assert!(user_statement
             .search_mut_id(&modified_non_matching_search_position)
             .is_err());
+
+        Ok(())
     }
 }

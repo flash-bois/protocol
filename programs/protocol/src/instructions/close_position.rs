@@ -61,10 +61,7 @@ impl<'info> ClosePosition<'info> {
 
         match balance_change {
             BalanceChange::Profit(profit_amount) => {
-                let seeds = &[
-                    b"state".as_ref(),
-                    &[ctx.accounts.state.load().unwrap().bump],
-                ];
+                let seeds = &[b"state".as_ref(), &[ctx.accounts.state.load()?.bump]];
                 let signer = &[&seeds[..]];
 
                 let send_ctx = match side {

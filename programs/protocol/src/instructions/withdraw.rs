@@ -73,10 +73,7 @@ impl<'info> Withdraw<'info> {
             return Err(LibErrors::UserNotCollateralized.into());
         }
 
-        let seeds = &[
-            b"state".as_ref(),
-            &[ctx.accounts.state.load().unwrap().bump],
-        ];
+        let seeds = &[b"state".as_ref(), &[ctx.accounts.state.load()?.bump]];
         let signer = &[&seeds[..]];
 
         transfer(

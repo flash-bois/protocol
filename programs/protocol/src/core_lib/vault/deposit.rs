@@ -189,22 +189,20 @@ mod tests {
     use crate::core_lib::Vault;
 
     #[test]
-    fn deposit_base_and_quote() {
+    fn deposit_base_and_quote() -> Result<(), LibErrors> {
         let mut vault = Vault::new_vault_for_tests().expect("couldn't create vault");
         let user_statement = &mut UserStatement::default();
 
         assert_eq!(
-            vault
-                .deposit(user_statement, Token::Base, Quantity::new(2000000), 0)
-                .unwrap(),
+            vault.deposit(user_statement, Token::Base, Quantity::new(2000000), 0)?,
             Quantity::new(4000000)
         );
         assert_eq!(
-            vault
-                .deposit(user_statement, Token::Quote, Quantity::new(4000000), 0)
-                .unwrap(),
+            vault.deposit(user_statement, Token::Quote, Quantity::new(4000000), 0)?,
             Quantity::new(2000000)
         );
+
+        Ok(())
     }
 
     #[test]

@@ -1,12 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    core_lib::{decimal::Fraction, errors::LibErrors, structs::Side, Vault},
+    core_lib::{errors::LibErrors, structs::Side, Vault},
     structs::{VaultKeys, Vaults},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
 };
-use checked_decimal_macro::{BetweenDecimals, Decimal};
+use checked_decimal_macro::Decimal;
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 

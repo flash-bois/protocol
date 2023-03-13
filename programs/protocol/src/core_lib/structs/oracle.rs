@@ -266,12 +266,15 @@ impl Oracle {
 mod test_oracle {
     use checked_decimal_macro::{Decimal, Factories};
 
-    use crate::core_lib::decimal::{DecimalPlaces, Price, Quantity, Value};
+    use crate::core_lib::{
+        decimal::{DecimalPlaces, Price, Quantity, Value},
+        errors::LibErrors,
+    };
 
     use super::Oracle;
 
     #[test]
-    fn test_update_oracle() {
+    fn test_update_oracle() -> Result<(), LibErrors> {
         let mut oracle = Oracle::new(
             DecimalPlaces::Six,
             Price::from_integer(2),
@@ -281,13 +284,13 @@ mod test_oracle {
             0,
         );
 
-        oracle
-            .update(Price::new(5000000000), Price::new(25000000), 0)
-            .unwrap();
+        oracle.update(Price::new(5000000000), Price::new(25000000), 0)?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_calculate_value() {
+    fn test_calculate_value() -> Result<(), LibErrors> {
         let mut oracle = Oracle::new(
             DecimalPlaces::Six,
             Price::from_integer(2),
@@ -322,9 +325,7 @@ mod test_oracle {
             Value::from_integer(2_000000)
         );
 
-        oracle
-            .update(Price::from_integer(50000), Price::from_scale(2, 3), 0)
-            .unwrap();
+        oracle.update(Price::from_integer(50000), Price::from_scale(2, 3), 0)?;
 
         assert_eq!(
             oracle.calculate_value(Quantity::new(100_000000),),
@@ -351,9 +352,7 @@ mod test_oracle {
             Value::from_integer(50000000000u64)
         );
 
-        oracle
-            .update(Price::from_scale(2, 6), Price::from_scale(1, 9), 0)
-            .unwrap();
+        oracle.update(Price::from_scale(2, 6), Price::from_scale(1, 9), 0)?;
 
         assert_eq!(
             oracle.calculate_value(Quantity::new(100_000000),),
@@ -397,6 +396,8 @@ mod test_oracle {
             oracle.calculate_needed_value(Quantity::new(1_000000_000000000),),
             Value::from_integer(2u64)
         );
+
+        Ok(())
     }
 
     #[test]
