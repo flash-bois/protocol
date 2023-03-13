@@ -1,5 +1,8 @@
 use super::*;
-use crate::core_lib::user::{Position, UserStatement};
+use crate::core_lib::{
+    decimal::BothQuantities,
+    user::{Position, UserStatement},
+};
 use checked_decimal_macro::Decimal;
 use std::cmp::min;
 
@@ -66,7 +69,7 @@ impl Vault {
         withdraw_token: Token,
         amount: Quantity,
         strategy_index: u8,
-    ) -> Result<(Quantity, Quantity), LibErrors> {
+    ) -> Result<BothQuantities, LibErrors> {
         if amount == Quantity::new(0) {
             return Err(LibErrors::ZeroAmountInput);
         }
@@ -114,7 +117,10 @@ impl Vault {
             user_statement.delete_position(id)
         }
 
-        Ok((base_quantity, quote_quantity))
+        Ok(BothQuantities {
+            base: base_quantity,
+            quote: quote_quantity,
+        })
     }
 
     pub fn deposit(
@@ -266,7 +272,7 @@ mod tests {
             0,
         )?;
 
-        let (base, quote) = vault.withdraw(
+        let BothQuantities { base, quote } = vault.withdraw(
             second_user_statement,
             Token::Base,
             Quantity::new(4000005),
@@ -286,6 +292,16 @@ mod tests {
         assert!(vault
             .withdraw(second_user_statement, Token::Base, Quantity::new(0), 0)
             .is_err());
+
+        let BothQuantities { base, quote } = vault.withdraw(
+            second_user_statement,
+            Token::Base,
+            Quantity::new(2000000),
+            0,
+        )?;
+
+        assert_eq!(base, Quantity::new(2000000));
+        assert_eq!(quote, Quantity::new(4000000));
 
         Ok(())
     }

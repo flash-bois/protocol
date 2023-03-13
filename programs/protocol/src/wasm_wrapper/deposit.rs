@@ -1,6 +1,6 @@
 use super::vault::VaultsAccount;
 use crate::core_lib::{
-    decimal::{Decimal, Quantity},
+    decimal::{BothQuantities, Decimal, Quantity},
     user::UserStatement,
     Token,
 };
@@ -35,7 +35,8 @@ impl VaultsAccount {
             Token::Quote
         };
 
-        let (base, quote) = vault.withdraw(user_statement, deposit_token, amount, strategy)?;
+        let BothQuantities { base, quote } =
+            vault.withdraw(user_statement, deposit_token, amount, strategy)?;
 
         Ok(WithdrawAmounts {
             base: base.get(),
