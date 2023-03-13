@@ -91,6 +91,8 @@ mod anchor_one {
         UserNotCollateralized,
         #[msg("position already exists, close it to open new one")]
         PositionAlreadyExists,
+        #[msg("input amount cannot be zero")]
+        ZeroAmountInput,
     }
 }
 
@@ -187,6 +189,8 @@ mod anchor_none {
         UserNotCollateralized,
         #[error("position already exists, close it to open new one")]
         PositionAlreadyExists,
+        #[error("input amount cannot be zero")]
+        ZeroAmountInput,
     }
 }
 

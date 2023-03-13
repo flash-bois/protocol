@@ -173,11 +173,35 @@ impl FeeCurve {
         let fee = Precise::from_decimal(fee).div_up(Quantity::new(HOUR_DURATION as u64));
         (Precise::from_integer(1) + fee).big_pow_up(time) - Precise::from_integer(1)
     }
+
+    pub fn compounded_apy(&self, utilization: Fraction, time: Time) -> PreciseApy {
+        let fee = self
+            .get_point_fee(utilization)
+            .expect("compounded_fee: invalid fee");
+
+        let fee = PreciseApy::from_decimal(fee).div_up(Quantity::new(HOUR_DURATION as u64));
+        (PreciseApy::from_integer(1) + fee).big_pow_up(time) - PreciseApy::from_integer(1)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compounded_apy_max() {
+        let mut fee = FeeCurve::default();
+        fee.add_constant_fee(Fraction::new(5000), Fraction::from_integer(1));
+
+        fee.compounded_apy(Fraction::new(1), 365 * 24 * 60 * 60);
+
+        let mut fee = FeeCurve::default();
+        fee.add_constant_fee(Fraction::new(10), Fraction::from_integer(1));
+
+        let fee = fee.compounded_apy(Fraction::new(1), 24 * 60 * 60);
+
+        assert!(fee > PreciseApy::from_scale(24, 5) && fee < PreciseApy::from_scale(24003, 6));
+    }
 
     #[test]
     fn test_find_index() {

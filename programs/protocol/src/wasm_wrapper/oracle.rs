@@ -31,9 +31,7 @@ impl VaultsAccount {
     pub fn timestamp(&self, index: u8) -> Result<u32, JsError> {
         Ok(self
             .vault_checked(index)?
-            .services
-            .lend
-            .unwrap()
+            .lend_service_not_mut()?
             .last_fee_paid)
     }
 

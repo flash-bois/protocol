@@ -48,10 +48,7 @@ impl<'info> Borrow<'info> {
         let vault = vaults.vault_checked_mut(vault)?;
         let borrow_amount = vault.borrow(user_statement, amount)?;
 
-        let seeds = &[
-            b"state".as_ref(),
-            &[ctx.accounts.state.load().unwrap().bump],
-        ];
+        let seeds = &[b"state".as_ref(), &[ctx.accounts.state.load()?.bump]];
         let signer = &[&seeds[..]];
 
         transfer(

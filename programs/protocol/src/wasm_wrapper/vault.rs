@@ -1,12 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    core_lib::{decimal::Fraction, errors::LibErrors, structs::Side, Vault},
+    core_lib::{errors::LibErrors, structs::Side, Vault},
     structs::{VaultKeys, Vaults},
     wasm_wrapper::utils::to_buffer,
     ZeroCopyDecoder,
 };
-use checked_decimal_macro::{BetweenDecimals, Decimal};
+use checked_decimal_macro::Decimal;
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
@@ -212,16 +212,21 @@ impl VaultsAccount {
             .get() as u64)
     }
 
+    pub fn current_fee(&self, index: u8) -> Result<u64, JsError> {
+        Ok(
+            if let Ok(lend) = self.vault_checked(index)?.lend_service_not_mut() {
+                lend.current_fee()?.get()
+            } else {
+                0
+            },
+        )
+    }
+
     #[wasm_bindgen]
     pub fn lending_apy(&mut self, index: u8, duration_in_secs: u32) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
-                let utilization = lend.current_utilization();
-                let fee_curve = lend.fee_curve();
-                Fraction::from_decimal(
-                    fee_curve.compounded_fee(Fraction::from_decimal(utilization), duration_in_secs),
-                )
-                .get()
+                lend.get_apy(duration_in_secs).get()
             } else {
                 0
             },

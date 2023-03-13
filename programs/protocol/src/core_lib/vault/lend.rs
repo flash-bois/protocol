@@ -25,6 +25,10 @@ impl Vault {
         user_statement: &mut UserStatement,
         amount: Quantity,
     ) -> Result<Quantity, LibErrors> {
+        if amount == Quantity::new(0) {
+            return Err(LibErrors::ZeroAmountInput);
+        }
+
         let (lend, oracle) = self.lend_and_oracle()?;
         let total_available = lend.available().base;
         let user_allowed_borrow = user_statement.permitted_debt();
@@ -57,6 +61,10 @@ impl Vault {
         user_statement: &mut UserStatement,
         repay_quantity: Quantity,
     ) -> Result<Quantity, LibErrors> {
+        if repay_quantity == Quantity::new(0) {
+            return Err(LibErrors::ZeroAmountInput);
+        }
+
         let position_temp = Position::Borrow {
             vault_index: self.id,
             shares: Shares::new(0),

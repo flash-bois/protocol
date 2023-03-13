@@ -158,6 +158,14 @@ mod zero {
     pub struct Precise {
         pub val: u128,
     }
+
+    #[zero_copy]
+    #[repr(C)]
+    #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[decimal(18)]
+    pub struct PreciseApy {
+        pub val: u128,
+    }
 }
 
 #[cfg(not(feature = "anchor"))]
@@ -287,6 +295,13 @@ mod non_zero {
     pub struct Precise {
         pub val: u128,
     }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
+    #[repr(C)]
+    #[decimal(18)]
+    pub struct PreciseApy {
+        pub val: u128,
+    }
 }
 
 #[cfg(feature = "anchor")]
@@ -387,7 +402,7 @@ pub const _RATE_INTERVAL: Time = 21600000u32;
 
 impl Fraction {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
-        if used == Quantity::from_integer(0) {
+        if total == Quantity::from_integer(0) {
             return Self::from_integer(0);
         }
 
@@ -397,11 +412,30 @@ impl Fraction {
 
 impl Utilization {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
-        if used == Quantity::from_integer(0) {
+        if total == Quantity::from_integer(0) {
             return Self::from_integer(0);
         }
 
         Self::from_decimal(used).div_up(total)
+    }
+}
+
+impl PreciseApy {
+    pub fn big_pow_up(self, exp: u32) -> Self {
+        let mut result = Self::from_integer(1);
+        let mut base = self;
+        let mut exp = exp;
+
+        while exp > 0 {
+            if exp % 2 == 1 {
+                result = result.big_mul_up(base);
+            }
+
+            exp /= 2;
+            base = base.big_mul_up(base);
+        }
+
+        result
     }
 }
 
