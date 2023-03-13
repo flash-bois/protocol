@@ -216,12 +216,7 @@ impl VaultsAccount {
     pub fn lending_apy(&mut self, index: u8, duration_in_secs: u32) -> Result<u64, JsError> {
         Ok(
             if let Ok(lend) = self.vault_checked_mut(index)?.lend_service() {
-                let utilization = lend.current_utilization();
-                let fee_curve = lend.fee_curve();
-                Fraction::from_decimal(
-                    fee_curve.compounded_fee(Fraction::from_decimal(utilization), duration_in_secs),
-                )
-                .get()
+                lend.get_apy(duration_in_secs).get()
             } else {
                 0
             },

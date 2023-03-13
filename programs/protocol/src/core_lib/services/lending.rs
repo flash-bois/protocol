@@ -218,6 +218,13 @@ impl Lend {
         self.borrow_limit - self.borrowed
     }
 
+    pub fn get_apy(&self, time: Time) -> Fraction {
+        Fraction::from_decimal(
+            self.fee
+                .compounded_apy(Fraction::from_decimal(self.utilization), time),
+        )
+    }
+
     /// calculates utilization - borrowed / (borrowed + available)
     pub fn current_utilization(&self) -> Utilization {
         Utilization::get_utilization(self.borrowed, self.balance())
