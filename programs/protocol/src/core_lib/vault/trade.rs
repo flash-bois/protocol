@@ -73,7 +73,7 @@ impl Vault {
         let change = match receipt.side {
             Side::Long => {
                 let total_locked = trade.locked().base;
-                let (change, unlock) = trade.close_long(*receipt, oracle)?;
+                let (change, unlock) = trade.close_long(receipt, oracle)?;
                 match change {
                     BalanceChange::Profit(profit) => self.unlock_with_loss_base(
                         unlock,

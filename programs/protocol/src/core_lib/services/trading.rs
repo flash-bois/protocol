@@ -240,7 +240,7 @@ impl Trade {
 
     pub fn close_long(
         &mut self,
-        receipt: Receipt,
+        receipt: &Receipt,
         oracle: &Oracle,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_funding_fee(&receipt);
@@ -672,6 +672,28 @@ mod long_tests {
         assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(0)));
         assert_eq!(value_change, ValueChange::Loss(Value::new(0)));
 
+        Ok(())
+    }
+
+    #[test]
+    fn long_price_change() -> Result<(), LibErrors> {
+        let mut trade = Trade::new_test_for_long();
+
+        let mut base_oracle = Oracle::new(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::new(2000000),
+            Price::from_scale(2, 2),
+            0,
+            0,
+        );
+
+        let res = trade.open_long(
+            Quantity::new(2000000),
+            Value::from_integer(10),
+            &base_oracle,
+        )?;
+
         base_oracle.update(Price::new(2000000010), Price::new(21000000), 0)?;
 
         assert_eq!(
@@ -737,6 +759,98 @@ mod long_tests {
 
         assert_eq!(balance_change, BalanceChange::Profit(Quantity::new(95238))); // without fee
         assert_eq!(value_change, ValueChange::Profitable(Value::new(199999800)));
+
+        base_oracle.update(Price::new(1900000000), Price::new(21000000), 0)?;
+
+        assert_eq!(
+            base_oracle.calculate_value_difference_down(
+                Quantity::new(2000000),
+                Price::new(2000000000),
+                Price::new(1900000000)
+            ),
+            Value::new(200000000)
+        );
+
+        assert_eq!(
+            trade.calculate_long_change(&res, &base_oracle),
+            BalanceChange::Loss(Quantity::new(105264))
+        );
+
+        assert_eq!(
+            base_oracle.calculate_needed_value(Quantity::new(200)),
+            Value::new(380000)
+        );
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), true);
+
+        assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(105464))); // -200 fee
+        assert_eq!(value_change, ValueChange::Loss(Value::new(200381600)));
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), false);
+
+        assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(105264))); // without fee
+        assert_eq!(value_change, ValueChange::Loss(Value::new(200001600)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn close_long() -> Result<(), LibErrors> {
+        let mut trade = Trade::new_test_for_long();
+
+        let mut base_oracle = Oracle::new(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::new(2000000),
+            Price::from_scale(2, 2),
+            0,
+            0,
+        );
+
+        let res = trade.open_long(
+            Quantity::new(2000000),
+            Value::from_integer(10),
+            &base_oracle,
+        )?;
+
+        // SAME PRICE, returns only fees to pay
+
+        let (pos_change, to_unlock) = trade.close_long(&res, &base_oracle)?;
+
+        assert_eq!(pos_change, BalanceChange::Loss(Quantity::new(200)));
+        assert_eq!(to_unlock, Quantity::new(2000000));
+
+        let res = trade.open_long(
+            Quantity::new(2000000),
+            Value::from_integer(10),
+            &base_oracle,
+        )?;
+
+        // price +5%
+        base_oracle.update(Price::new(2100000000), Price::new(21000000), 0)?;
+
+        let (pos_change, to_unlock) = trade.close_long(&res, &base_oracle)?;
+
+        assert_eq!(pos_change, BalanceChange::Profit(Quantity::new(95038)));
+        assert_eq!(to_unlock, Quantity::new(2000000));
+
+        base_oracle.update(Price::new(2000000000), Price::new(21000000), 0)?;
+
+        let res = trade.open_long(
+            Quantity::new(2000000),
+            Value::from_integer(10),
+            &base_oracle,
+        )?;
+
+        // price -5%
+        base_oracle.update(Price::new(1900000000), Price::new(2000000), 0)?;
+
+        let (pos_change, to_unlock) = trade.close_long(&res, &base_oracle)?;
+
+        assert_eq!(pos_change, BalanceChange::Loss(Quantity::new(105464)));
+        assert_eq!(to_unlock, Quantity::new(2000000));
 
         Ok(())
     }
