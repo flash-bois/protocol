@@ -166,12 +166,12 @@ impl FeeCurve {
     }
 
     pub fn compounded_fee(&self, utilization: Fraction, time: Time) -> Precise {
-        if let CurveSegment::Constant { c } = self.get_value(utilization) {
-            let fee = Precise::from_decimal(c).div_up(Quantity::new(HOUR_DURATION as u64));
-            (Precise::from_integer(1) + fee).big_pow_up(time) - Precise::from_integer(1)
-        } else {
-            panic!("compounded_fee: invalid function");
-        }
+        let fee = self
+            .get_point_fee(utilization)
+            .expect("compounded_fee: invalid fee");
+
+        let fee = Precise::from_decimal(fee).div_up(Quantity::new(HOUR_DURATION as u64));
+        (Precise::from_integer(1) + fee).big_pow_up(time) - Precise::from_integer(1)
     }
 }
 
