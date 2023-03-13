@@ -212,6 +212,16 @@ impl VaultsAccount {
             .get() as u64)
     }
 
+    pub fn current_fee(&self, index: u8) -> Result<u64, JsError> {
+        Ok(
+            if let Ok(lend) = self.vault_checked(index)?.lend_service_not_mut() {
+                lend.current_fee()?.get()
+            } else {
+                0
+            },
+        )
+    }
+
     #[wasm_bindgen]
     pub fn lending_apy(&mut self, index: u8, duration_in_secs: u32) -> Result<u64, JsError> {
         Ok(

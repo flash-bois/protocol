@@ -225,6 +225,11 @@ impl Lend {
         )
     }
 
+    pub fn current_fee(&self) -> Result<Fraction, LibErrors> {
+        self.fee
+            .get_point_fee(Fraction::from_decimal(self.utilization))
+    }
+
     /// calculates utilization - borrowed / (borrowed + available)
     pub fn current_utilization(&self) -> Utilization {
         Utilization::get_utilization(self.borrowed, self.balance())
