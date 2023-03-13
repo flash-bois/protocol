@@ -387,7 +387,7 @@ pub const _RATE_INTERVAL: Time = 21600000u32;
 
 impl Fraction {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
-        if used == Quantity::from_integer(0) {
+        if total == Quantity::from_integer(0) {
             return Self::from_integer(0);
         }
 
@@ -397,7 +397,7 @@ impl Fraction {
 
 impl Utilization {
     pub fn get_utilization(used: Quantity, total: Quantity) -> Self {
-        if used == Quantity::from_integer(0) {
+        if total == Quantity::from_integer(0) {
             return Self::from_integer(0);
         }
 

@@ -4,7 +4,7 @@ use std::cmp::min;
 use crate::core_lib::{
     decimal::{
         BalanceChange, Balances, BothFeeCurves, BothFractions, BothFundingRates, BothValues,
-        Fraction, FundingRate, Quantity, Time, Value,
+        Fraction, FundingRate, Quantity, Time, Utilization, Value,
     },
     errors::LibErrors,
     structs::{
@@ -260,7 +260,6 @@ impl Trade {
         receipt: Receipt,
         oracle: &Oracle,
         quote_oracle: &Oracle,
-        now: Time,
     ) -> Result<(BalanceChange, Quantity), LibErrors> {
         let funding_fee = self.calculate_quote_funding_fee(&receipt, oracle, quote_oracle);
         let open_fee = receipt.locked * self.open_fee;
@@ -411,10 +410,14 @@ impl Trade {
 
     fn utilization(&self) -> BothFractions {
         BothFractions {
-            base: Fraction::from_decimal(self.locked.base)
-                / Fraction::from_decimal(self.available.base + self.locked.base),
-            quote: Fraction::from_decimal(self.locked.quote)
-                / Fraction::from_decimal(self.available.quote + self.locked.quote),
+            base: Fraction::from_decimal_up(Utilization::get_utilization(
+                self.locked.base,
+                self.available.base + self.locked.base,
+            )),
+            quote: Fraction::from_decimal_up(Utilization::get_utilization(
+                self.locked.quote,
+                self.available.quote + self.locked.quote,
+            )),
         }
     }
 
@@ -530,5 +533,211 @@ impl Trade {
                 .quote
                 .get_point_fee(self.utilization().quote),
         }
+    }
+
+    #[cfg(test)]
+    pub fn new_test() -> Trade {
+        Trade::new(
+            Fraction::new(100),
+            Fraction::from_integer(3),
+            0,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )
+    }
+
+    #[cfg(test)]
+    pub fn new_test_for_long() -> Trade {
+        let mut trade = Trade::new(
+            Fraction::new(100),
+            Fraction::from_integer(3),
+            0,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        );
+
+        trade.add_available_base(Quantity::new(200000000));
+        trade.add_available_quote(Quantity::new(400000000));
+
+        trade
+    }
+}
+
+#[cfg(test)]
+mod global {
+    use super::*;
+
+    #[test]
+    fn creates_trade_service() {
+        let trade = Trade::new_test();
+
+        assert_eq!(trade.collateral_ratio(), Fraction::from_integer(1));
+        assert_eq!(trade.liquidation_threshold(), Fraction::from_integer(1));
+        assert_eq!(trade.utilization(), BothFractions::default());
+        assert_eq!(trade.open_fee(), Fraction::new(100));
+        assert_eq!(trade.max_open_leverage(), Fraction::from_integer(3))
+    }
+
+    #[test]
+    fn calculates_utilization() {
+        let mut trade = Trade::new_test();
+
+        trade.add_available_base(Quantity::new(20565400));
+        trade.add_available_quote(Quantity::new(40000000));
+
+        trade.locked.base += Quantity::new(15442000); // it is what happens in open long
+        trade.locked.quote += Quantity::new(12735500); // it is what happens in open short
+
+        trade.remove_available_base(Quantity::new(15442000)); // it is what happens after open_long
+        trade.remove_available_quote(Quantity::new(12735500)); // it is what happens after open_short
+
+        assert_eq!(
+            trade.utilization(),
+            BothFractions {
+                base: Fraction::new(750873),
+                quote: Fraction::new(318388)
+            }
+        );
+    }
+}
+
+#[cfg(test)]
+mod long_tests {
+    use crate::core_lib::decimal::{DecimalPlaces, Price};
+    use checked_decimal_macro::{Decimal, Factories};
+
+    use super::*;
+
+    #[test]
+    fn opens_long() -> Result<(), LibErrors> {
+        let mut trade = Trade::new_test_for_long();
+
+        let mut base_oracle = Oracle::new(
+            DecimalPlaces::Six,
+            Price::from_integer(2),
+            Price::new(2000000),
+            Price::from_scale(2, 2),
+            0,
+            0,
+        );
+
+        let res = trade.open_long(
+            Quantity::new(2000000),
+            Value::from_integer(10),
+            &base_oracle,
+        )?;
+
+        assert_eq!(res.side, Side::Long);
+        assert_eq!(res.size, Quantity::new(2000000));
+        assert_eq!(res.locked, Quantity::new(2000000));
+        assert_eq!(res.open_price, Price::from_integer(2));
+        assert_eq!(res.open_value, Value::from_integer(4));
+        assert_eq!(
+            trade.locked(),
+            Balances {
+                base: Quantity::new(2000000),
+                quote: Quantity::new(0)
+            }
+        );
+
+        trade.remove_available_base(Quantity::new(2000000));
+
+        assert_eq!(
+            trade.utilization(),
+            BothFractions {
+                base: Fraction::new(10000),
+                quote: Fraction::new(0)
+            }
+        );
+
+        assert_eq!(
+            trade.long_fees(&res),
+            BalanceChange::Loss(Quantity::new(200))
+        );
+
+        assert_eq!(
+            trade.calculate_long_change(&res, &base_oracle),
+            BalanceChange::Loss(Quantity::new(0))
+        );
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), true);
+
+        assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(200)));
+        assert_eq!(value_change, ValueChange::Loss(Value::new(400000)));
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), false);
+
+        assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(0)));
+        assert_eq!(value_change, ValueChange::Loss(Value::new(0)));
+
+        base_oracle.update(Price::new(2000000010), Price::new(21000000), 0)?;
+
+        assert_eq!(
+            base_oracle.calculate_value_difference_down(
+                Quantity::new(2000000),
+                Price::new(2000000010),
+                Price::new(2000000000)
+            ),
+            Value::new(20)
+        );
+
+        assert_eq!(
+            trade.calculate_long_change(&res, &base_oracle),
+            BalanceChange::Profit(Quantity::new(0))
+        );
+
+        assert_eq!(
+            base_oracle.calculate_needed_value(Quantity::new(200)),
+            Value::new(400001)
+        );
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), true);
+
+        assert_eq!(balance_change, BalanceChange::Loss(Quantity::new(200)));
+        assert_eq!(value_change, ValueChange::Loss(Value::new(400001)));
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), false);
+
+        assert_eq!(balance_change, BalanceChange::Profit(Quantity::new(0)));
+        assert_eq!(value_change, ValueChange::Profitable(Value::new(0)));
+
+        base_oracle.update(Price::new(2100000000), Price::new(21000000), 0)?;
+
+        assert_eq!(
+            base_oracle.calculate_value_difference_down(
+                Quantity::new(2000000),
+                Price::new(2100000000),
+                Price::new(2000000000)
+            ),
+            Value::new(200000000)
+        );
+
+        assert_eq!(
+            trade.calculate_long_change(&res, &base_oracle),
+            BalanceChange::Profit(Quantity::new(95238))
+        );
+
+        assert_eq!(
+            base_oracle.calculate_needed_value(Quantity::new(200)),
+            Value::new(420000)
+        );
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), true);
+
+        assert_eq!(balance_change, BalanceChange::Profit(Quantity::new(95038))); // -200 fee
+        assert_eq!(value_change, ValueChange::Profitable(Value::new(199579800)));
+
+        let (balance_change, value_change) =
+            trade.calculate_position(&res, &base_oracle, &base_oracle.clone(), false);
+
+        assert_eq!(balance_change, BalanceChange::Profit(Quantity::new(95238))); // without fee
+        assert_eq!(value_change, ValueChange::Profitable(Value::new(199999800)));
+
+        Ok(())
     }
 }

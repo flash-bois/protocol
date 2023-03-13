@@ -53,7 +53,7 @@ impl Add for CollateralValues {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Debug)]
 #[repr(u8)]
 pub enum ValueChange {
     #[default]
