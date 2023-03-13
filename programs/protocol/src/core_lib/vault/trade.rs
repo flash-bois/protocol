@@ -91,7 +91,7 @@ impl Vault {
             }
             Side::Short => {
                 let total_locked = trade.locked().quote;
-                let (change, unlock) = trade.close_short(*receipt, oracle, &quote_oracle)?;
+                let (change, unlock) = trade.close_short(&receipt, oracle, &quote_oracle)?;
                 match change {
                     BalanceChange::Profit(profit) => self.unlock_with_loss_quote(
                         unlock,
