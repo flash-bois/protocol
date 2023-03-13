@@ -186,6 +186,10 @@ impl Trade {
         oracle: &Oracle,
     ) -> Result<Receipt, LibErrors> {
         let position_value = oracle.calculate_needed_value(quantity);
+
+        if collateral == Value::new(0) {
+            return Err(LibErrors::CollateralizationTooLow);
+        }
         let collateralization = Fraction::from_decimal_up(position_value.div_up(collateral));
 
         if collateralization > self.max_open_leverage {
