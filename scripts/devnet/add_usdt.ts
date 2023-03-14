@@ -83,14 +83,14 @@ const main = async () => {
     .enableOracle(index, 6, true, false, 1)
     .accountsStrict({
       ...accounts,
-      priceFeed: DEVNET_ORACLES.USDC
+      priceFeed: DEVNET_ORACLES.USDT
     })
     .postInstructions([
       await program.methods
         .enableOracle(index, 6, false, false, 1)
         .accountsStrict({
           ...accounts,
-          priceFeed: DEVNET_ORACLES.USDT
+          priceFeed: DEVNET_ORACLES.USDC
         })
         .instruction(),
       await program.methods
@@ -99,17 +99,17 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(50000), new BN(0), new BN(0), new BN(10))
+        .modifyFeeCurve(index, 1, true, new BN(100000), new BN(0), new BN(0), new BN(100))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(850000), new BN(0), new BN(125000), new BN(10))
+        .modifyFeeCurve(index, 1, true, new BN(800000), new BN(0), new BN(1000), new BN(0))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(1000000), new BN(0), new BN(100010), new BN(100))
+        .modifyFeeCurve(index, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(800))
         .accounts(accounts)
         .signers([admin])
         .instruction(),

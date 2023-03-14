@@ -74,19 +74,26 @@ impl Vault {
 
         let (position_id, found_position) = user_statement.search_mut_id(&temp_position)?;
         let receipt = found_position.receipt();
+        use anchor_lang::prelude::*;
 
         let change = match receipt.side {
             Side::Long => {
                 let total_locked = trade.locked().base;
                 let (change, unlock) = trade.close_long(receipt, oracle)?;
+                msg!("change, unlock: {:?}, {:?}", change, unlock);
                 match change {
-                    BalanceChange::Profit(profit) => self.unlock_with_loss_base(
-                        unlock,
-                        profit,
-                        total_locked,
-                        ServiceType::Trade,
-                    )?,
+                    BalanceChange::Profit(profit) => {
+                        msg!("profit: {:?}", profit);
+
+                        self.unlock_with_loss_base(
+                            unlock,
+                            profit,
+                            total_locked,
+                            ServiceType::Trade,
+                        )?
+                    }
                     BalanceChange::Loss(loss) => {
+                        msg!("loss: {:?}", loss);
                         self.unlock_with_profit_base(
                             unlock,
                             loss,
@@ -120,6 +127,8 @@ impl Vault {
                 (change, Side::Short)
             }
         };
+
+        msg!("afterrrr  ");
 
         user_statement.delete_position(position_id);
 

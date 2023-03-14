@@ -142,14 +142,6 @@ impl Strategy {
         self.traded.is_some()
     }
 
-    pub fn locked_lent(&self) -> Quantity {
-        if let Some(res) = self.lent {
-            res
-        } else {
-            Quantity::new(0)
-        }
-    }
-
     pub fn uses(&self, service: ServiceType) -> bool {
         match service {
             ServiceType::Lend => self.lent.is_some(),
@@ -183,7 +175,7 @@ impl Strategy {
         strategy
     }
 
-    fn locked_in(&mut self, sub: ServiceType) -> &mut Quantity {
+    fn locked_in_mut(&mut self, sub: ServiceType) -> &mut Quantity {
         let service = match sub {
             ServiceType::Lend => {
                 return self
@@ -200,7 +192,23 @@ impl Strategy {
         &mut service.base
     }
 
-    fn locked_in_quote(&mut self, sub: ServiceType) -> &mut Quantity {
+    pub fn locked_in(&self, sub: ServiceType) -> Quantity {
+        let service = match sub {
+            ServiceType::Lend => {
+                return self
+                    .lent
+                    .ok_or(())
+                    .expect("locked in requested for a service that is not enabled");
+            }
+            ServiceType::Swap => self.sold.ok_or(()),
+            ServiceType::Trade => self.traded.ok_or(()),
+        };
+
+        let service = service.expect("locked in requested for a service that is not enabled");
+        service.base
+    }
+
+    fn locked_in_quote_mut(&mut self, sub: ServiceType) -> &mut Quantity {
         let service = match sub {
             ServiceType::Lend => {
                 unreachable!("Lending of quote tokens is separate")
@@ -210,6 +218,18 @@ impl Strategy {
         };
         let service = service.expect("locked in requested for a service that is not enabled");
         &mut service.quote
+    }
+
+    pub fn locked_in_quote(&self, sub: ServiceType) -> Quantity {
+        let service = match sub {
+            ServiceType::Lend => {
+                unreachable!("Lending of quote tokens is separate")
+            }
+            ServiceType::Swap => self.sold.ok_or(()),
+            ServiceType::Trade => self.traded.ok_or(()),
+        };
+        let service = service.expect("locked in requested for a service that is not enabled");
+        service.quote
     }
 
     pub fn withdraw(
@@ -271,7 +291,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in(sub) += quantity;
+        *self.locked_in_mut(sub) += quantity;
         self.accrued_fee += quantity;
         self.locked.base += quantity;
 
@@ -290,7 +310,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in(sub) += quantity;
+        *self.locked_in_mut(sub) += quantity;
         self.locked.base += quantity;
         self.available.base -= quantity;
 
@@ -316,7 +336,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in_quote(sub) += quantity;
+        *self.locked_in_quote_mut(sub) += quantity;
         self.locked.quote += quantity;
         self.available.quote -= quantity;
 
@@ -337,21 +357,34 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in(sub) -= quantity;
+        use anchor_lang::prelude::*;
+
+        msg!("unlock_base: {:?}, {:?}", quantity, self.available.base);
+
+        msg!("locked_in: {}", *self.locked_in_mut(sub),);
+
+        *self.locked_in_mut(sub) -= quantity;
         self.locked.base -= quantity;
         self.available.base += quantity;
 
+        msg!("unlock_base: {:?}, {:?}", quantity, self.available.base);
+
         if let Ok(lend) = services.lend_mut() {
+            msg!("lent: {:?}", self.lent);
             lend.add_available_base(quantity);
         }
 
         if let Ok(swap) = services.swap_mut() {
+            msg!("lent: {:?}", self.sold);
             swap.add_available_base(quantity);
         }
 
         if let Ok(trade) = services.trade_mut() {
+            msg!("lent: {:?}", self.traded);
             trade.add_available_base(quantity);
         }
+
+        msg!("unlocked_base: {:?}", self.available.base);
 
         Ok(())
     }
@@ -362,7 +395,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in_quote(sub) -= quantity;
+        *self.locked_in_quote_mut(sub) -= quantity;
         self.locked.quote -= quantity;
         self.available.quote += quantity;
 
@@ -459,5 +492,13 @@ impl Strategy {
         }
 
         Ok(())
+    }
+
+    pub fn available_in(&self, _service: ServiceType) -> Quantity {
+        self.available()
+    }
+
+    pub fn available_in_quote(&self, _service: ServiceType) -> Quantity {
+        self.available_quote()
     }
 }

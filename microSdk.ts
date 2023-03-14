@@ -50,11 +50,11 @@ export const DEVNET_ORACLES = {
 }
 
 export const DEVNET_TOKENS = {
-  SOL: new PublicKey('BJcc1PDo1o4RBTFgXfRYgQPRpPYLCsWVRgSwZQA7XzAo'),
-  USDT: new PublicKey('6oLos5NBzqmXpHxhAgcZaiugjCePL4WDfDpmaGYUwTcS'),
-  ETH: new PublicKey('3ggbE4daXdgoVPWfqVm6k7DkiUsMeMmUcRVMo2JLvtFp'),
-  MSOL: new PublicKey('HdA4A3H1oPzDNmv4YekAgvmoA3zcFanvtHBY3mbHJuXH'),
-  USDC: new PublicKey('2UTJpa7QJYhrbGpCdoYioeFseJ1uvamvYzDFvrwYto5o')
+  SOL: new PublicKey('6eY1Yw5Zoh3Yvgm4T47Xd5QjazYGjZoUb8mzZvgXrg6t'),
+  USDC: new PublicKey('66Td188m5ZSGSLzr3ww1kEzSVNwXZfrAi2pqQj5NwDci'),
+  ETH: new PublicKey('Aqh6iSZqm83zfj1S8nvm47cKwGk2bkwb1YhF63DWFfdz'),
+  MSOL: new PublicKey('XvnH8xmA5J4DMuKs55w4ZEz3gXZvHk6bA7C9zNdHCgC'),
+  USDT: new PublicKey('A2yrDzB8HUN3GCdV3XuBUSQcNuLvmRHpQ5Wt8noa8ai2')
 }
 
 export const STATEMENT_SEED = 'statement'
