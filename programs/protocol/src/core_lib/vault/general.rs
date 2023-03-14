@@ -64,34 +64,14 @@ impl Vault {
             if strategy.uses(service) {
                 last_index = i;
                 let to_lock_a = quantity_a.big_mul_div(part(&strategy, service), total);
-                msg!(
-                    "here {} * {} / {} = {}",
-                    quantity_a,
-                    part(&strategy, service),
-                    total,
-                    to_lock_a
-                );
                 let to_lock_b = quantity_b.big_mul_div(part(&strategy, service), total);
-                msg!(
-                    "here {} * {} / {} = {}",
-                    quantity_b,
-                    part(&strategy, service),
-                    total,
-                    to_lock_b
-                );
+
                 processed_a += to_lock_a;
                 processed_b += to_lock_b;
                 action_a(strategy, to_lock_a, service, &mut self.services)?;
                 action_b(strategy, to_lock_b, service, &mut self.services)?;
             }
         }
-
-        use anchor_lang::prelude::msg;
-        msg!(
-            "unlock remaining {}, {}",
-            quantity_a - processed_a,
-            quantity_b - processed_b
-        );
 
         if processed_a < quantity_a {
             let strategy = self.strategies.get_strategy_mut(last_index as u8)?;
@@ -112,12 +92,6 @@ impl Vault {
                 &mut self.services,
             )?;
         }
-
-        msg!(
-            "after unlock remaining {}, {}",
-            quantity_a - processed_a,
-            quantity_b - processed_b
-        );
 
         Ok(())
     }

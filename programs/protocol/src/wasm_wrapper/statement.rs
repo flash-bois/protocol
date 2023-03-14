@@ -54,6 +54,7 @@ pub struct LpPositionInfo {
     pub earned_quote_quantity: u64,
     pub max_withdraw_quote: u64,
     pub max_withdraw_base: u64,
+    pub max_withdraw_value: u64,
 }
 
 #[wasm_bindgen]
@@ -176,6 +177,9 @@ impl VaultsAccount {
             }
         };
 
+        let max_withdraw_value = oracle.calculate_value(max_withdraw_base)
+            + quote_oracle.calculate_value(max_withdraw_quote);
+
         Ok(Some(LpPositionInfo {
             vault_id: vault_index,
             strategy_id: strategy_index,
@@ -186,6 +190,7 @@ impl VaultsAccount {
             deposited_quote_quantity: found_position.quote_amount().get(),
             max_withdraw_quote: max_withdraw_quote.get(),
             max_withdraw_base: max_withdraw_base.get(),
+            max_withdraw_value: max_withdraw_value.get() as u64,
         }))
     }
 
