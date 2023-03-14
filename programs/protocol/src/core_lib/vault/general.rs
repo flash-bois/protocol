@@ -481,7 +481,7 @@ mod tests_general {
     }
 
     #[test]
-    fn lock_base() -> Result<(), LibErrors> {
+    fn lock_unlock_base() -> Result<(), LibErrors> {
         let mut vault = test_vault()?;
 
         let base = Quantity::new(2000000000);
@@ -567,16 +567,344 @@ mod tests_general {
         assert_eq!(strategy.locked, zero_balances);
         assert_eq!(strategy.accrued_fee, Quantity::new(0));
 
+        assert_eq!(swap.available, balances + balances);
+        assert_eq!(swap.balances, balances + balances);
+        assert_eq!(lend.available, base + base);
+        assert_eq!(trade.available, balances + balances + balances);
+
+        Ok(())
+    }
+
+    #[test]
+    fn lock_unlock_quote() -> Result<(), LibErrors> {
+        let mut vault = test_vault()?;
+
+        let base = Quantity::new(2000000000);
+        let quote = Quantity::new(30000000000);
+        let shares = Shares::new(1000);
+        let balances = Balances { base, quote };
+
+        let zero_balances = Balances {
+            quote: Quantity::new(0),
+            base: Quantity::new(0),
+        };
+        let zero_quantity = Quantity::new(0);
+
+        vault
+            .strategies
+            .get_strategy_mut(0)?
+            .deposit(base, quote, shares, &mut vault.services);
+
+        let base2 = Quantity::new(3000000000);
+        let quote2 = Quantity::new(40000000000);
+
+        let balances2 = Balances {
+            base: base2,
+            quote: quote2,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(1)?
+            .deposit(base2, quote2, shares, &mut vault.services);
+
+        let base3 = Quantity::new(4000000000);
+        let quote3 = Quantity::new(50000000000);
+
+        let balances3 = Balances {
+            base: base3,
+            quote: quote3,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(2)?
+            .deposit(base3, quote3, shares, &mut vault.services);
+
+        let trade = vault.trade_service_not_mut()?;
+        let lock_quote = Quantity::new(3000000000);
+
+        assert_eq!(trade.available.quote, quote + quote2 + quote3);
+
+        vault.lock_quote(lock_quote, trade.available.quote, ServiceType::Trade)?;
+
+        let lend = vault.lend_service_not_mut()?;
+        let trade = vault.trade_service_not_mut()?;
+        let swap = vault.swap_service_not_mut()?;
+        let strategy = vault.strategies.get_strategy(0)?;
+
+        let locked = Balances {
+            quote: Quantity::new(750000000),
+            base: zero_quantity,
+        };
+
+        assert_eq!(strategy.available, balances - locked);
+        assert_eq!(strategy.locked, locked);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(1)?;
+
+        let locked2 = Balances {
+            quote: Quantity::new(1000000000),
+            base: zero_quantity,
+        };
+
+        assert_eq!(strategy.available, balances2 - locked2);
+        assert_eq!(strategy.locked, locked2);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
         let strategy = vault.strategies.get_strategy(2)?;
+
+        let locked3 = Balances {
+            quote: Quantity::new(1250000000),
+            base: zero_quantity,
+        };
+
+        assert_eq!(strategy.available, balances3 - locked3);
+        assert_eq!(strategy.locked, locked3);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        assert_eq!(swap.available, balances + balances3 - locked - locked3);
+        assert_eq!(swap.balances, balances + balances3);
+        assert_eq!(lend.available, base + base2 - locked.base - locked2.base);
+        assert_eq!(
+            trade.available,
+            balances + balances2 + balances3 - locked - locked2 - locked3
+        );
+
+        vault.unlock_quote(lock_quote, lock_quote, ServiceType::Trade)?;
+
+        let lend = vault.lend_service_not_mut()?;
+        let trade = vault.trade_service_not_mut()?;
+        let swap = vault.swap_service_not_mut()?;
+        let strategy = vault.strategies.get_strategy(0)?;
 
         assert_eq!(strategy.available, balances);
         assert_eq!(strategy.locked, zero_balances);
         assert_eq!(strategy.accrued_fee, Quantity::new(0));
 
-        assert_eq!(swap.available, balances + balances);
-        assert_eq!(swap.balances, balances + balances);
-        assert_eq!(lend.available, base + base);
-        assert_eq!(trade.available, balances + balances + balances);
+        let strategy = vault.strategies.get_strategy(1)?;
+
+        assert_eq!(strategy.available, balances2);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(2)?;
+
+        assert_eq!(strategy.available, balances3);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        assert_eq!(swap.available, balances + balances3);
+        assert_eq!(swap.balances, balances + balances3);
+        assert_eq!(lend.available, base + base2);
+        assert_eq!(trade.available, balances + balances2 + balances3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn unlock_quote_with_loss() -> Result<(), LibErrors> {
+        let mut vault = test_vault()?;
+
+        let base = Quantity::new(2000000000);
+        let quote = Quantity::new(30000000000);
+        let shares = Shares::new(1000);
+        let balances = Balances { base, quote };
+
+        let zero_balances = Balances {
+            quote: Quantity::new(0),
+            base: Quantity::new(0),
+        };
+        let zero_quantity = Quantity::new(0);
+
+        vault
+            .strategies
+            .get_strategy_mut(0)?
+            .deposit(base, quote, shares, &mut vault.services);
+
+        let base2 = Quantity::new(3000000000);
+        let quote2 = Quantity::new(40000000000);
+
+        let balances2 = Balances {
+            base: base2,
+            quote: quote2,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(1)?
+            .deposit(base2, quote2, shares, &mut vault.services);
+
+        let base3 = Quantity::new(4000000000);
+        let quote3 = Quantity::new(50000000000);
+
+        let balances3 = Balances {
+            base: base3,
+            quote: quote3,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(2)?
+            .deposit(base3, quote3, shares, &mut vault.services);
+
+        let trade = vault.trade_service_not_mut()?;
+        let lock_quote = Quantity::new(3000000000);
+
+        assert_eq!(trade.available.quote, quote + quote2 + quote3);
+
+        vault.lock_quote(lock_quote, trade.available.quote, ServiceType::Trade)?;
+
+        let loss = Quantity::new(100000000);
+        vault.unlock_with_loss_quote(lock_quote, loss, lock_quote, ServiceType::Trade)?;
+
+        let lend = vault.lend_service_not_mut()?;
+        let trade = vault.trade_service_not_mut()?;
+        let swap = vault.swap_service_not_mut()?;
+        let strategy = vault.strategies.get_strategy(0)?;
+
+        let loss1 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(25000000),
+        };
+
+        assert_eq!(strategy.available, balances - loss1);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(1)?;
+
+        let loss2 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(33333333),
+        };
+
+        assert_eq!(strategy.available, balances2 - loss2);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(2)?;
+
+        let loss3 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(41666667),
+        };
+
+        assert_eq!(strategy.available, balances3 - loss3);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        assert_eq!(swap.available, balances + balances3 - loss1 - loss3);
+        assert_eq!(swap.balances, balances + balances3 - loss1 - loss3);
+        assert_eq!(lend.available, base + base2);
+        assert_eq!(
+            trade.available,
+            balances + balances2 + balances3 - loss1 - loss2 - loss3
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn unlock_quote_with_profit() -> Result<(), LibErrors> {
+        let mut vault = test_vault()?;
+
+        let base = Quantity::new(2000000000);
+        let quote = Quantity::new(30000000000);
+        let shares = Shares::new(1000);
+        let balances = Balances { base, quote };
+
+        let zero_balances = Balances {
+            quote: Quantity::new(0),
+            base: Quantity::new(0),
+        };
+        let zero_quantity = Quantity::new(0);
+
+        vault
+            .strategies
+            .get_strategy_mut(0)?
+            .deposit(base, quote, shares, &mut vault.services);
+
+        let base2 = Quantity::new(3000000000);
+        let quote2 = Quantity::new(40000000000);
+
+        let balances2 = Balances {
+            base: base2,
+            quote: quote2,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(1)?
+            .deposit(base2, quote2, shares, &mut vault.services);
+
+        let base3 = Quantity::new(4000000000);
+        let quote3 = Quantity::new(50000000000);
+
+        let balances3 = Balances {
+            base: base3,
+            quote: quote3,
+        };
+
+        vault
+            .strategies
+            .get_strategy_mut(2)?
+            .deposit(base3, quote3, shares, &mut vault.services);
+
+        let trade = vault.trade_service_not_mut()?;
+        let lock_quote = Quantity::new(3000000000);
+
+        assert_eq!(trade.available.quote, quote + quote2 + quote3);
+
+        vault.lock_quote(lock_quote, trade.available.quote, ServiceType::Trade)?;
+
+        let profit = Quantity::new(100000000);
+        vault.unlock_with_profit_quote(lock_quote, profit, lock_quote, ServiceType::Trade)?;
+
+        let lend = vault.lend_service_not_mut()?;
+        let trade = vault.trade_service_not_mut()?;
+        let swap = vault.swap_service_not_mut()?;
+        let strategy = vault.strategies.get_strategy(0)?;
+
+        let profit1 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(25000000),
+        };
+
+        assert_eq!(strategy.available, balances + profit1);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(1)?;
+
+        let profit2 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(33333333),
+        };
+
+        assert_eq!(strategy.available, balances2 + profit2);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        let strategy = vault.strategies.get_strategy(2)?;
+
+        let profit3 = Balances {
+            base: zero_quantity,
+            quote: Quantity::new(41666667),
+        };
+
+        assert_eq!(strategy.available, balances3 + profit3);
+        assert_eq!(strategy.locked, zero_balances);
+        assert_eq!(strategy.accrued_fee, Quantity::new(0));
+
+        assert_eq!(swap.available, balances + balances3 + profit1 + profit3);
+        assert_eq!(swap.balances, balances + balances3 + profit1 + profit3);
+        assert_eq!(lend.available, base + base2);
+        assert_eq!(
+            trade.available,
+            balances + balances2 + balances3 + profit1 + profit2 + profit3
+        );
 
         Ok(())
     }

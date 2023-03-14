@@ -320,11 +320,6 @@ impl Strategy {
         self.locked.base += quantity;
         self.available.base -= quantity;
 
-        println!(
-            "strategy locking: {} locked {} av {} ",
-            quantity, self.locked.base, self.available.base
-        );
-
         if self.lent.is_some() {
             let lend = services.lend_mut().unwrap();
             lend.remove_available_base(quantity);
