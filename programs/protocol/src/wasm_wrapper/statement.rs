@@ -330,4 +330,9 @@ impl StatementAccount {
     pub fn remaining_permitted_debt(&self) -> u64 {
         self.statement.permitted_debt().get() as u64
     }
+
+    #[wasm_bindgen]
+    pub fn permitted_withdraw(&self) -> u64 {
+        self.statement.permitted_withdraw().get() as u64
+    }
 }

@@ -126,12 +126,16 @@ impl UserStatement {
     }
 
     pub fn collateralized(&self) -> bool {
-        self.values.collateral.with_collateral_ratio >= self.values.liabilities
+        self.values.collateral.exact >= self.values.liabilities
     }
 
     /// calculate value that user can borrow
     pub fn permitted_debt(&self) -> Value {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
+    }
+
+    pub fn permitted_withdraw(&self) -> Value {
+        self.values.collateral.exact - self.values.liabilities
     }
 
     fn liabilities_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {
