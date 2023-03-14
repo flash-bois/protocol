@@ -1,9 +1,9 @@
-use crate::core_lib::errors::LibErrors;
+use crate::core_lib::{decimal::Fraction, errors::LibErrors};
 
 use super::{utils::CollateralValues, *};
 
-use checked_decimal_macro::num_traits::ToPrimitive;
 use checked_decimal_macro::Decimal;
+use checked_decimal_macro::{num_traits::ToPrimitive, BigOps};
 use std::{
     collections::HashSet,
     ops::Range,
@@ -126,7 +126,7 @@ impl UserStatement {
     }
 
     pub fn collateralized(&self) -> bool {
-        self.values.collateral.exact >= self.values.liabilities
+        self.values.collateral.with_collateral_ratio >= self.values.liabilities
     }
 
     /// calculate value that user can borrow
@@ -134,8 +134,8 @@ impl UserStatement {
         self.values.collateral.with_collateral_ratio - self.values.liabilities
     }
 
-    pub fn permitted_withdraw(&self) -> Value {
-        self.values.collateral.exact - self.values.liabilities
+    pub fn permitted_withdraw(&self, collateral_ratio: Fraction) -> Value {
+        self.permitted_debt().big_div(collateral_ratio)
     }
 
     fn liabilities_value(&self, vaults: &[Vault]) -> Result<Value, LibErrors> {

@@ -1,6 +1,6 @@
 use crate::{
     core_lib::{
-        decimal::{BalanceChange, Quantity, Shares, Value},
+        decimal::{BalanceChange, Fraction, Quantity, Shares, Value},
         structs::{Receipt, Side},
         user::{Position, ValueChange},
     },
@@ -332,7 +332,9 @@ impl StatementAccount {
     }
 
     #[wasm_bindgen]
-    pub fn permitted_withdraw(&self) -> u64 {
-        self.statement.permitted_withdraw().get() as u64
+    pub fn permitted_withdraw(&self, collateral_ratio: u32) -> u64 {
+        self.statement
+            .permitted_withdraw(Fraction::new(collateral_ratio as u64))
+            .get() as u64
     }
 }
