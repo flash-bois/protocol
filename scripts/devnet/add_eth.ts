@@ -124,12 +124,17 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 2, true, new BN(300000), new BN(0), new BN(10000), new BN(10000))
+        .modifyFeeCurve(index, 2, true, new BN(700000), new BN(0), new BN(5000), new BN(10000))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
       await program.methods
         .modifyFeeCurve(index, 2, false, new BN(10000), new BN(0), new BN(0), new BN(1000))
+        .accounts(accounts)
+        .signers([admin])
+        .instruction(),
+      await program.methods
+        .modifyFeeCurve(index, 2, false, new BN(700000), new BN(0), new BN(5000), new BN(10000))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
