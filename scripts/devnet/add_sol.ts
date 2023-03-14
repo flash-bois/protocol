@@ -61,26 +61,26 @@ const main = async () => {
     admin: admin.publicKey
   }
 
-  // const sigv = await program.methods
-  //   .initVault()
-  //   .accounts({
-  //     state: stateAddress,
-  //     vaults,
-  //     base,
-  //     quote,
-  //     reserveBase: reserveBase.publicKey,
-  //     reserveQuote: reserveQuote.publicKey,
-  //     admin: admin.publicKey,
-  //     tokenProgram: TOKEN_PROGRAM_ID,
-  //     systemProgram: SystemProgram.programId
-  //   })
-  //   .signers([admin, reserveBase, reserveQuote])
-  //   .rpc({ skipPreflight: true })
+  const sigv = await program.methods
+    .initVault()
+    .accounts({
+      state: stateAddress,
+      vaults,
+      base,
+      quote,
+      reserveBase: reserveBase.publicKey,
+      reserveQuote: reserveQuote.publicKey,
+      admin: admin.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId
+    })
+    .signers([admin, reserveBase, reserveQuote])
+    .rpc({ skipPreflight: true })
 
-  // console.log('vault', sigv)
+  console.log('vault', sigv)
 
   const sig = await program.methods
-    .enableOracle(index, 9, true, false, 1)
+    .enableOracle(index, 6, true, false, 1)
     .accountsStrict({
       ...accounts,
       priceFeed: DEVNET_ORACLES.SOL
@@ -90,7 +90,7 @@ const main = async () => {
         .enableOracle(index, 6, false, false, 1)
         .accountsStrict({
           ...accounts,
-          priceFeed: DEVNET_ORACLES.USDT
+          priceFeed: DEVNET_ORACLES.USDC
         })
         .instruction(),
       await program.methods
@@ -99,17 +99,17 @@ const main = async () => {
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(50000), new BN(0), new BN(0), new BN(10))
+        .modifyFeeCurve(index, 1, true, new BN(100000), new BN(0), new BN(0), new BN(100))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(850000), new BN(0), new BN(125000), new BN(10))
+        .modifyFeeCurve(index, 1, true, new BN(800000), new BN(0), new BN(1000), new BN(0))
         .accounts(accounts)
         .signers([admin])
         .instruction(),
       await program.methods
-        .modifyFeeCurve(index, 1, true, new BN(1000000), new BN(0), new BN(100010), new BN(100))
+        .modifyFeeCurve(index, 1, true, new BN(1000000), new BN(0), new BN(0), new BN(800))
         .accounts(accounts)
         .signers([admin])
         .instruction(),

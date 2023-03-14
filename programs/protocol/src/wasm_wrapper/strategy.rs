@@ -14,6 +14,7 @@ pub struct StrategyInfo {
     pub locked_quote: u64,
     pub utilization_base: u64,
     pub utilization_quote: u64,
+    pub collateral_ratio: u32,
 }
 
 #[wasm_bindgen]
@@ -47,6 +48,7 @@ impl VaultsAccount {
             .get()
             .try_into()
             .map_err(|_| LibErrors::ParseError)?,
+            collateral_ratio: strategy.collateral_ratio().get() as u32,
         })
     }
 
