@@ -227,7 +227,7 @@ impl Vault {
             bought,
             total_available_quote,
             service,
-            Strategy::available_in,
+            Strategy::available_in_quote,
             Strategy::decrease_balance_quote,
             Strategy::increase_balance_base,
         )

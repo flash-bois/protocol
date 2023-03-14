@@ -336,7 +336,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in_mut(sub) += quantity;
+        *self.locked_in_quote_mut(sub) += quantity;
         self.locked.quote += quantity;
         self.available.quote -= quantity;
 
@@ -395,7 +395,7 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        *self.locked_in_mut(sub) -= quantity;
+        *self.locked_in_quote_mut(sub) -= quantity;
         self.locked.quote -= quantity;
         self.available.quote += quantity;
 
