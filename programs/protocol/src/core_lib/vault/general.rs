@@ -21,7 +21,7 @@ impl Vault {
         quantity: Quantity,
         total: Quantity,
         service: ServiceType,
-        part: fn(&Strategy) -> Quantity,
+        part: fn(&Strategy, ServiceType) -> Quantity,
         action: ActionFn,
     ) -> Result<(), LibErrors> {
         let mut processed = Quantity::new(0);
@@ -32,7 +32,7 @@ impl Vault {
 
             if strategy.uses(service) {
                 last_index = i;
-                let to_lock = quantity.big_mul_div(part(&strategy), total);
+                let to_lock = quantity.big_mul_div(part(&strategy, service), total);
                 processed += to_lock;
                 action(strategy, to_lock, service, &mut self.services)?;
             }
@@ -51,7 +51,7 @@ impl Vault {
         quantity_b: Quantity,
         total: Quantity,
         service: ServiceType,
-        part: fn(&Strategy) -> Quantity,
+        part: fn(&Strategy, ServiceType) -> Quantity,
         action_a: ActionFn,
         action_b: ActionFn,
     ) -> Result<(), LibErrors> {
@@ -63,14 +63,35 @@ impl Vault {
             let strategy = self.strategies.get_strategy_mut(i as u8)?;
             if strategy.uses(service) {
                 last_index = i;
-                let to_lock_a = quantity_a.big_mul_div(part(&strategy), total);
-                let to_lock_b = quantity_b.big_mul_div(part(&strategy), total);
+                let to_lock_a = quantity_a.big_mul_div(part(&strategy, service), total);
+                msg!(
+                    "here {} * {} / {} = {}",
+                    quantity_a,
+                    part(&strategy, service),
+                    total,
+                    to_lock_a
+                );
+                let to_lock_b = quantity_b.big_mul_div(part(&strategy, service), total);
+                msg!(
+                    "here {} * {} / {} = {}",
+                    quantity_b,
+                    part(&strategy, service),
+                    total,
+                    to_lock_b
+                );
                 processed_a += to_lock_a;
                 processed_b += to_lock_b;
                 action_a(strategy, to_lock_a, service, &mut self.services)?;
                 action_b(strategy, to_lock_b, service, &mut self.services)?;
             }
         }
+
+        use anchor_lang::prelude::msg;
+        msg!(
+            "unlock remaining {}, {}",
+            quantity_a - processed_a,
+            quantity_b - processed_b
+        );
 
         if processed_a < quantity_a {
             let strategy = self.strategies.get_strategy_mut(last_index as u8)?;
@@ -91,6 +112,13 @@ impl Vault {
                 &mut self.services,
             )?;
         }
+
+        msg!(
+            "after unlock remaining {}, {}",
+            quantity_a - processed_a,
+            quantity_b - processed_b
+        );
+
         Ok(())
     }
 
@@ -104,7 +132,7 @@ impl Vault {
             quantity,
             total_available,
             service,
-            Strategy::available,
+            Strategy::available_in,
             Strategy::lock_base,
         )
     }
@@ -119,7 +147,7 @@ impl Vault {
             quantity,
             total_available,
             service,
-            Strategy::available,
+            Strategy::available_in_quote,
             Strategy::lock_quote,
         )
     }
@@ -134,7 +162,7 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked_lent,
+            Strategy::locked_in,
             Strategy::accrue_lend_fee,
         )
     }
@@ -149,7 +177,7 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_in,
             Strategy::unlock_base,
         )
     }
@@ -164,7 +192,7 @@ impl Vault {
             quantity,
             total_locked,
             service,
-            Strategy::locked_quote,
+            Strategy::locked_in_quote,
             Strategy::unlock_quote,
         )
     }
@@ -181,7 +209,7 @@ impl Vault {
             bought,
             total_available_base,
             service,
-            Strategy::available,
+            Strategy::available_in,
             Strategy::decrease_balance_base,
             Strategy::increase_balance_quote,
         )
@@ -199,7 +227,7 @@ impl Vault {
             bought,
             total_available_quote,
             service,
-            Strategy::available,
+            Strategy::available_in,
             Strategy::decrease_balance_quote,
             Strategy::increase_balance_base,
         )
@@ -217,7 +245,7 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_in,
             Strategy::unlock_base,
             Strategy::decrease_balance_base,
         )
@@ -235,7 +263,7 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked_quote,
+            Strategy::locked_in_quote,
             Strategy::unlock_quote,
             Strategy::decrease_balance_quote,
         )
@@ -253,7 +281,7 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked,
+            Strategy::locked_in,
             Strategy::unlock_base,
             Strategy::increase_balance_base,
         )
@@ -271,7 +299,7 @@ impl Vault {
             loss,
             total_locked,
             service,
-            Strategy::locked_quote,
+            Strategy::locked_in_quote,
             Strategy::unlock_quote,
             Strategy::increase_balance_quote,
         )
