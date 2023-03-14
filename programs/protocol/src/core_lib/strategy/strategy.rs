@@ -1,7 +1,6 @@
 use crate::core_lib::decimal::{Balances, Fraction, Quantity, Shares};
 use crate::core_lib::errors::LibErrors;
 use crate::core_lib::services::{ServiceType, ServiceUpdate, Services};
-use checked_decimal_macro::Decimal;
 
 #[cfg(feature = "anchor")]
 mod zero {
@@ -276,7 +275,7 @@ impl Strategy {
 
         if let Ok(trade) = services.trade_mut() {
             trade.add_available_base(quantity);
-            trade.add_available_quote(quantity);
+            trade.add_available_quote(quote_quantity);
         }
 
         self.available.base += quantity;
@@ -357,34 +356,21 @@ impl Strategy {
         sub: ServiceType,
         services: &mut Services,
     ) -> Result<(), LibErrors> {
-        use anchor_lang::prelude::*;
-
-        msg!("unlock_base: {:?}, {:?}", quantity, self.available.base);
-
-        msg!("locked_in: {}", *self.locked_in_mut(sub),);
-
         *self.locked_in_mut(sub) -= quantity;
         self.locked.base -= quantity;
         self.available.base += quantity;
 
-        msg!("unlock_base: {:?}, {:?}", quantity, self.available.base);
-
         if let Ok(lend) = services.lend_mut() {
-            msg!("lent: {:?}", self.lent);
             lend.add_available_base(quantity);
         }
 
         if let Ok(swap) = services.swap_mut() {
-            msg!("lent: {:?}", self.sold);
             swap.add_available_base(quantity);
         }
 
         if let Ok(trade) = services.trade_mut() {
-            msg!("lent: {:?}", self.traded);
             trade.add_available_base(quantity);
         }
-
-        msg!("unlocked_base: {:?}", self.available.base);
 
         Ok(())
     }
