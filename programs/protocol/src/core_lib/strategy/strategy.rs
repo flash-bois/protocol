@@ -275,7 +275,7 @@ impl Strategy {
 
         if let Ok(trade) = services.trade_mut() {
             trade.add_available_base(quantity);
-            trade.add_available_quote(quantity);
+            trade.add_available_quote(quote_quantity);
         }
 
         self.available.base += quantity;
