@@ -72,9 +72,9 @@ impl Vault {
             return Err(LibErrors::SwapServiceNone);
         }
 
-        // if has_trade && self.services.trade.is_none() {
-        //     return Err(());
-        // }
+        if has_trade && self.services.trade_mut().is_err() {
+            return Err(LibErrors::TradeServiceNone);
+        }
 
         self.strategies
             .add(Strategy::new(

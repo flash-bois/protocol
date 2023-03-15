@@ -347,7 +347,7 @@ impl Borrowable for Lend {
         let fee_owed = owed_quantity - borrowed;
         let repay_amount = min(repay_quantity, owed_quantity);
 
-        if repay_quantity > fee_owed {
+        if repay_quantity >= fee_owed {
             let shares_to_burn = self
                 .borrow_shares
                 .get_change_down(repay_amount, self.borrowed);
