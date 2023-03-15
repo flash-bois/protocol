@@ -44,8 +44,8 @@ impl Vault {
         let base_quantity = swap.buy(quantity, oracle, quote_oracle)?;
         let total_available = swap.available();
         self.exchange_to_base(
-            base_quantity,
             quantity,
+            base_quantity,
             total_available.quote,
             ServiceType::Swap,
         )?;
@@ -80,7 +80,7 @@ mod tests {
             );
         vault
             .swap_service()?
-            .fee_curve_sell()
+            .fee_curve_buy()
             .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(1, 1))
             .add_linear_fee(
                 Fraction::from_scale(5, 3),
@@ -441,6 +441,108 @@ mod tests {
                 available: Balances {
                     base: Quantity::new(950),
                     quote: Quantity::new(2100)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(2)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: None,
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+
+        let base_quantity = vault.buy(Quantity::new(400))?;
+        assert_eq!(base_quantity, Quantity::new(200) - Quantity::new(1));
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(2099),
+                    quote: Quantity::new(3799)
+                },
+                balances: Balances {
+                    base: Quantity::new(2099),
+                    quote: Quantity::new(3799)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(1),
+                    quote: Quantity::new(1)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        assert_eq!(
+            *vault.strategy(0)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(1049),
+                    quote: Quantity::new(1900)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(1)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                available: Balances {
+                    base: Quantity::new(1050),
+                    quote: Quantity::new(1899)
                 },
                 locked: Balances {
                     base: Quantity::new(0),
