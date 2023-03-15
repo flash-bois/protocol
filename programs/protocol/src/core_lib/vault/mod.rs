@@ -316,6 +316,13 @@ impl Vault {
             FeeCurve::default(),
             Fraction::from_scale(1, 1),
         )?;
+        vault.enable_trading(
+            Fraction::from_scale(5, 3),
+            Fraction::from_scale(5, 0),
+            Fraction::from_scale(5, 1),
+            Fraction::from_scale(6, 1),
+            0,
+        )?;
         vault.add_strategy(
             true,
             true,

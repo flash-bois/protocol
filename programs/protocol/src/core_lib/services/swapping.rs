@@ -1,4 +1,4 @@
-use checked_decimal_macro::{BetweenDecimals, Decimal, Factories};
+use checked_decimal_macro::{BetweenDecimals, Decimal, Factories, Others};
 
 use crate::core_lib::decimal::{Balances, Fraction, Quantity};
 use crate::core_lib::errors::LibErrors;
@@ -163,15 +163,17 @@ impl Swap {
         self.balances.base += base_quantity;
         self.balances.quote -= quote_quantity;
         let proportion_after = self.get_proportion(base_oracle, quote_oracle);
+        self.balances.base -= base_quantity;
+        self.balances.quote += quote_quantity;
 
         let fee_fraction = self
             .selling_fee
             .get_mean(proportion_before, proportion_after)?;
 
-        let fee = quote_quantity * fee_fraction;
+        let fee = quote_quantity.mul_up(fee_fraction);
         let fee_to_keep = fee * self.kept_fee;
-        self.total_kept_fee.base = fee_to_keep;
-        self.total_earned_fee.base += fee - fee_to_keep;
+        self.total_kept_fee.quote = fee_to_keep;
+        self.total_earned_fee.quote += fee - fee_to_keep;
 
         Ok(quote_quantity - fee)
     }
@@ -195,12 +197,14 @@ impl Swap {
         self.balances.base -= base_quantity;
         let proportion_after =
             Fraction::from_integer(1) - self.get_proportion(base_oracle, quote_oracle);
+        self.balances.quote -= quote_quantity;
+        self.balances.base += base_quantity;
 
         let fee_fraction = self
             .buying_fee
             .get_mean(proportion_before, proportion_after)?;
 
-        let fee = base_quantity * fee_fraction;
+        let fee = base_quantity.mul_up(fee_fraction);
         let fee_to_keep = fee * self.kept_fee;
         self.total_kept_fee.base = fee_to_keep;
         self.total_earned_fee.base += fee - fee_to_keep;

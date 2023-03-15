@@ -39,7 +39,7 @@ mod zero {
 mod non_zero {
     use super::*;
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct Strategy {
         /// Quantity of tokens used in lending (borrowed)
         pub lent: Option<Quantity>,

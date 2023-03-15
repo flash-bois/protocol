@@ -57,7 +57,8 @@ impl Vault {
 #[cfg(test)]
 mod tests {
     use crate::core_lib::{
-        decimal::{Balances, Fraction},
+        decimal::{Balances, Fraction, Shares},
+        strategy::Strategy,
         user::UserStatement,
         Token,
     };
@@ -119,6 +120,76 @@ mod tests {
             }
         );
 
+        assert_eq!(
+            *vault.strategy(0)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(0),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(1)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                available: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(0),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(2)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: None,
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(0),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+
         // Deposit to unrelated strategy
 
         vault.deposit(
@@ -154,6 +225,251 @@ mod tests {
                 selling_fee,
                 buying_fee,
                 kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        vault.deposit(
+            &mut UserStatement::default(),
+            Token::Base,
+            Quantity::new(1000),
+            1,
+        )?;
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                balances: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        vault.deposit(
+            &mut UserStatement::default(),
+            Token::Base,
+            Quantity::new(1000),
+            0,
+        )?;
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(2000),
+                    quote: Quantity::new(4000)
+                },
+                balances: Balances {
+                    base: Quantity::new(2000),
+                    quote: Quantity::new(4000)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        assert_eq!(
+            *vault.strategy(0)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(1)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(2)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: None,
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+
+        // Swapping
+        let quote = vault.sell(Quantity::new(100))?;
+        assert_eq!(quote, Quantity::new(200) - Quantity::new(1));
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(1900),
+                    quote: Quantity::new(4199)
+                },
+                balances: Balances {
+                    base: Quantity::new(1900),
+                    quote: Quantity::new(4199)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(1)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        assert_eq!(
+            *vault.strategy(0)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(950),
+                    quote: Quantity::new(2099)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(1)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                traded: Some(Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                }),
+                available: Balances {
+                    base: Quantity::new(950),
+                    quote: Quantity::new(2100)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
+            }
+        );
+        assert_eq!(
+            *vault.strategy(2)?,
+            Strategy {
+                lent: Some(Quantity::new(0)),
+                sold: None,
+                traded: None,
+                available: Balances {
+                    base: Quantity::new(1000),
+                    quote: Quantity::new(2000)
+                },
+                locked: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_shares: Shares::new(1000),
+                collateral_ratio: Fraction::from_integer(1),
+                accrued_fee: Quantity::new(0),
+                liquidation_threshold: Fraction::from_integer(1),
             }
         );
 
