@@ -1,6 +1,6 @@
 {
   "name": "protocol-v1",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "main": "index.ts",
   "author": "fashbois",
   "scripts": {
@@ -13,7 +13,6 @@
     "web": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && cd ./programs/protocol && wasm-pack build --target bundler --out-dir ../../../webapp/src/pkg --release",
     "anchor": "sed -i 's/default = \\[\"wasm\"]/default = \\[\"anchor\"]/g' programs/protocol/Cargo.toml && anchor build",
     "test:anchor": "yarn test:provide && yarn test:trade && yarn test:borrow && yarn test:services && yarn test:user && yarn test:state && yarn test:vault && yarn test:oracle && yarn test:statement",
-    "test:wasm": "anchor test --skip-build tests/wasm/*.ts",
     "test:provide": "anchor test --skip-build tests/anchor/deposit_withdraw.spec.ts",
     "test:trade": "anchor test --skip-build tests/anchor/trade.spec.ts",
     "test:services": "anchor test --skip-build tests/anchor/services.spec.ts",
@@ -26,13 +25,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/flash-bois/protocol-v1.git"
+    "url": "git+https://github.com/flash-bois/protocol.git"
   },
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/flash-bois/protocol-v1/issues"
+    "url": "https://github.com/flash-bois/protocol/issues"
   },
-  "homepage": "https://github.com/flash-bois/protocol-v1#readme",
+  "homepage": "https://github.com/flash-bois/protocol#readme",
   "dependencies": {
     "@coral-xyz/anchor": "^0.26.0",
     "@solana/spl-token": "^0.3.7",
