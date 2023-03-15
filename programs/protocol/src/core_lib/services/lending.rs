@@ -219,6 +219,10 @@ impl Lend {
     }
 
     pub fn get_apy(&self, time: Time) -> Fraction {
+        if self.available == Quantity::new(0) || self.locked().base == Quantity::new(0) {
+            return Fraction::new(0);
+        }
+
         Fraction::from_decimal(
             self.fee
                 .compounded_apy(Fraction::from_decimal(self.utilization), time)
