@@ -186,7 +186,6 @@ describe('Deposit and withdraw', () => {
   it('withdraw', async () => {
     const remaining_accounts = vault0.remaining_accounts
 
-    console.log(remaining_accounts![0].pubkey.toString() + ' ' + remaining_accounts![1].pubkey.toString())
 
     await withdraw({
       ...test_environment,
