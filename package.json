@@ -2,7 +2,7 @@
   "name": "protocol-v1",
   "version": "0.1.0",
   "main": "index.ts",
-  "author": "fashbois",
+  "author": "flashbois",
   "scripts": {
     "build:wasm:dev": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../pkg",
     "build:wasm:prod": "sed -i 's/default = \\[\"anchor\"]/default = \\[\"wasm\"]/g' programs/protocol/Cargo.toml && cd ./programs/protocol && wasm-pack build --target nodejs --out-dir ../../lib --release",
