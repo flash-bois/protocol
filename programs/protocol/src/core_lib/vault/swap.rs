@@ -56,8 +56,12 @@ impl Vault {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_lib::decimal::Fraction;
-    use checked_decimal_macro::Factories;
+    use crate::core_lib::{
+        decimal::{Balances, Fraction},
+        user::UserStatement,
+        Token,
+    };
+    use checked_decimal_macro::{Decimal, Factories};
 
     use super::*;
 
@@ -67,10 +71,91 @@ mod tests {
         vault
             .swap_service()?
             .fee_curve_sell()
-            .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(1, 1));
+            .add_constant_fee(Fraction::from_scale(1, 3), Fraction::from_scale(1, 2))
+            .add_linear_fee(
+                Fraction::from_scale(5, 3),
+                Fraction::new(0),
+                Fraction::from_scale(7, 1),
+            );
+        vault
+            .swap_service()?
+            .fee_curve_sell()
+            .add_constant_fee(Fraction::from_scale(3, 3), Fraction::from_scale(1, 1))
+            .add_linear_fee(
+                Fraction::from_scale(5, 3),
+                Fraction::new(0),
+                Fraction::from_scale(7, 1),
+            );
 
-        // vault.deposit(Token::Quote, Quantity::new(10_000000), 0, 0)?;
-        // TODO: finish this test after deposits are finished
+        let selling_fee = *vault.swap_service()?.fee_curve_sell();
+        let buying_fee = *vault.swap_service()?.fee_curve_buy();
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                balances: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
+
+        // Deposit to unrelated strategy
+
+        vault.deposit(
+            &mut UserStatement::default(),
+            Token::Base,
+            Quantity::new(1000),
+            2,
+        )?;
+
+        assert_eq!(
+            *vault.swap_service()?,
+            Swap {
+                available: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                balances: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_earned_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_paid_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                total_kept_fee: Balances {
+                    base: Quantity::new(0),
+                    quote: Quantity::new(0)
+                },
+                selling_fee,
+                buying_fee,
+                kept_fee: Fraction::from_scale(1, 1),
+            }
+        );
 
         Ok(())
     }

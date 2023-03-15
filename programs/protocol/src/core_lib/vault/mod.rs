@@ -323,6 +323,20 @@ impl Vault {
             Fraction::from_integer(1),
             Fraction::from_integer(1),
         )?;
+        vault.add_strategy(
+            true,
+            true,
+            true,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
+        vault.add_strategy(
+            true,
+            false,
+            false,
+            Fraction::from_integer(1),
+            Fraction::from_integer(1),
+        )?;
         Ok(vault)
     }
 }
