@@ -9,10 +9,10 @@ members = [
 ]
 
 [programs.localnet]
-protocol = "HBDdU5BAb4RnFXZMoqqF5QSdnUoFuji5gWb6PBQEL3gA"
+protocol = "9BwQGEFjsVGHdLi4nZYpz4pJg8sVkeKFWkEQ8Kt2p4zi"
 oracle = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 [programs.devnet]
-protocol = "HBDdU5BAb4RnFXZMoqqF5QSdnUoFuji5gWb6PBQEL3gA"
+protocol = "9BwQGEFjsVGHdLi4nZYpz4pJg8sVkeKFWkEQ8Kt2p4zi"
 oracle = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [registry]
